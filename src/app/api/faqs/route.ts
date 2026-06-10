@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { cacheHeaders } from '@/lib/cache-headers'
 
 export async function GET() {
   try {
@@ -8,7 +9,7 @@ export async function GET() {
       orderBy: { order: 'asc' },
     })
 
-    return NextResponse.json({ faqs })
+    return NextResponse.json({ faqs }, { headers: cacheHeaders.public.long })
   } catch (error) {
     console.error('Get FAQs error:', error)
     return NextResponse.json(

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { handleApiError } from '@/lib/errors'
+import { cacheHeaders } from '@/lib/cache-headers'
 
 export async function GET() {
   try {
@@ -19,7 +20,7 @@ export async function GET() {
       orderBy: { order: 'asc' },
     })
 
-    return NextResponse.json({ banners })
+    return NextResponse.json({ banners }, { headers: cacheHeaders.public.short })
   } catch (error) {
     return handleApiError(error, 'Get banners error')
   }

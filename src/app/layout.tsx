@@ -94,12 +94,6 @@ export default function RootLayout({
   return (
     <html lang="bn" suppressHydrationWarning>
       <head>
-        {/* MathJax for rendering MathML globally */}
-        <script
-          id="MathJax-script"
-          async
-          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
-        />
         <meta name="theme-color" content="#059669" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
@@ -125,11 +119,19 @@ export default function RootLayout({
                   skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
                 },
                 startup: {
-                  pageReady: () => {
-                    return MathJax.startup.defaultPageReady();
-                  }
+                  pageReady: () => MathJax.startup.defaultPageReady()
                 }
               };
+              // Defer MathJax load to after first paint (reduces LCP blocking)
+              window.addEventListener('load', () => {
+                setTimeout(() => {
+                  var s = document.createElement('script');
+                  s.id = 'MathJax-script';
+                  s.async = true;
+                  s.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
+                  document.head.appendChild(s);
+                }, 2000);
+              });
             `,
           }}
         />

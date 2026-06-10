@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import Header from './Header'
 import Footer from './Footer'
 import BottomNav from './BottomNav'
@@ -19,21 +18,11 @@ export default function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      <motion.div
-        initial={{ opacity: 1 }}
-        animate={{ opacity: 1 }}
-        className={isAdmin ? 'h-screen' : 'min-h-screen flex flex-col'}
-      >
+      <div className={isAdmin ? 'h-screen' : 'min-h-screen flex flex-col'}>
         {!isAdmin && <Header />}
         {!isAdmin && <NoticeBar />}
 
-        <main
-          className={
-            isAdmin
-              ? 'h-full'
-              : 'flex-1 pt-16 pb-24 md:pb-8 mb-8'
-          }
-        >
+        <main className={isAdmin ? 'h-full' : 'flex-1 pt-16 pb-24 md:pb-8 mb-8'}>
           {children}
         </main>
 
@@ -41,7 +30,7 @@ export default function AppShell({ children }: AppShellProps) {
         {!isAdmin && <BottomNav />}
         {!isAdmin && <SpecialNoticePopup />}
         <ScrollToTop />
-      </motion.div>
+      </div>
     </div>
   )
 }

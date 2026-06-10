@@ -1,45 +1,22 @@
 'use client'
 
-import { useState, useEffect, useSyncExternalStore } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useTheme } from 'next-themes'
-import {
-  Search,
-  Menu,
-  X,
-  Sun,
-  Moon,
-  User,
-  GraduationCap,
-  LogIn,
-  LogOut,
-  LayoutDashboard,
-  Crown,
-} from 'lucide-react'
+import { Search, Menu, X, Sun, Moon, User, GraduationCap, LogIn, LogOut, LayoutDashboard, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetClose,
-} from '@/components/ui/sheet'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useRouterStore } from '@/store/router'
 import { useAuthStore } from '@/store/auth'
 import { useSiteConfig } from '@/hooks/use-metadata'
 import { useNavigation } from '@/hooks/use-navigation'
 import Image from 'next/image'
+
+const getUserInitials = (name: string) =>
+  name.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean).map((n) => n[0]).join('').toUpperCase().slice(0, 2)
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false)
@@ -52,131 +29,82 @@ export default function Header() {
   const { headerNav } = useNavigation()
 
   const siteName = config?.siteName || 'শিক্ষা বাংলা'
-
-  const mounted = useSyncExternalStore(
-    () => () => {},
-    () => true,
-    () => false
-  )
-
-  const handleScroll = () => setScrolled(window.scrollY > 10)
+  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin'
+  const isDark = theme === 'dark'
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
+    let frameId: number
+    const handleScroll = () => {
+      cancelAnimationFrame(frameId)
+      frameId = requestAnimationFrame(() => setScrolled(window.scrollY > 10))
+    }
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => { window.removeEventListener('scroll', handleScroll); cancelAnimationFrame(frameId) }
   }, [])
 
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin'
-
-  const handleNavClick = (route: string) => {
+  const handleNavClick = useCallback((route: string) => {
     const params = route === 'class-list' ? { scrollTarget: 'class-categories' } : undefined
     navigate(route as any, params)
-  }
+  }, [navigate])
 
-  const handleLogout = () => {
-    logout()
-    navigate('home')
-  }
+  const handleLogout = useCallback(() => { logout(); navigate('home') }, [logout, navigate])
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      navigate('search', { searchQuery: searchQuery.trim() })
-      setSearchOpen(false)
-    }
-  }
+  const handleSearch = useCallback(() => {
+    if (searchQuery.trim()) { navigate('search', { searchQuery: searchQuery.trim() }); setSearchOpen(false) }
+  }, [searchQuery, navigate])
 
-  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSearch()
-    }
-  }
+  const handleSearchKeyDown = useCallback((e: React.KeyboardEvent) => { if (e.key === 'Enter') handleSearch() }, [handleSearch])
 
-  const getUserInitials = (name: string) => {
-    return name
-      .replace(/[^\p{L}\p{N}\s]/gu, '') // Remove special chars but keep letters/numbers
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2)
-  }
+  const visibleNav = useMemo(() =>
+    headerNav.filter(item => {
+      if (item.isAdminOnly && !isAdmin) return false
+      if (item.isAuthOnly && !isAuthenticated) return false
+      return true
+    }), [headerNav, isAdmin, isAuthenticated])
 
   return (
-    <motion.header
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? 'glass shadow-lg shadow-black/5'
-          : 'bg-background/80 backdrop-blur-md'
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-shadow duration-300 ${
+        scrolled ? 'shadow-lg shadow-black/5 bg-background/95 backdrop-blur-md' : 'bg-background/80 backdrop-blur-md'
       }`}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
-          <motion.div
-            className="flex items-center gap-2 cursor-pointer shrink-0"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate('home')}
-          >
+          <button className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => navigate('home')}>
             {config?.logo ? (
-              <Image
-                src={config.logo}
-                alt={siteName}
-                width={36}
-                height={36}
-                className="w-9 h-9 rounded-lg object-contain"
-              />
+              <Image src={config.logo} alt={siteName} width={36} height={36} className="w-9 h-9 rounded-lg object-contain" />
             ) : (
               <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-edu-primary to-edu-primary-dark text-white shadow-md">
                 <GraduationCap className="w-5 h-5" />
               </div>
             )}
-            <span className="text-lg font-bold leading-tight text-foreground">
-              {siteName}
-            </span>
-          </motion.div>
+            <span className="text-lg font-bold leading-tight text-foreground">{siteName}</span>
+          </button>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-1">
-            {headerNav.filter(item => {
-              if (item.isAdminOnly && !isAdmin) return false
-              if (item.isAuthOnly && !isAuthenticated) return false
-              return true
-            }).map((link) => {
+            {visibleNav.map((link) => {
               const isActive = currentRoute === link.route
               return (
-                <motion.button
+                <button
                   key={link.id}
                   onClick={() => handleNavClick(link.route)}
                   className={`relative px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                    isActive
-                      ? 'text-edu-primary'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    isActive ? 'text-edu-primary' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
                   }`}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                 >
                   {link.label}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeNav"
-                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-edu-primary rounded-full"
-                      transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                    />
-                  )}
-                </motion.button>
+                  {isActive && <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-0.5 bg-edu-primary rounded-full" />}
+                </button>
               )
             })}
           </nav>
 
           {/* Search Bar - Desktop */}
           <div className="hidden md:flex items-center flex-1 max-w-sm mx-4">
-            <div className="relative w-full group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-edu-primary transition-colors" />
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="কোর্স, অধ্যায় খুঁজুন..."
                 value={searchQuery}
@@ -190,50 +118,19 @@ export default function Header() {
           {/* Right Section */}
           <div className="flex items-center gap-2">
             {/* Search Toggle - Mobile */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setSearchOpen(!searchOpen)}
-            >
+            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setSearchOpen(!searchOpen)}>
               {searchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
             </Button>
 
             {/* Theme Toggle */}
-            {mounted && (
-              <motion.div whileTap={{ scale: 0.9 }}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                  className="text-muted-foreground hover:text-foreground"
-                >
-                  <AnimatePresence mode="wait">
-                    {theme === 'dark' ? (
-                      <motion.div
-                        key="sun"
-                        initial={{ rotate: -90, scale: 0 }}
-                        animate={{ rotate: 0, scale: 1 }}
-                        exit={{ rotate: 90, scale: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Sun className="w-5 h-5" />
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="moon"
-                        initial={{ rotate: 90, scale: 0 }}
-                        animate={{ rotate: 0, scale: 1 }}
-                        exit={{ rotate: -90, scale: 0 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <Moon className="w-5 h-5" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </Button>
-              </motion.div>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(isDark ? 'light' : 'dark')}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </Button>
 
             {/* User Menu / Login */}
             {isAuthenticated && user ? (
@@ -255,9 +152,7 @@ export default function Header() {
                   <div className="flex items-center gap-2 p-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback className="bg-edu-primary/10 text-edu-primary text-xs">
-                        {getUserInitials(user.name)}
-                      </AvatarFallback>
+                      <AvatarFallback className="bg-edu-primary/10 text-edu-primary text-xs">{getUserInitials(user.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                       <span className="text-sm font-medium">{user.name}</span>
@@ -266,28 +161,20 @@ export default function Header() {
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate('user-dashboard')}>
-                    <User className="mr-2 h-4 w-4" />
-                    প্রোফাইল
+                    <User className="mr-2 h-4 w-4" /> প্রোফাইল
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate('premium')}>
-                    <Crown className="mr-2 h-4 w-4 text-edu-premium" />
-                    প্রিমিয়াম
-                    {user.isPremium && (
-                      <Badge className="ml-auto bg-edu-premium/10 text-edu-premium border-0 text-[10px] px-1.5">
-                        সক্রিয়
-                      </Badge>
-                    )}
+                    <Crown className="mr-2 h-4 w-4 text-edu-premium" /> প্রিমিয়াম
+                    {user.isPremium && <Badge className="ml-auto bg-edu-premium/10 text-edu-premium border-0 text-[10px] px-1.5">সক্রিয়</Badge>}
                   </DropdownMenuItem>
                   {isAdmin && (
                     <DropdownMenuItem onClick={() => navigate('admin-dashboard')}>
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      এডমিন প্যানেল
+                      <LayoutDashboard className="mr-2 h-4 w-4" /> এডমিন প্যানেল
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    লগ আউট
+                    <LogOut className="mr-2 h-4 w-4" /> লগ আউট
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -297,8 +184,7 @@ export default function Header() {
                 className="hidden sm:flex bg-edu-primary hover:bg-edu-primary-dark text-white gap-1.5"
                 size="sm"
               >
-                <LogIn className="w-4 h-4" />
-                লগইন
+                <LogIn className="w-4 h-4" /> লগইন
               </Button>
             )}
 
@@ -313,13 +199,7 @@ export default function Header() {
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-2">
                     {config?.logo ? (
-                      <Image
-                        src={config.logo}
-                        alt={siteName}
-                        width={32}
-                        height={32}
-                        className="w-8 h-8 rounded-lg object-contain"
-                      />
+                      <Image src={config.logo} alt={siteName} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
                     ) : (
                       <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-edu-primary to-edu-primary-dark text-white">
                         <GraduationCap className="w-4 h-4" />
@@ -329,24 +209,17 @@ export default function Header() {
                   </SheetTitle>
                 </SheetHeader>
                 <div className="flex flex-col gap-1 px-4 mt-4">
-                  {headerNav.filter(item => {
-                    if (item.isAdminOnly && !isAdmin) return false
-                    if (item.isAuthOnly && !isAuthenticated) return false
-                    return true
-                  }).map((link) => {
+                  {visibleNav.map((link) => {
                     const isActive = currentRoute === link.route
-                    const Icon = link.Icon
                     return (
                       <SheetClose asChild key={link.id}>
                         <button
                           onClick={() => handleNavClick(link.route)}
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                            isActive
-                              ? 'bg-edu-primary/10 text-edu-primary'
-                              : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                            isActive ? 'bg-edu-primary/10 text-edu-primary' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
                           }`}
                         >
-                          <Icon className="w-4 h-4" />
+                          <link.Icon className="w-4 h-4" />
                           {link.label}
                         </button>
                       </SheetClose>
@@ -359,9 +232,7 @@ export default function Header() {
                       <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={user.avatar} alt={user.name} />
-                          <AvatarFallback className="bg-edu-primary/10 text-edu-primary text-xs">
-                            {getUserInitials(user.name)}
-                          </AvatarFallback>
+                          <AvatarFallback className="bg-edu-primary/10 text-edu-primary text-xs">{getUserInitials(user.name)}</AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col">
                           <span className="text-sm font-medium">{user.name}</span>
@@ -369,24 +240,15 @@ export default function Header() {
                         </div>
                       </div>
                       <SheetClose asChild>
-                        <Button
-                          variant="outline"
-                          className="w-full justify-start gap-2 text-destructive hover:text-destructive"
-                          onClick={handleLogout}
-                        >
-                          <LogOut className="w-4 h-4" />
-                          লগ আউট
+                        <Button variant="outline" className="w-full justify-start gap-2 text-destructive hover:text-destructive" onClick={handleLogout}>
+                          <LogOut className="w-4 h-4" /> লগ আউট
                         </Button>
                       </SheetClose>
                     </div>
                   ) : (
                     <SheetClose asChild>
-                      <Button
-                        className="w-full bg-edu-primary hover:bg-edu-primary-dark text-white gap-2"
-                        onClick={() => navigate('login')}
-                      >
-                        <LogIn className="w-4 h-4" />
-                        লগইন করুন
+                      <Button className="w-full bg-edu-primary hover:bg-edu-primary-dark text-white gap-2" onClick={() => navigate('login')}>
+                        <LogIn className="w-4 h-4" /> লগইন করুন
                       </Button>
                     </SheetClose>
                   )}
@@ -397,32 +259,22 @@ export default function Header() {
         </div>
 
         {/* Mobile Search Bar */}
-        <AnimatePresence>
-          {searchOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="md:hidden overflow-hidden"
-            >
-              <div className="pb-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    placeholder="কোর্স, অধ্যায় খুঁজুন..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={handleSearchKeyDown}
-                    className="pl-9 pr-4 bg-muted/50 border-transparent focus:border-edu-primary/30"
-                    autoFocus
-                  />
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {searchOpen && (
+          <div className="md:hidden pb-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="কোর্স, অধ্যায় খুঁজুন..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                className="pl-9 pr-4 bg-muted/50 border-transparent focus:border-edu-primary/30"
+                autoFocus
+              />
+            </div>
+          </div>
+        )}
       </div>
-    </motion.header>
+    </header>
   )
 }
