@@ -1,26 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { Timer, CheckCircle, ArrowRight, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useRouterStore } from '@/store/router'
 import { useSiteConfig } from '@/hooks/use-metadata'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0, transition: { duration: 0.4 } },
-}
 
 const gradients = [
   'from-emerald-400 to-emerald-600',
@@ -53,29 +39,18 @@ export default function MCQPracticeSection() {
     <section className="py-16 sm:py-20 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-12"
-        >
+        <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
             {config?.homepageMcqTitle || 'MCQ প্র্যাকটিস'}
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             {config?.homepageMcqSubtitle || 'সময় নির্ধারিত পরীক্ষায় অংশ নিয়ে নিজেকে যাচাই করুন'}
           </p>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Left - Class Quick Start */}
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          >
+          <div className="stagger-children">
             <Card className="border-0 shadow-lg h-full">
               <CardContent className="p-6 sm:p-8">
                 <div className="flex items-center gap-2 mb-6">
@@ -91,12 +66,10 @@ export default function MCQPracticeSection() {
                 ) : (
                   <div className="space-y-3">
                     {classes.map((cls, i) => (
-                      <motion.div
+                      <div
                         key={cls.slug}
-                        variants={itemVariants}
-                        whileHover={{ x: 4 }}
                         onClick={() => handleStartExam(cls.slug)}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 cursor-pointer transition-colors group"
+                        className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 cursor-pointer transition-colors hover:translate-x-1 group"
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-2 h-8 rounded-full bg-gradient-to-b ${gradients[i % gradients.length]}`} />
@@ -106,21 +79,16 @@ export default function MCQPracticeSection() {
                           </div>
                         </div>
                         <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors" />
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 )}
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
 
           {/* Right - Quick CTA */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
+          <div className="animate-fade-in-right">
             <Card className="border-0 shadow-lg h-full bg-gradient-to-br from-emerald-600 to-teal-600 text-white overflow-hidden">
               <CardContent className="p-6 sm:p-8 flex flex-col justify-between h-full">
                 <div>
@@ -158,7 +126,7 @@ export default function MCQPracticeSection() {
                 </Button>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

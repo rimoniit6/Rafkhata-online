@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Card, CardContent } from '@/components/ui/card'
 import { HelpCircle, Loader2 } from 'lucide-react'
@@ -20,13 +19,7 @@ export default function FAQSection() {
     <section className="py-16 sm:py-20 bg-muted/30">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-12"
-        >
+        <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30 mb-4">
             <HelpCircle className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
           </div>
@@ -36,15 +29,10 @@ export default function FAQSection() {
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             {config?.homepageFaqSubtitle || 'আপনার প্রশ্নের উত্তর এখানে'}
           </p>
-        </motion.div>
+        </div>
 
         {/* Accordion */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-        >
+        <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
           <Card className="border-0 shadow-lg">
             <CardContent className="p-2 sm:p-4">
               {loading ? (
@@ -68,7 +56,7 @@ export default function FAQSection() {
               )}
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

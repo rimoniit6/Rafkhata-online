@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { GraduationCap, Loader2, Quote } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardContent } from '@/components/ui/card'
@@ -23,20 +22,14 @@ export default function TeacherModeratorsSection() {
   return (
     <section className="py-16 sm:py-20 bg-gradient-to-b from-transparent via-emerald-50/30 to-transparent dark:via-emerald-950/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-12"
-        >
+        <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
             {config?.homepageTeachersTitle || 'আমাদের শিক্ষক ও মডারেটর'}
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             {config?.homepageTeachersSubtitle || 'যারা আছেন আপনার পাশে'}
           </p>
-        </motion.div>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -45,12 +38,10 @@ export default function TeacherModeratorsSection() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {teachers.map((teacher, idx) => (
-              <motion.div
+              <div
                 key={teacher.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: idx * 0.08, duration: 0.4 }}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${idx * 0.08}s` }}
               >
                 <Card className="group overflow-hidden border-0 shadow-md hover:shadow-xl transition-all duration-300 bg-card hover:-translate-y-1">
                   <div className="h-2 bg-gradient-to-r from-emerald-400 to-teal-500" />
@@ -79,7 +70,7 @@ export default function TeacherModeratorsSection() {
                     )}
                   </CardContent>
                 </Card>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/lib/api-utils'
@@ -38,37 +39,37 @@ export async function GET() {
     // Reduces ~50 individual COUNT queries to just 4 aggregation queries
     const allSubjectIds = classMeta.flatMap((c) => c.subjectIds)
 
-    const [mcqCounts, cqCounts, lectureCounts] = await Promise.all([
+    const [mcqCounts, cqCounts] = await Promise.all([
       // MCQ aggregation: counts per subject in one query
       allSubjectIds.length > 0
-        ? db.$queryRawUnsafe<Array<{ subject_id: string; total: bigint; free: bigint; board: bigint; free_board: bigint }>>(
-            `SELECT "subjectId" AS subject_id,
-                    COUNT(*)::bigint AS total,
-                    COUNT(*) FILTER (WHERE "isPremium" = false)::bigint AS free,
-                    COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL)::bigint AS board,
-                    COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL AND "isPremium" = false)::bigint AS free_board
-             FROM "MCQ"
-             WHERE "subjectId" = ANY($1::text[]) AND "isActive" = true
-             GROUP BY "subjectId"`,
-            [allSubjectIds],
+        ? db.$queryRaw<Array<{ subject_id: string; total: bigint; free: bigint; board: bigint; free_board: bigint }>>(
+            Prisma.sql`
+              SELECT "subjectId" AS subject_id,
+                     COUNT(*)::bigint AS total,
+                     COUNT(*) FILTER (WHERE "isPremium" = false)::bigint AS free,
+                     COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL)::bigint AS board,
+                     COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL AND "isPremium" = false)::bigint AS free_board
+              FROM "MCQ"
+              WHERE "subjectId" IN (${Prisma.join(allSubjectIds)}) AND "isActive" = true
+              GROUP BY "subjectId"
+            `,
           )
         : Promise.resolve([]),
       // CQ aggregation
       allSubjectIds.length > 0
-        ? db.$queryRawUnsafe<Array<{ subject_id: string; total: bigint; free: bigint; board: bigint; free_board: bigint }>>(
-            `SELECT "subjectId" AS subject_id,
-                    COUNT(*)::bigint AS total,
-                    COUNT(*) FILTER (WHERE "isPremium" = false)::bigint AS free,
-                    COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL)::bigint AS board,
-                    COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL AND "isPremium" = false)::bigint AS free_board
-             FROM "CQ"
-             WHERE "subjectId" = ANY($1::text[]) AND "isActive" = true
-             GROUP BY "subjectId"`,
-            [allSubjectIds],
+        ? db.$queryRaw<Array<{ subject_id: string; total: bigint; free: bigint; board: bigint; free_board: bigint }>>(
+            Prisma.sql`
+              SELECT "subjectId" AS subject_id,
+                     COUNT(*)::bigint AS total,
+                     COUNT(*) FILTER (WHERE "isPremium" = false)::bigint AS free,
+                     COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL)::bigint AS board,
+                     COUNT(*) FILTER (WHERE "board" IS NOT NULL AND "year" IS NOT NULL AND "isPremium" = false)::bigint AS free_board
+              FROM "CQ"
+              WHERE "subjectId" IN (${Prisma.join(allSubjectIds)}) AND "isActive" = true
+              GROUP BY "subjectId"
+            `,
           )
         : Promise.resolve([]),
-      // Lecture aggregation by chapter → subject
-      Promise.resolve([] as Array<{ subject_id: string; total: bigint; free: bigint }>),
     ])
 
     // Build lookup maps: subjectId → counts

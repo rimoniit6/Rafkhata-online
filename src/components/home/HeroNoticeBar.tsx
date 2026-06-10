@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Megaphone, X, ChevronRight, Pin, ExternalLink } from 'lucide-react'
 import { useRouterStore } from '@/store/router'
 import { useBanners, type BannerData } from '@/hooks/use-banners'
@@ -63,24 +62,15 @@ export default function HeroNoticeBar() {
   const isExternal = currentBanner.link?.startsWith('http://') || currentBanner.link?.startsWith('https://')
 
   return (
-    <motion.div
-      initial={{ y: -40, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      exit={{ y: -40, opacity: 0 }}
-      transition={{ duration: 0.4, ease: 'easeOut' } as const}
-      className="w-full"
-    >
+    <div className="w-full animate-slide-down">
       <div className="bg-white/15 backdrop-blur-md border-b border-white/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-10 gap-3">
             {/* Animated megaphone icon */}
             <div className="flex items-center gap-2 shrink-0">
-              <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' } as const}
-              >
+              <div className="animate-scale-pulse">
                 <Megaphone className="h-4 w-4 text-amber-300" />
-              </motion.div>
+              </div>
             </div>
 
             {/* Rotating banner text */}
@@ -88,32 +78,23 @@ export default function HeroNoticeBar() {
               onClick={() => handleBannerClick(currentBanner)}
               className={`flex-1 min-w-0 text-left group ${currentBanner.link ? 'cursor-pointer' : 'cursor-default'}`}
             >
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentBanner.id}
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -10, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="flex items-center gap-2"
-                >
-                  <span className="text-sm text-white font-medium truncate">
-                    {currentBanner.title}
+              <div key={currentBanner.id} className="flex items-center gap-2 animate-fade-in">
+                <span className="text-sm text-white font-medium truncate">
+                  {currentBanner.title}
+                </span>
+                {currentBanner.subtitle && (
+                  <span className="hidden sm:inline text-xs text-white/70 truncate">
+                    — {currentBanner.subtitle}
                   </span>
-                  {currentBanner.subtitle && (
-                    <span className="hidden sm:inline text-xs text-white/70 truncate">
-                      — {currentBanner.subtitle}
-                    </span>
-                  )}
-                  {currentBanner.link && (
-                    isExternal ? (
-                      <ExternalLink className="h-3 w-3 text-white/50 shrink-0 group-hover:text-white/80 transition-colors" />
-                    ) : (
-                      <ChevronRight className="h-3.5 w-3.5 text-white/50 shrink-0 group-hover:text-white/80 transition-colors" />
-                    )
-                  )}
-                </motion.div>
-              </AnimatePresence>
+                )}
+                {currentBanner.link && (
+                  isExternal ? (
+                    <ExternalLink className="h-3 w-3 text-white/50 shrink-0 group-hover:text-white/80 transition-colors" />
+                  ) : (
+                    <ChevronRight className="h-3.5 w-3.5 text-white/50 shrink-0 group-hover:text-white/80 transition-colors" />
+                  )
+                )}
+              </div>
             </button>
 
             {/* CTA Button (if buttonText exists) */}
@@ -154,6 +135,6 @@ export default function HeroNoticeBar() {
           </div>
         </div>
       </div>
-    </motion.div>
+    </div>
   )
 }

@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
 import { Megaphone, X, ExternalLink, ChevronRight, Bell } from 'lucide-react'
 import { useRouterStore } from '@/store/router'
 import { Button } from '@/components/ui/button'
@@ -109,29 +108,21 @@ export default function SpecialNoticePopup() {
   const isExternal = currentBanner.link?.startsWith('http://') || currentBanner.link?.startsWith('https://')
 
   return (
-    <AnimatePresence>
+    <>
       {isOpen && (
         <>
           {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm"
+          <div
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm animate-fade-in"
             onClick={handleDismiss}
           />
 
           {/* Popup Modal */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.85, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          <div
             className="fixed inset-0 z-[101] flex items-center justify-center p-4 pointer-events-none"
           >
             <div
-              className="pointer-events-auto w-full max-w-md relative"
+              className="pointer-events-auto w-full max-w-md relative animate-scale-in"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden">
@@ -151,12 +142,9 @@ export default function SpecialNoticePopup() {
                   {/* Icon + Label */}
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex items-center justify-center w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                      <motion.div
-                        animate={{ scale: [1, 1.15, 1] }}
-                        transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' } as const}
-                      >
+                      <div className="animate-bell-bounce">
                         <Bell className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                      </motion.div>
+                      </div>
                     </div>
                     <div>
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
@@ -224,9 +212,9 @@ export default function SpecialNoticePopup() {
                 </div>
               </div>
             </div>
-          </motion.div>
+          </div>
         </>
       )}
-    </AnimatePresence>
+    </>
   )
 }

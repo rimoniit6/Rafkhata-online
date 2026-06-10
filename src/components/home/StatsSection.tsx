@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { motion, useInView } from 'framer-motion'
 import { Users, HelpCircle, Video, FileText, Loader2 } from 'lucide-react'
 import { usePublicStats, useSiteConfig } from '@/hooks/use-metadata'
 
@@ -19,8 +18,24 @@ interface StatItem {
 
 function AnimatedCounter({ value, bengaliValue }: { value: number; bengaliValue: string }) {
   const [count, setCount] = useState(0)
+  const [isInView, setIsInView] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
-  const isInView = useInView(ref, { once: true })
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     if (!isInView) return
@@ -75,20 +90,14 @@ export default function StatsSection() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(255,255,255,0.08),transparent_70%)]" />
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-12"
-        >
+        <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             {config?.homepageStatsTitle || 'আমাদের অর্জন'}
           </h2>
           <p className="text-white/80 text-lg max-w-xl mx-auto">
             {config?.homepageStatsSubtitle || config?.statsSubtitle || 'সারা বাংলাদেশের শিক্ষার্থীদের সাথে আমরা এগিয়ে যাচ্ছি'}
           </p>
-        </motion.div>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -99,13 +108,10 @@ export default function StatsSection() {
             {statItems.map((stat, i) => {
               const Icon = stat.icon
               return (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.15, duration: 0.5 }}
-                  className="text-center"
+                  className="text-center animate-fade-in-up"
+                  style={{ animationDelay: `${i * 0.15}s` }}
                 >
                   <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-white/15 backdrop-blur-sm mb-4">
                     <Icon className="w-7 h-7 text-white" />
@@ -117,7 +123,7 @@ export default function StatsSection() {
                     />
                   </div>
                   <p className="text-white/80 text-sm sm:text-base">{stat.label}</p>
-                </motion.div>
+                </div>
               )
             })}
           </div>

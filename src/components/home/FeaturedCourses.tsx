@@ -1,7 +1,6 @@
 'use client'
 
 import { useMemo } from 'react'
-import { motion } from 'framer-motion'
 import {
   BookOpen,
   Lock,
@@ -17,19 +16,6 @@ import { useRouterStore } from '@/store/router'
 import { useContentTypes } from '@/hooks/use-content-types'
 import { useSiteConfig } from '@/hooks/use-metadata'
 import { useFeaturedCourses, type FeaturedItem } from '@/hooks/use-home-data'
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-}
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
-}
 
 // Gradient map for featured cards (by content type key)
 const GRADIENT_MAP: Record<string, string> = {
@@ -135,32 +121,22 @@ export default function FeaturedCourses() {
     <section className="py-16 sm:py-20 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-12"
-        >
+        <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
             {config?.homepageFeaturedTitle || 'ফিচার্ড কন্টেন্ট'}
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             {config?.homepageFeaturedSubtitle || 'আমাদের সেরা কন্টেন্টসমূহ'}
           </p>
-        </motion.div>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
           </div>
         ) : (
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            className="flex gap-4 overflow-x-auto no-scrollbar pb-4 sm:pb-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-6"
+          <div
+            className="flex gap-4 overflow-x-auto no-scrollbar pb-4 sm:pb-0 sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:gap-6 stagger-children"
           >
             {items.map((item) => {
               const Icon = getIcon(item.contentType)
@@ -170,11 +146,9 @@ export default function FeaturedCourses() {
               const colorClass = ctInfo?.lightColor || 'bg-gray-100 text-gray-700'
               const textColorClass = ctInfo?.textColor || 'text-gray-600 dark:text-gray-400'
               return (
-                <motion.div
+                <div
                   key={`${item.contentType}-${item.id}`}
-                  variants={cardVariants}
-                  whileHover={{ y: -4 }}
-                  className="min-w-[260px] sm:min-w-0 cursor-pointer"
+                  className="min-w-[260px] sm:min-w-0 cursor-pointer transition-all duration-300 hover:-translate-y-1"
                   onClick={() => handleCardClick(item)}
                 >
                   <Card className="border-0 shadow-md hover:shadow-xl transition-shadow duration-300 overflow-hidden h-full">
@@ -226,10 +200,10 @@ export default function FeaturedCourses() {
                       </div>
                     </CardContent>
                   </Card>
-                </motion.div>
+                </div>
               )
             })}
-          </motion.div>
+          </div>
         )}
       </div>
     </section>

@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import {
   BookOpen, GraduationCap, Calculator, FlaskConical, Languages,
   Loader2, ArrowRight, PlayCircle, FileQuestion, ClipboardList,
@@ -68,19 +67,6 @@ const QUICK_ACCESS = [
   { key: 'exam', label: 'পরীক্ষা সেন্টার', icon: Award, route: 'exam-center' as const, color: 'bg-sky-100 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300' },
 ]
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
-}
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-}
-
 export default function ClassCategories() {
   const { navigate } = useRouterStore()
   const { config } = useSiteConfig()
@@ -91,13 +77,7 @@ export default function ClassCategories() {
     <section id="class-categories" className="py-16 sm:py-20 bg-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-          className="text-center mb-10 sm:mb-12"
-        >
+        <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-4">
             <Sparkles className="w-3.5 h-3.5" />
             {config?.homepageClassesBadge || 'শিক্ষা যাত্রা'}
@@ -108,7 +88,7 @@ export default function ClassCategories() {
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             {config?.homepageClassesSubtitle || 'আপনার শ্রেণি অনুযায়ী সকল বিষয় ও কন্টেন্ট দেখুন'}
           </p>
-        </motion.div>
+        </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -133,12 +113,8 @@ export default function ClassCategories() {
         ) : classes.length === 0 ? null : (
           <>
             {/* Class Cards — Horizontal snap scroll on mobile, grid on desktop */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 sm:pb-0 sm:grid sm:grid-cols-3 md:grid-cols-5 sm:gap-5 scrollbar-none"
+            <div
+              className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 sm:pb-0 sm:grid sm:grid-cols-3 md:grid-cols-5 sm:gap-5 scrollbar-none stagger-children"
               style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {classes.map((cls) => {
@@ -147,12 +123,9 @@ export default function ClassCategories() {
                 const cc = cls.contentCounts
 
                 return (
-                  <motion.div
+                  <div
                     key={cls.id}
-                    variants={cardVariants}
-                    whileHover={{ y: -6, scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="snap-center min-w-[180px] sm:min-w-0 cursor-pointer group"
+                    className="snap-center min-w-[180px] sm:min-w-0 cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => navigate('class-detail', { classSlug: cls.slug })}
                   >
                     <div className={`relative bg-gradient-to-br ${theme.bg} rounded-2xl p-5 sm:p-6 text-white overflow-hidden h-full transition-shadow duration-300 group-hover:shadow-xl`}>
@@ -203,19 +176,13 @@ export default function ClassCategories() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </div>
                 )
               })}
-            </motion.div>
+            </div>
 
             {/* Quick Access Chips */}
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="mt-8"
-            >
+            <div className="mt-8 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
               <div className="flex items-center gap-2 mb-4">
                 <div className="w-1.5 h-5 rounded-full bg-emerald-500" />
                 <h3 className="text-sm font-semibold text-foreground">দ্রুত অ্যাক্সেস</h3>
@@ -224,21 +191,19 @@ export default function ClassCategories() {
                 {QUICK_ACCESS.map((chip) => {
                   const ChipIcon = chip.icon
                   return (
-                    <motion.button
+                    <button
                       key={chip.key}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
                       onClick={() => navigate(chip.route)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${chip.color} hover:shadow-md`}
+                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95 ${chip.color} hover:shadow-md`}
                     >
                       <ChipIcon className="w-4 h-4" />
                       {chip.label}
                       <ArrowRight className="w-3.5 h-3.5 opacity-60" />
-                    </motion.button>
+                    </button>
                   )
                 })}
               </div>
-            </motion.div>
+            </div>
           </>
         )}
       </div>

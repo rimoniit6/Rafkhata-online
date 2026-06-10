@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, ArrowRight, Loader2 } from 'lucide-react'
 import {
   Carousel,
@@ -89,11 +88,7 @@ export default function BannerCarousel() {
   return (
     <section className="w-full">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <div className="animate-fade-in-up">
           <Carousel
             setApi={setApi}
             opts={{
@@ -222,7 +217,7 @@ export default function BannerCarousel() {
               ))}
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
     </section>
   )

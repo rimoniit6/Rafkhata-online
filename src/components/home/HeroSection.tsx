@@ -1,43 +1,9 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { BookOpen, GraduationCap, ArrowRight, Sparkles, Star, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouterStore } from '@/store/router'
 import { usePublicStats, useSiteConfig } from '@/hooks/use-metadata'
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.2,
-    },
-  },
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: 'easeOut' },
-  },
-} as const
-
-const floatingVariants = {
-  animate: (i: number) => ({
-    y: [0, -12, 0],
-    x: [0, i % 2 === 0 ? 6 : -6, 0],
-    rotate: [0, i % 2 === 0 ? 8 : -8, 0],
-    transition: {
-      duration: 3 + i * 0.5,
-      repeat: Infinity,
-      ease: 'easeInOut' as const,
-    },
-  }),
-}
 
 const floatingElements = [
   { Icon: BookOpen, x: '10%', y: '20%', delay: 0, size: 28 },
@@ -74,62 +40,47 @@ export default function HeroSection() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(0,0,0,0.1),transparent_50%)]" />
 
       {/* Animated floating elements */}
-      {floatingElements.map(({ Icon, x, y, delay, size }, i) => (
-        <motion.div
-          key={i}
-          custom={i}
-          variants={floatingVariants}
-          animate="animate"
-          initial={{ opacity: 0.15 }}
-          className="absolute text-white/20 pointer-events-none"
-          style={{ left: x, top: y }}
-        >
-          <Icon size={size} />
-        </motion.div>
-      ))}
+      {floatingElements.map(({ Icon, x, y, delay, size }, i) => {
+        const floatClass = `animate-float-${(i % 5) + 1}`
+        return (
+          <div
+            key={i}
+            className={`absolute text-white/20 pointer-events-none ${floatClass}`}
+            style={{ left: x, top: y, opacity: 0.15, animationDelay: `${delay}s` }}
+          >
+            <Icon size={size} />
+          </div>
+        )
+      })}
 
       {/* Content */}
       <div className="relative z-10 flex-1 flex items-center">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20">
-        <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-          className="text-center"
-        >
+        <div className="text-center stagger-children">
           {/* Badge */}
-          <motion.div variants={itemVariants} className="mb-6">
+          <div className="mb-6">
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/15 backdrop-blur-sm text-white text-sm font-medium border border-white/20">
               <Sparkles className="w-4 h-4" />
               {config?.heroBadge || 'বাংলাদেশের সেরা অনলাইন শিক্ষা প্ল্যাটফর্ম'}
             </span>
-          </motion.div>
+          </div>
 
           {/* Main Heading */}
-          <motion.h1
-            variants={itemVariants}
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6"
-          >
+          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6">
             {config?.heroTitle || 'বাংলাদেশের সেরা'}
             <br />
             <span className="bg-gradient-to-r from-yellow-300 to-amber-300 bg-clip-text text-transparent">
               শিক্ষা প্ল্যাটফর্ম
             </span>
-          </motion.h1>
+          </h1>
 
           {/* Subtitle */}
-          <motion.p
-            variants={itemVariants}
-            className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-8 leading-relaxed"
-          >
+          <p className="text-lg sm:text-xl text-white/90 max-w-2xl mx-auto mb-8 leading-relaxed">
             {config?.heroSubtitle || 'Class 6 থেকে HSC পর্যন্ত সকল বিষয়ের লেকচার, MCQ, সৃজনশীল প্রশ্ন ও বোর্ড প্রশ্ন'}
-          </motion.p>
+          </p>
 
           {/* CTA Buttons */}
-          <motion.div
-            variants={itemVariants}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12"
-          >
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Button
               size="lg"
               className="bg-white text-emerald-700 hover:bg-white/90 font-semibold text-lg px-8 h-12 shadow-lg shadow-black/20"
@@ -147,21 +98,16 @@ export default function HeroSection() {
               প্রিমিয়াম দেখুন
               <Sparkles className="w-5 h-5 ml-1" />
             </Button>
-          </motion.div>
+          </div>
 
           {/* Stats */}
           {heroStats.length > 0 && (
-            <motion.div
-              variants={itemVariants}
-              className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-3xl mx-auto"
-            >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 max-w-3xl mx-auto">
               {heroStats.map((stat, i) => (
-                <motion.div
+                <div
                   key={i}
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.8 + i * 0.1, duration: 0.5 }}
-                  className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/15 hover:bg-white/15 transition-colors"
+                  className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/15 hover:bg-white/15 transition-colors animate-scale-in"
+                  style={{ animationDelay: `${0.8 + i * 0.1}s` }}
                 >
                   <div className="text-2xl sm:text-3xl font-bold text-white">
                     {loading ? (
@@ -171,11 +117,11 @@ export default function HeroSection() {
                     )}
                   </div>
                   <div className="text-sm text-white/75 mt-1">{stat.label}</div>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           )}
-        </motion.div>
+        </div>
       </div>
       </div>
 

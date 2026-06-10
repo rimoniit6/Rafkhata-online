@@ -1,6 +1,5 @@
 'use client'
 
-import { motion } from 'framer-motion'
 import { Crown, Check, ArrowRight, Sparkles, Package, BookOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouterStore } from '@/store/router'
@@ -32,12 +31,7 @@ export default function PremiumBanner() {
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left content */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
+          <div className="animate-fade-in-left">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-lg bg-white/20 backdrop-blur-sm">
                 <Crown className="w-8 h-8 text-white" />
@@ -56,19 +50,16 @@ export default function PremiumBanner() {
             {/* Features - generic, not hardcoded */}
             <ul className="space-y-3 mb-8">
               {features.map((feature, i) => (
-                <motion.li
+                <li
                   key={i}
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.2 + i * 0.1 }}
-                  className="flex items-center gap-3 text-white"
+                  className="flex items-center gap-3 text-white animate-fade-in-left"
+                  style={{ animationDelay: `${0.2 + i * 0.1}s` }}
                 >
                   <div className="flex-shrink-0 w-5 h-5 rounded-full bg-white/25 flex items-center justify-center">
                     <Check className="w-3.5 h-3.5 text-white" />
                   </div>
                   <span className="text-sm sm:text-base">{feature}</span>
-                </motion.li>
+                </li>
               ))}
             </ul>
 
@@ -81,19 +72,12 @@ export default function PremiumBanner() {
               বান্ডেল দেখুন
               <ArrowRight className="w-5 h-5 ml-1" />
             </Button>
-          </motion.div>
+          </div>
 
           {/* Right - Info cards */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="flex flex-col gap-4"
-          >
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              className="relative p-6 rounded-xl backdrop-blur-sm border bg-white/25 border-white/40 cursor-pointer"
+          <div className="flex flex-col gap-4 animate-fade-in-right">
+            <div
+              className="relative p-6 rounded-xl backdrop-blur-sm border bg-white/25 border-white/40 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02]"
               onClick={() => navigate('premium')}
             >
               <div className="flex items-center gap-3 mb-3">
@@ -116,11 +100,10 @@ export default function PremiumBanner() {
                   <span className="text-sm text-white/70">সাশ্রয়ী মূল্যে</span>
                 </div>
               )}
-            </motion.div>
+            </div>
 
-            <motion.div
-              whileHover={{ y: -4, scale: 1.02 }}
-              className="relative p-6 rounded-xl backdrop-blur-sm border bg-white/10 border-white/20 cursor-pointer"
+            <div
+              className="relative p-6 rounded-xl backdrop-blur-sm border bg-white/10 border-white/20 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02]"
               onClick={() => navigate('premium')}
             >
               <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-amber-700 text-xs font-bold px-3 py-1 rounded-full">
@@ -146,8 +129,8 @@ export default function PremiumBanner() {
                   <span className="text-sm text-white/70">বিশেষ ছাড়ে</span>
                 </div>
               )}
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </div>
       </div>
     </section>

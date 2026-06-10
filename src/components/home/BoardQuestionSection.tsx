@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
 import { Zap, ArrowRight, Loader2, BookOpen, Hash, GraduationCap } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -77,43 +76,6 @@ function classGradientLight(slug: string): string {
   return CLASS_GRADIENTS[slug]?.light ?? FALLBACK_PALETTE[hashSlug(slug) % FALLBACK_PALETTE.length].light
 }
 
-// ─── Animation Variants ──────────────────────────────────────────────
-
-const sectionTitleVariant = {
-  hidden: { opacity: 0, y: 24 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
-} as const
-
-const cardVariant = {
-  hidden: { opacity: 0, scale: 0.96 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.5, ease: 'easeOut' } },
-} as const
-
-const chipContainerVariant = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-}
-
-const chipVariant = {
-  hidden: { opacity: 0, y: 12, scale: 0.9 },
-  visible: { opacity: 1, y: 0, scale: 1, transition: { duration: 0.35, ease: 'easeOut' } },
-} as const
-
-const statsVariant = {
-  hidden: { opacity: 0, y: 10 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.4, delay: 0.3 } },
-}
-
-const subjectChipContainer = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.04, delayChildren: 0.4 } },
-}
-
-const subjectChipVariant = {
-  hidden: { opacity: 0, scale: 0.85 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.25 } },
-}
-
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function BoardQuestionSection() {
@@ -180,28 +142,17 @@ export default function BoardQuestionSection() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* ── Section Title ──────────────────────────────────────── */}
-        <motion.div
-          variants={sectionTitleVariant}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-60px' }}
-          className="text-center mb-10 sm:mb-12"
-        >
+        <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
           <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
             {config?.homepageBoardTitle || 'বোর্ড প্রশ্ন সমাধান'}
           </h2>
           <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto">
             {config?.homepageBoardSubtitle || 'সকল বোর্ডের বিগত বছরের প্রশ্ন ও সমাধান অনুশীলন করুন'}
           </p>
-        </motion.div>
+        </div>
 
         {/* ── Glassmorphism Hero Card ────────────────────────────── */}
-        <motion.div
-          variants={cardVariant}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: '-40px' }}
-        >
+        <div className="animate-scale-in">
           <Card className="border-0 shadow-xl overflow-hidden relative">
             {/* Animated gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-rose-500/10 via-pink-500/5 to-fuchsia-500/10 dark:from-rose-500/15 dark:via-pink-500/10 dark:to-fuchsia-500/15 pointer-events-none" />
@@ -227,28 +178,22 @@ export default function BoardQuestionSection() {
                     কোনো শ্রেণি পাওয়া যায়নি
                   </p>
                 ) : (
-                  <motion.div
-                    variants={chipContainerVariant}
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true }}
-                    className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1"
+                  <div
+                    className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none -mx-1 px-1 stagger-children"
                     style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
                   >
                     {filterData.classLevels.map((cls) => {
                       const isSelected = selectedClass === cls.slug
                       return (
-                        <motion.button
+                        <button
                           key={cls.slug}
-                          variants={chipVariant}
-                          whileHover={{ scale: 1.06 }}
-                          whileTap={{ scale: 0.95 }}
                           onClick={() =>
                             setSelectedClass(isSelected ? null : cls.slug)
                           }
                           className={`
                             relative flex-shrink-0 px-5 py-2.5 rounded-xl text-sm font-bold
-                            transition-colors duration-200 cursor-pointer select-none
+                            transition-all duration-200 cursor-pointer select-none
+                            hover:scale-[1.06] active:scale-[0.95]
                             ${
                               isSelected
                                 ? `bg-gradient-to-r ${classGradient(cls.slug)} text-white shadow-lg shadow-rose-500/25 dark:shadow-rose-500/15`
@@ -258,29 +203,20 @@ export default function BoardQuestionSection() {
                         >
                           {cls.name}
                           {isSelected && (
-                            <motion.span
-                              layoutId="class-check"
-                              className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow"
-                            >
+                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-white rounded-full flex items-center justify-center shadow">
                               <span className="text-[10px] text-rose-600 font-black">✓</span>
-                            </motion.span>
+                            </span>
                           )}
-                        </motion.button>
+                        </button>
                       )
                     })}
-                  </motion.div>
+                  </div>
                 )}
               </div>
 
               {/* ── Dynamic Stats Row ────────────────────────────── */}
               {!loading && filterData && (
-                <motion.div
-                  variants={statsVariant}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="flex flex-wrap items-center gap-2.5 mb-6"
-                >
+                <div className="flex flex-wrap items-center gap-2.5 mb-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
                   <Badge
                     variant="secondary"
                     className="bg-teal-100/80 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300 border-0 text-xs font-semibold gap-1 px-2.5 py-1"
@@ -305,50 +241,43 @@ export default function BoardQuestionSection() {
                       📅 {yearRange}
                     </Badge>
                   )}
-                </motion.div>
+                </div>
               )}
 
               {/* ── Popular Subjects Preview ─────────────────────── */}
               {!loading && popularSubjects.length > 0 && (
-                <motion.div
-                  variants={subjectChipContainer}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="mb-6"
-                >
+                <div className="mb-6 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
                   <span className="text-xs font-medium text-muted-foreground mb-2 block">
                     জনপ্রিয় বিষয়সমূহ
                   </span>
                   <div className="flex flex-wrap gap-1.5">
-                    {popularSubjects.map((subj) => (
-                      <motion.span
+                    {popularSubjects.map((subj, idx) => (
+                      <span
                         key={subj.id}
-                        variants={subjectChipVariant}
                         className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium
                           bg-white/60 dark:bg-white/10 backdrop-blur-sm
                           border border-border/30 text-foreground/70"
+                        style={{ animationDelay: `${0.4 + idx * 0.04}s` }}
                       >
                         {subj.name}
-                      </motion.span>
+                      </span>
                     ))}
                     {filterData && filterData.subjects.length > 8 && (
-                      <motion.span
-                        variants={subjectChipVariant}
+                      <span
                         className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium
                           bg-rose-100/60 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400"
                       >
                         +{filterData.subjects.length - 8} আরও
-                      </motion.span>
+                      </span>
                     )}
                   </div>
-                </motion.div>
+                </div>
               )}
 
               {/* ── CTA Buttons ──────────────────────────────────── */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 {/* Quick Start */}
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                <div className="transition-transform duration-200 hover:scale-[1.03] active:scale-[0.97]">
                   <Button
                     size="lg"
                     disabled={!selectedClass || loading}
@@ -364,10 +293,10 @@ export default function BoardQuestionSection() {
                     <Zap className="w-5 h-5" />
                     দ্রুত শুরু
                   </Button>
-                </motion.div>
+                </div>
 
                 {/* View All */}
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
+                <div className="transition-transform duration-200 hover:scale-[1.03] active:scale-[0.97]">
                   <Button
                     size="lg"
                     variant="outline"
@@ -384,11 +313,11 @@ export default function BoardQuestionSection() {
                     সব বোর্ড প্রশ্ন দেখুন
                     <ArrowRight className="w-4 h-4" />
                   </Button>
-                </motion.div>
+                </div>
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </section>
   )

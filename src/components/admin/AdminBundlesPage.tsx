@@ -418,33 +418,39 @@ export default function AdminBundlesPage() {
         // Fetch individual item - we'll use a simpler approach with batch fetch
         switch (item.contentType) {
           case 'mcq': {
-            const mcq = await fetch(`/api/admin/mcq?q=&limit=1000`).then(r => r.json())
-            const found = (Array.isArray(mcq.data) ? mcq.data : []).find((m: { id: string }) => m.id === item.contentId)
-            if (found) { title = found.question?.slice(0, 60) || 'MCQ'; price = found.price || 0 }
+            // Search by content ID to avoid fetching all items
+            const mcqParams = new URLSearchParams({ q: item.contentId, limit: '10' })
+            const mcq = await fetch(`/api/admin/mcq?${mcqParams}`).then(r => r.json())
+            const foundMcq = (Array.isArray(mcq.data) ? mcq.data : []).find((m: { id: string }) => m.id === item.contentId)
+            if (foundMcq) { title = foundMcq.question?.slice(0, 60) || 'MCQ'; price = foundMcq.price || 0 }
             break
           }
           case 'cq': {
-            const cq = await fetch(`/api/admin/cq?q=&limit=1000`).then(r => r.json())
-            const found = (Array.isArray(cq.data) ? cq.data : []).find((c: { id: string }) => c.id === item.contentId)
-            if (found) { title = found.uddeepok?.slice(0, 60) || 'CQ'; price = found.price || 0 }
+            const cqParams = new URLSearchParams({ q: item.contentId, limit: '10' })
+            const cq = await fetch(`/api/admin/cq?${cqParams}`).then(r => r.json())
+            const foundCq = (Array.isArray(cq.data) ? cq.data : []).find((c: { id: string }) => c.id === item.contentId)
+            if (foundCq) { title = foundCq.uddeepok?.slice(0, 60) || 'CQ'; price = foundCq.price || 0 }
             break
           }
           case 'lecture': {
-            const lec = await fetch(`/api/admin/lectures?q=&limit=1000`).then(r => r.json())
-            const found = (Array.isArray(lec.data) ? lec.data : []).find((l: { id: string }) => l.id === item.contentId)
-            if (found) { title = found.title || 'লেকচার'; price = found.price || 0 }
+            const lecParams = new URLSearchParams({ q: item.contentId, limit: '10' })
+            const lec = await fetch(`/api/admin/lectures?${lecParams}`).then(r => r.json())
+            const foundLec = (Array.isArray(lec.data) ? lec.data : []).find((l: { id: string }) => l.id === item.contentId)
+            if (foundLec) { title = foundLec.title || 'লেকচার'; price = foundLec.price || 0 }
             break
           }
           case 'suggestion': {
-            const sug = await fetch(`/api/admin/suggestions?search=&limit=1000`).then(r => r.json())
-            const found = (Array.isArray(sug.data) ? sug.data : []).find((s: { id: string }) => s.id === item.contentId)
-            if (found) { title = found.title || 'সাজেশন'; price = found.price || 0 }
+            const sugParams = new URLSearchParams({ search: item.contentId, limit: '10' })
+            const sug = await fetch(`/api/admin/suggestions?${sugParams}`).then(r => r.json())
+            const foundSug = (Array.isArray(sug.data) ? sug.data : []).find((s: { id: string }) => s.id === item.contentId)
+            if (foundSug) { title = foundSug.title || 'সাজেশন'; price = foundSug.price || 0 }
             break
           }
           case 'exam': {
-            const exam = await fetch(`/api/admin/exams?limit=1000`).then(r => r.json())
-            const found = (Array.isArray(exam.data) ? exam.data : []).find((e: { id: string }) => e.id === item.contentId)
-            if (found) { title = found.title || 'এক্সাম'; price = found.price || 0 }
+            const examParams = new URLSearchParams({ q: item.contentId, limit: '10' })
+            const exam = await fetch(`/api/admin/exams?${examParams}`).then(r => r.json())
+            const foundExam = (Array.isArray(exam.data) ? exam.data : []).find((e: { id: string }) => e.id === item.contentId)
+            if (foundExam) { title = foundExam.title || 'এক্সাম'; price = foundExam.price || 0 }
             break
           }
         }
@@ -495,7 +501,7 @@ export default function AdminBundlesPage() {
       const params = new URLSearchParams()
       params.set('type', type)
       params.set('chapterId', chapId)
-      params.set('limit', '1000')
+      params.set('limit', '50')
       const res = await fetch(`/api/admin/bundles/content?${params}`)
       if (res.ok) {
         const json = await res.json()
@@ -537,7 +543,7 @@ export default function AdminBundlesPage() {
       const params = new URLSearchParams()
       params.set('type', type)
       params.set('chapterId', chapId)
-      params.set('limit', '1000')
+      params.set('limit', '50')
       try {
         const res = await fetch(`/api/admin/bundles/content?${params}`)
         if (res.ok) {

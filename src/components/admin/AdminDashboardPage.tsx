@@ -53,25 +53,24 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<Stats | null>(null)
 
-  const fetchStats = useCallback(async (signal?: AbortSignal) => {
-    try {
-      const res = await fetch('/api/admin/stats', { signal })
-      if (res.ok) {
-        const json = await res.json()
-        setStats(json.data.stats)
-      }
-    } catch (err) {
-      console.error('Failed to fetch stats:', err)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
   useEffect(() => {
+    let cancelled = false
     const controller = new AbortController()
-    fetchStats(controller.signal)
-    return () => controller.abort()
-  }, [fetchStats])
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/stats', { signal: controller.signal })
+        if (res.ok) {
+          const json = await res.json()
+          if (!cancelled) setStats(json.data.stats)
+        }
+      } catch (err) {
+        if (!cancelled) console.error('Failed to fetch stats:', err)
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    })()
+    return () => { cancelled = true; controller.abort() }
+  }, [])
 
   const statCards = useMemo(() => [
     {

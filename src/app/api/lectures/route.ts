@@ -60,6 +60,7 @@ export async function GET(request: Request) {
           },
           resources: {
             where: { isActive: true },
+            select: { title: true, url: true, type: true },
           },
         },
         skip: (page - 1) * limit,

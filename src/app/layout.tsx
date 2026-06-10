@@ -14,11 +14,13 @@ import { db } from '@/lib/db'
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
 });
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
 });
 
 // Default values as fallback
@@ -99,6 +101,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="শিক্ষা বাংলা" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
+        <link rel="preconnect" href="https://eylbmvqyrtkfcnfsienv.supabase.co" />
+        <link rel="preconnect" href="https://utfs.io" />
+        <link rel="dns-prefetch" href="https://eylbmvqyrtkfcnfsienv.supabase.co" />
+        <link rel="dns-prefetch" href="https://utfs.io" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
