@@ -1,0 +1,16 @@
+export const queryKeys = {
+  config: ['config'] as const,
+  stats: ['stats'] as const,
+  faqs: ['faqs'] as const,
+  testimonials: ['testimonials'] as const,
+  teachers: ['teacher-moderators'] as const,
+  boards: ['boards'] as const,
+  years: ['years'] as const,
+  hierarchyMetadata: ['hierarchy', 'metadata'] as const,
+  banners: ['banners'] as const,
+  notices: ['notices'] as const,
+  classes: ['classes'] as const,
+  featuredCourses: ['courses', 'featured'] as const,
+  boardQuestionFilters: ['board-questions', 'filters'] as const,
+  premiumPrices: ['premium', 'prices'] as const,
+}

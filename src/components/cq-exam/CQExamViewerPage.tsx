@@ -1,0 +1,977 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  ArrowLeft,
+  Clock,
+  Send,
+  Loader2,
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  FileQuestion,
+  Timer,
+  CheckCircle,
+  GraduationCap,
+  ImagePlus,
+  X,
+} from 'lucide-react'
+import { useRouterStore } from '@/store/router'
+import { useAuthStore } from '@/store/auth'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Separator } from '@/components/ui/separator'
+import { Progress } from '@/components/ui/progress'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { cn, toBengaliNumerals } from '@/lib/utils'
+import { useToast } from '@/hooks/use-toast'
+import SafeImage from '@/components/ui/safe-image'
+import RichContentRenderer from '@/components/ui/rich-content-renderer'
+
+interface CQQuestionData {
+  id: string
+  cqId: string
+  marks: number
+  order: number
+  type?: string
+  subMarks?: string | null
+  typedUddeepok?: string | null
+  typedUddeepokImage?: string | null
+  typedQuestion1?: string | null
+  typedQuestion1Image?: string | null
+  typedQuestion2?: string | null
+  typedQuestion2Image?: string | null
+  typedQuestion3?: string | null
+  typedQuestion3Image?: string | null
+  typedQuestion4?: string | null
+  typedQuestion4Image?: string | null
+  cq: {
+    id: string
+    uddeepok: string
+    uddeepokImage: string | null
+    question1: string
+    question1Image: string | null
+    question2: string
+    question2Image: string | null
+    question3: string
+    question3Image: string | null
+    question4: string
+    question4Image: string | null
+    classLevel: string
+    subjectId: string
+    chapterId: string
+    chapter?: { id: string; name: string }
+  } | null
+}
+
+type AnswerMode = 'flexible' | 'text-only' | 'image-only' | 'complete-image-only'
+
+interface SetDetailData {
+  set: {
+    id: string
+    title: string
+    duration: number
+    totalMarks: number
+    totalQuestions: number
+    answerMode: AnswerMode
+    maxImagesPerAnswer: number
+  }
+  questions: CQQuestionData[]
+}
+
+interface AnswerImage {
+  id: string
+  imageUrl: string
+  order: number
+}
+
+interface AnswerState {
+  answerText: string
+  images: AnswerImage[]
+}
+
+const bengaliLabels = ['ক', 'খ', 'গ', 'ঘ']
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+}
+
+function CQBlock({
+  question,
+  index,
+  answers,
+  onAnswerChange,
+  collapsed,
+  onToggle,
+  answerIdMap,
+  onAddImage,
+  onRemoveImage,
+  answerMode = 'flexible',
+  maxImagesPerAnswer = 5,
+}: {
+  question: CQQuestionData
+  index: number
+  answers: Record<string, AnswerState>
+  onAnswerChange: (
+    questionId: string,
+    subIndex: number,
+    value: string
+  ) => void
+  collapsed: boolean
+  onToggle: () => void
+  answerIdMap: Record<string, string[]>
+  onAddImage: (answerId: string, questionId: string, subIndex: number) => void
+  onRemoveImage: (imageId: string, questionId: string, subIndex: number) => void
+  answerMode?: AnswerMode
+  maxImagesPerAnswer?: number
+}) {
+  const isTyped = question.type === 'typed'
+  const cq = question.cq
+
+  let stimulus = ''
+  let stimulusImage: string | null = null
+  let subQuestions: { text: string; image: string | null }[] = []
+
+  if (isTyped) {
+    stimulus = question.typedUddeepok || ''
+    stimulusImage = question.typedUddeepokImage || null
+    subQuestions = [
+      { text: question.typedQuestion1 || '', image: question.typedQuestion1Image || null },
+      { text: question.typedQuestion2 || '', image: question.typedQuestion2Image || null },
+      { text: question.typedQuestion3 || '', image: question.typedQuestion3Image || null },
+      { text: question.typedQuestion4 || '', image: question.typedQuestion4Image || null },
+    ]
+  } else if (cq) {
+    stimulus = cq.uddeepok
+    stimulusImage = cq.uddeepokImage
+    subQuestions = [
+      { text: cq.question1, image: cq.question1Image },
+      { text: cq.question2, image: cq.question2Image },
+      { text: cq.question3, image: cq.question3Image },
+      { text: cq.question4, image: cq.question4Image },
+    ]
+  }
+
+  const globalKey = `${question.id}-4`
+  const globalAns = answers[globalKey]
+  const hasGlobalImage = (globalAns?.images?.length ?? 0) > 0
+
+  const answeredCount = (() => {
+    if (answerMode === 'complete-image-only') {
+      return hasGlobalImage ? subQuestions.length : 0
+    }
+    if (answerMode === 'image-only' && hasGlobalImage) {
+      return subQuestions.length
+    }
+    return subQuestions.filter((_, si) => {
+      const key = `${question.id}-${si}`
+      const ans = answers[key]
+      if (answerMode === 'text-only') {
+        return ans?.answerText?.trim()
+      }
+      if (answerMode === 'image-only') {
+        return (ans?.images?.length ?? 0) > 0
+      }
+      // flexible mode
+      return ans?.answerText?.trim() || (ans?.images?.length ?? 0) > 0
+    }).length
+  })()
+
+  return (
+    <Card className="border-border/50 overflow-hidden">
+      <button type="button" onClick={onToggle} className="w-full text-left">
+        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center size-8 rounded-full bg-emerald-500 text-white font-bold text-sm shrink-0">
+              {toBengaliNumerals(index + 1)}
+            </span>
+            <div>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">
+                CQ {toBengaliNumerals(index + 1)}
+              </span>
+              <p className="text-xs text-muted-foreground">
+                {answeredCount}/{subQuestions.length} উত্তর দেওয়া হয়েছে | {question.marks} নম্বর
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              {toBengaliNumerals(question.marks)} নম্বর
+            </Badge>
+            {collapsed ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronUp className="size-4 text-muted-foreground" />}
+          </div>
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <CardContent className="p-4 sm:p-6 space-y-6">
+              {stimulus ? (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                    <FileQuestion className="size-4" />
+                    উদ্দীপক
+                  </h4>
+                  <div className="rounded-lg bg-muted/50 p-4 border">
+                    <RichContentRenderer content={stimulus} className="text-base leading-relaxed" />
+                  </div>
+                  {stimulusImage && (
+                    <div className="rounded-lg overflow-hidden border bg-muted/30">
+                      <SafeImage src={stimulusImage} alt="উদ্দীপকের ছবি" className="max-h-64 object-contain mx-auto" />
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {stimulus ? <Separator /> : null}
+
+              {/* In complete-image-only mode, don't render individual sub-question inputs */}
+              {answerMode !== 'complete-image-only' && subQuestions.map((sq, si) => {
+                const key = `${question.id}-${si}`
+                const ans = answers[key] || { answerText: '', images: [] }
+                const answerId = answerIdMap[question.id]?.[si]
+
+                const isAnswered = answerMode === 'text-only'
+                  ? !!ans.answerText?.trim()
+                  : answerMode === 'image-only'
+                    ? ans.images.length > 0
+                    : !!ans.answerText?.trim() || ans.images.length > 0
+
+                return (
+                  <div key={si} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center justify-center size-7 rounded-full bg-emerald-500 text-white font-bold text-xs shrink-0">
+                        {bengaliLabels[si]}
+                      </span>
+                      <span className="font-semibold text-sm">প্রশ্ন {bengaliLabels[si]}</span>
+                      {isAnswered ? (
+                        <CheckCircle className="size-4 text-emerald-500 ml-auto" />
+                      ) : null}
+                    </div>
+
+                    <div className="rounded-lg bg-muted/30 p-3 border text-sm leading-relaxed">
+                      <RichContentRenderer content={sq.text} />
+                    </div>
+
+                    {sq.image && (
+                      <div className="rounded-lg overflow-hidden border bg-muted/30">
+                        <SafeImage src={sq.image} alt={`প্রশ্ন ${bengaliLabels[si]}-এর ছবি`} className="max-h-48 object-contain mx-auto" />
+                      </div>
+                    )}
+
+                    {answerMode !== 'text-only' && ans.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {ans.images.map((img) => (
+                          <div key={img.id} className="relative group rounded-lg overflow-hidden border bg-muted/30">
+                            <SafeImage src={img.imageUrl} alt="উত্তরের ছবি" className="size-20 object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => onRemoveImage(img.id, question.id, si)}
+                              className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      {/* Textarea: shown in flexible and text-only modes */}
+                      {answerMode !== 'image-only' && (
+                        <Textarea
+                          placeholder={`প্রশ্ন ${bengaliLabels[si]}-এর উত্তর লিখুন...`}
+                          value={ans.answerText || ''}
+                          onChange={(e) => onAnswerChange(question.id, si, e.target.value)}
+                          rows={4}
+                          className="text-base min-h-[100px] flex-1"
+                        />
+                      )}
+                      {/* Image upload button: shown in flexible and image-only modes */}
+                      {answerMode !== 'text-only' && (
+                        <div className="flex flex-col gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => answerId && onAddImage(answerId, question.id, si)}
+                            className="flex flex-col items-center justify-center gap-1 size-20 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors text-muted-foreground hover:text-emerald-600"
+                            title="ছবি যোগ করুন"
+                          >
+                            <ImagePlus className="size-5" />
+                            <span className="text-[10px]">ছবি</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Global image upload for whole CQ (subIndex 4) */}
+              {/* Show in flexible, image-only, and complete-image-only modes. Hide in text-only mode. */}
+              {answerMode !== 'text-only' && (() => {
+                const globalAnsLocal = answers[globalKey] || { answerText: '', images: [] }
+                const globalAnswerId = answerIdMap[question.id]?.[4]
+                const isCompleteMode = answerMode === 'complete-image-only'
+                return (
+                  <div className={cn(
+                    'space-y-3',
+                    !isCompleteMode && 'pt-2 border-t border-dashed border-border/50'
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                        <ImagePlus className="size-4" />
+                        {isCompleteMode ? 'সম্পূর্ণ উত্তরের ছবি আপলোড করুন' : 'সম্পূর্ণ প্রশ্নের জন্য ছবি (ঐচ্ছিক)'}
+                      </span>
+                    </div>
+                    {isCompleteMode && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 rounded-md px-3 py-1.5 border border-amber-200 dark:border-amber-800">
+                        সম্পূর্ণ উত্তরের খাতার ছবি আপলোড করতে হবে — এই ছবিটি সকল উপপ্রশ্নের উত্তর হিসেবে গণ্য হবে
+                      </p>
+                    )}
+                    {globalAnsLocal.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {globalAnsLocal.images.map((img) => (
+                          <div key={img.id} className="relative group rounded-lg overflow-hidden border bg-muted/30">
+                            <SafeImage src={img.imageUrl} alt="সম্পূর্ণ উত্তরের ছবি" className={cn(isCompleteMode ? 'size-32' : 'size-24', 'object-cover')} />
+                            <button
+                              type="button"
+                              onClick={() => onRemoveImage(img.id, question.id, 4)}
+                              className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => globalAnswerId && onAddImage(globalAnswerId, question.id, 4)}
+                      className={cn(
+                        'flex items-center justify-center gap-2 w-full rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors text-muted-foreground hover:text-emerald-600 text-sm',
+                        isCompleteMode ? 'py-6' : 'py-3'
+                      )}
+                    >
+                      <ImagePlus className={cn(isCompleteMode ? 'size-6' : 'size-5')} />
+                      {isCompleteMode ? 'সম্পূর্ণ উত্তরের ছবি আপলোড করুন' : 'সম্পূর্ণ উত্তরের জন্য ছবি যোগ করুন'}
+                    </button>
+                  </div>
+                )
+              })()}
+            </CardContent>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  )
+}
+
+export default function CQExamViewerPage() {
+  const { params, goBack, navigate } = useRouterStore()
+  const { user, isAuthenticated } = useAuthStore()
+  const { toast } = useToast()
+
+  const setId = params.examId || ''
+  const packageId = params.packageId || ''
+
+  const [setData, setSetData] = useState<SetDetailData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [starting, setStarting] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
+  const [submitSuccessDialogOpen, setSubmitSuccessDialogOpen] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const [answers, setAnswers] = useState<Record<string, AnswerState>>({})
+  const [answerIdMap, setAnswerIdMap] = useState<Record<string, string[]>>({})
+  const [submissionId, setSubmissionId] = useState<string | null>(null)
+  const [timeRemaining, setTimeRemaining] = useState(0)
+  const [examStarted, setExamStarted] = useState(false)
+  const [collapsedCQs, setCollapsedCQs] = useState<Record<string, boolean>>({})
+
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const fetchSetDetail = useCallback(async () => {
+    if (!setId) {
+      setLoading(false);
+      setError('পরীক্ষার আইডি পাওয়া যায়নি');
+      return;
+    }
+    setLoading(true)
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+      const res = await fetch(`/api/cq-exam-packages?action=set-detail&setId=${setId}`, { signal: controller.signal })
+      clearTimeout(timeout)
+      if (!res.ok) throw new Error('Failed to fetch set detail')
+      const json = await res.json()
+      if (json.error) throw new Error(json.error)
+      const set = json.set
+      const questions = set.questions || []
+      setSetData({ set, questions })
+      const collapsed: Record<string, boolean> = {}
+      questions.forEach((q: CQQuestionData, i: number) => {
+        collapsed[q.id] = i !== 0
+      })
+      setCollapsedCQs(collapsed)
+    } catch {
+      setError('সেটের তথ্য লোড করতে সমস্যা হয়েছে')
+    } finally {
+      setLoading(false)
+    }
+  }, [setId])
+
+  useEffect(() => {
+    fetchSetDetail()
+  }, [fetchSetDetail])
+
+  const startExam = async () => {
+    if (!isAuthenticated || !user || !setId) {
+      toast({ title: 'লগইন করুন', description: 'পরীক্ষা দিতে প্রথমে লগইন করুন', variant: 'destructive' })
+      navigate('login')
+      return
+    }
+
+    setStarting(true)
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 15000)
+      const res = await fetch('/api/cq-exam-packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'start-exam',
+          setId,
+          userId: user.id,
+        }),
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      const json = await res.json()
+      if (json.error) {
+        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
+        return
+      }
+      const submission = json.submission
+      if (!submission) {
+        toast({ title: 'ত্রুটি', description: 'পরীক্ষা শুরু করতে সমস্যা হয়েছে', variant: 'destructive' })
+        return
+      }
+
+      // If already submitted, redirect to result page
+      if (json.status === 'submitted') {
+        navigate('cq-exam-result', { packageId, examId: setId, resultId: submission.id })
+        return
+      }
+
+      setSubmissionId(submission.id)
+      setTimeRemaining((setData?.set.duration || 0) * 60)
+      setExamStarted(true)
+
+      // Map answer IDs: { questionId: [ans0_id, ans1_id, ans2_id, ans3_id, ans4_id] }
+      const idMap: Record<string, string[]> = {}
+      const answerState: Record<string, AnswerState> = {}
+      for (const ans of submission.answers || []) {
+        if (!idMap[ans.questionId]) idMap[ans.questionId] = []
+        idMap[ans.questionId][ans.subIndex] = ans.id
+        const key = `${ans.questionId}-${ans.subIndex}`
+        answerState[key] = {
+          answerText: ans.answerText || '',
+          images: (ans.images || []).map((img: any) => ({
+            id: img.id,
+            imageUrl: img.imageUrl,
+            order: img.order,
+          })),
+        }
+      }
+      setAnswerIdMap(idMap)
+      setAnswers(answerState)
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'পরীক্ষা শুরু করতে সমস্যা হয়েছে', variant: 'destructive' })
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const saveAnswerText = async (answerId: string, text: string) => {
+    try {
+      await fetch('/api/cq-exam-packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'save-answer',
+          answerId,
+          answerText: text,
+        }),
+      })
+    } catch {
+    }
+  }
+
+  const addAnswerImage = async (answerId: string, questionId: string, subIndex: number) => {
+    // Enforce maxImagesPerAnswer limit
+    const key = `${questionId}-${subIndex}`
+    const currentImages = answers[key]?.images?.length ?? 0
+    const maxImages = setData?.set.maxImagesPerAnswer ?? 5
+    if (currentImages >= maxImages) {
+      toast({
+        title: 'ছবির সীমা পূর্ণ',
+        description: `প্রতিটি উত্তরে সর্বোচ্চ ${toBengaliNumerals(maxImages)}টি ছবি আপলোড করা যাবে`,
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+
+      // Upload file
+      const formData = new FormData()
+      formData.append('file', file)
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData })
+        if (!res.ok) throw new Error('Upload failed')
+        const data = await res.json()
+
+        // Save image record
+        const imgRes = await fetch('/api/cq-exam-packages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'add-image',
+            answerId,
+            imageUrl: data.url,
+          }),
+        })
+        if (!imgRes.ok) throw new Error('Failed to save image')
+        const imgData = await imgRes.json()
+
+        // Update local state
+        setAnswers((prev) => {
+          const current = prev[key] || { answerText: '', images: [] }
+          return {
+            ...prev,
+            [key]: {
+              ...current,
+              images: [...current.images, { id: imgData.image.id, imageUrl: data.url, order: current.images.length }],
+            },
+          }
+        })
+      } catch (err) {
+        console.error('Image upload error:', err)
+        toast({ title: 'ত্রুটি', description: 'ছবি আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' })
+      }
+    }
+    input.click()
+  }
+
+  const removeAnswerImage = async (imageId: string, questionId: string, subIndex: number) => {
+    try {
+      await fetch('/api/cq-exam-packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'remove-image',
+          imageId,
+        }),
+      })
+      const key = `${questionId}-${subIndex}`
+      setAnswers((prev) => {
+        const current = prev[key] || { answerText: '', images: [] }
+        return {
+          ...prev,
+          [key]: {
+            ...current,
+            images: current.images.filter((img) => img.id !== imageId),
+          },
+        }
+      })
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'ছবি মুছতে সমস্যা হয়েছে', variant: 'destructive' })
+    }
+  }
+
+  const handleAnswerChange = useCallback(
+    async (questionId: string, subIndex: number, value: string) => {
+      const key = `${questionId}-${subIndex}`
+
+      setAnswers((prev) => {
+        const current = prev[key] || { answerText: '', images: [] }
+        return { ...prev, [key]: { ...current, answerText: value } }
+      })
+      const ansId = answerIdMap[questionId]?.[subIndex]
+      if (ansId) {
+        saveAnswerText(ansId, value)
+      }
+    },
+    [answerIdMap]
+  )
+
+  const handleSubmitExamRef = useRef<() => void>(() => {})
+
+  const handleSubmitExam = useCallback(async () => {
+    if (!submissionId) return
+    setSubmitting(true)
+    try {
+      const timeUsed = (setData?.set.duration || 0) * 60 - timeRemaining
+      const res = await fetch('/api/cq-exam-packages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'submit-exam',
+          submissionId,
+          timeTaken: timeUsed,
+        }),
+      })
+      const json = await res.json()
+      if (json.error) {
+        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
+        return
+      }
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+      setSubmitDialogOpen(false)
+      setSubmitSuccessDialogOpen(true)
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'পরীক্ষা জমা দিতে সমস্যা হয়েছে', variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
+    }
+  }, [submissionId, setData, timeRemaining, toast])
+
+  handleSubmitExamRef.current = handleSubmitExam
+
+  useEffect(() => {
+    if (!examStarted) return
+
+    timerRef.current = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current!)
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+    }
+  }, [examStarted])
+
+  useEffect(() => {
+    if (examStarted && timeRemaining <= 0 && submissionId) {
+      handleSubmitExamRef.current()
+    }
+  }, [timeRemaining, examStarted, submissionId])
+
+  if (loading) {
+    return (
+      <div>
+        <div className="sticky top-16 z-40 bg-background border-b">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex items-center gap-3">
+            <Skeleton className="size-10 rounded-md" />
+            <div className="flex-1">
+              <Skeleton className="h-6 w-48" />
+            </div>
+          </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-48 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !setData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="p-8 text-center max-w-md">
+          <AlertCircle className="size-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-lg font-medium mb-2">{error || 'পরীক্ষা খুঁজে পাওয়া যায়নি'}</p>
+          <Button onClick={goBack} variant="outline">ফিরে যান</Button>
+        </Card>
+      </div>
+    )
+  }
+
+  if (!examStarted) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-lg mx-4"
+        >
+          <Card className="border-emerald-200/50 dark:border-emerald-800/30">
+            <CardContent className="p-8 text-center space-y-6">
+              <div className="mx-auto w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 dark:from-emerald-900/30 dark:to-teal-900/30 flex items-center justify-center">
+                <FileQuestion className="size-10 text-emerald-500" />
+              </div>
+
+              <div>
+                <h1 className="text-2xl font-bold mb-1">{setData.set.title}</h1>
+                <p className="text-sm text-muted-foreground">
+                  CQ পরীক্ষা — {toBengaliNumerals(setData.questions.length)}টি সৃজনশীল প্রশ্ন
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/20">
+                  <p className="text-xl font-bold text-emerald-600">{toBengaliNumerals(setData.set.totalMarks)}</p>
+                  <p className="text-xs text-muted-foreground">মোট নম্বর</p>
+                </div>
+                <div className="p-3 rounded-xl bg-teal-50 dark:bg-teal-950/20">
+                  <p className="text-xl font-bold text-teal-600">{toBengaliNumerals(setData.set.totalQuestions)}</p>
+                  <p className="text-xs text-muted-foreground">প্রশ্ন</p>
+                </div>
+                <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/20">
+                  <p className="text-xl font-bold text-amber-600">{setData.set.duration}</p>
+                  <p className="text-xs text-muted-foreground">মিনিট</p>
+                </div>
+              </div>
+
+              <Button
+                className="w-full gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+                onClick={startExam}
+                disabled={starting}
+              >
+                {starting ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" />
+                    শুরু হচ্ছে...
+                  </>
+                ) : (
+                  <>
+                    <Timer className="size-4" />
+                    পরীক্ষা শুরু করুন
+                  </>
+                )}
+              </Button>
+
+              <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-3">
+                <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                  {setData.set.answerMode === 'text-only'
+                    ? 'শুধুমাত্র টেক্সট উত্তর দিতে পারবেন'
+                    : setData.set.answerMode === 'image-only'
+                      ? 'শুধুমাত্র ছবি আপলোড করতে পারবেন'
+                      : setData.set.answerMode === 'complete-image-only'
+                        ? 'সম্পূর্ণ উত্তরের খাতার ছবি আপলোড করতে হবে'
+                        : 'আপনি টেক্সট, ছবি অথবা সম্পূর্ণ উত্তরের ছবি দিতে পারবেন'}
+                </p>
+              </div>
+
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>* উত্তরগুলি স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে</p>
+                <p>* নির্ধারিত সময় শেষ হলে স্বয়ংক্রিয়ভাবে জমা হবে</p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    )
+  }
+
+  const answerMode = setData.set.answerMode || 'flexible'
+  const questions = setData.questions || []
+
+  const totalAnswered = questions.reduce((sum, q) => {
+    if (answerMode === 'complete-image-only') {
+      const globalKey = `${q.id}-4`
+      const globalAns = answers[globalKey]
+      return sum + ((globalAns?.images?.length ?? 0) > 0 ? 4 : 0)
+    }
+    if (answerMode === 'image-only') {
+      // If global image exists, count all sub-questions as answered
+      const globalKey = `${q.id}-4`
+      const globalAns = answers[globalKey]
+      if ((globalAns?.images?.length ?? 0) > 0) return sum + 4
+    }
+    let count = 0
+    for (let si = 0; si < 4; si++) {
+      const key = `${q.id}-${si}`
+      const ans = answers[key]
+      if (answerMode === 'text-only') {
+        if (ans?.answerText?.trim()) count++
+      } else if (answerMode === 'image-only') {
+        if ((ans?.images?.length ?? 0) > 0) count++
+      } else {
+        // flexible
+        if (ans?.answerText?.trim() || (ans?.images?.length ?? 0) > 0) count++
+      }
+    }
+    return sum + count
+  }, 0)
+  const totalSubQuestions = questions.length * 4
+  const progressPercent = totalSubQuestions > 0 ? (totalAnswered / totalSubQuestions) * 100 : 0
+
+  return (
+    <div>
+      <div className="sticky top-16 z-40 bg-background border-b">
+        <div className="flex items-center justify-between px-4 py-2.5 max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                if (timerRef.current) clearInterval(timerRef.current)
+                navigate('cq-exam-package-detail', { packageId })
+              }}
+            >
+              <ArrowLeft className="size-5" />
+            </Button>
+            <div className="min-w-0">
+              <p className="font-medium text-sm truncate">{setData.set.title}</p>
+              <p className="text-xs text-muted-foreground">
+                {toBengaliNumerals(totalAnswered)}/{toBengaliNumerals(totalSubQuestions)} উত্তর দেওয়া হয়েছে
+              </p>
+            </div>
+          </div>
+
+          <Badge
+            variant={timeRemaining < 300 ? 'destructive' : 'secondary'}
+            className="gap-1.5 tabular-nums shrink-0"
+          >
+            <Clock className="size-3.5" />
+            {formatTime(timeRemaining)}
+          </Badge>
+        </div>
+        <Progress value={progressPercent} className="h-1 rounded-none" />
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-4">
+        {questions.map((q, idx) => (
+          <CQBlock
+            key={q.id}
+            question={q}
+            index={idx}
+            answers={answers}
+            onAnswerChange={handleAnswerChange}
+            collapsed={collapsedCQs[q.id] ?? idx !== 0}
+            onToggle={() =>
+              setCollapsedCQs((prev) => ({
+                ...prev,
+                [q.id]: !(prev[q.id] ?? idx !== 0),
+              }))
+            }
+            answerIdMap={answerIdMap}
+            onAddImage={addAnswerImage}
+            onRemoveImage={removeAnswerImage}
+            answerMode={answerMode}
+            maxImagesPerAnswer={setData.set.maxImagesPerAnswer ?? 5}
+          />
+        ))}
+
+        <div className="flex justify-center pt-4 pb-8">
+          <Button
+            className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white min-w-[200px]"
+            onClick={() => setSubmitDialogOpen(true)}
+          >
+            <Send className="size-4" />
+            পরীক্ষা জমা দিন
+          </Button>
+        </div>
+      </div>
+
+      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>পরীক্ষা জমা দিন</DialogTitle>
+            <DialogDescription>
+              আপনি {toBengaliNumerals(totalAnswered)}টি প্রশ্নের উত্তর দিয়েছেন।{' '}
+              {toBengaliNumerals(totalSubQuestions - totalAnswered)}টি প্রশ্ন বাকি আছে। আপনি কি
+              নিশ্চিতভাবে জমা দিতে চান?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setSubmitDialogOpen(false)}
+              disabled={submitting}
+            >
+              বাতিল
+            </Button>
+            <Button
+              onClick={handleSubmitExam}
+              disabled={submitting}
+              className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+            >
+              {submitting ? (
+                <>
+                  <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  জমা হচ্ছে...
+                </>
+              ) : (
+                <>
+                  <Send className="size-4" />
+                  জমা দিন
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={submitSuccessDialogOpen} onOpenChange={setSubmitSuccessDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <GraduationCap className="h-5 w-5 text-emerald-500" />
+              পরীক্ষা জমা হয়েছে
+            </DialogTitle>
+            <DialogDescription>
+              আপনার উত্তর জমা দেওয়া হয়েছে।
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 p-4 -mt-2">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              শিক্ষক উত্তর মূল্যায়ন করে ফলাফল প্রকাশ করবেন। অনুগ্রহ করে অপেক্ষা করুন।
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                setSubmitSuccessDialogOpen(false)
+                navigate('cq-exam-package-detail', { packageId })
+              }}
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+            >
+              প্যাকেজে ফিরে যান
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

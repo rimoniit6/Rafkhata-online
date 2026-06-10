@@ -1,0 +1,134 @@
+import { db } from '@/lib/db'
+import { NextResponse } from 'next/server'
+import { verifyAuth } from '@/lib/auth'
+import { checkContentAccess } from '@/lib/access-control'
+
+export async function GET(
+  _request: Request,
+  props: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await props.params
+
+    const lecture = await db.lecture.findUnique({
+      where: { id, isActive: true },
+      include: {
+        chapter: {
+          include: {
+            subject: {
+              include: {
+                class: true,
+              },
+            },
+            lectures: {
+              where: { isActive: true },
+              orderBy: { order: 'asc' },
+              select: {
+                id: true,
+                title: true,
+                order: true,
+              },
+            },
+          },
+        },
+        resources: {
+          where: { isActive: true },
+        },
+      },
+    })
+
+    if (!lecture) {
+      return NextResponse.json(
+        { error: 'লেকচার খুঁজে পাওয়া যায়নি' },
+        { status: 404 }
+      )
+    }
+
+    if (lecture.isPremium) {
+      const auth = await verifyAuth()
+      const userId = auth?.user.id
+
+      if (!userId) {
+        return NextResponse.json(
+          { error: 'এই লেকচারটি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
+          { status: 401 }
+        )
+      }
+
+      const access = await checkContentAccess({
+        userId,
+        contentType: 'lecture',
+        contentId: id,
+      })
+
+      if (!access.hasAccess) {
+        return NextResponse.json({
+          id: lecture.id,
+          title: lecture.title,
+          thumbnail: lecture.thumbnail,
+          isPremium: true,
+          price: lecture.price,
+          chapterName: lecture.chapter.name,
+          subjectName: lecture.chapter.subject.name,
+          className: lecture.chapter.subject.class.name,
+          classSlug: lecture.chapter.subject.class.slug,
+          subjectId: lecture.chapter.subject.id,
+          chapterId: lecture.chapter.id,
+          hasAccess: false,
+          pendingPayment: access.pendingPayment,
+        })
+      }
+    }
+
+    await db.lecture.update({
+      where: { id },
+      data: { viewCount: { increment: 1 } },
+    })
+
+    const siblingLectures = lecture.chapter.lectures.map((lec) => ({
+      id: lec.id,
+      title: lec.title,
+      number: lec.order,
+      isCompleted: false,
+      isCurrent: lec.id === id,
+    }))
+
+    const currentIndex = lecture.chapter.lectures.findIndex(
+      (lec) => lec.id === id
+    )
+
+    const result = {
+      id: lecture.id,
+      title: lecture.title,
+      content: lecture.content,
+      thumbnail: lecture.thumbnail,
+      videoUrl: lecture.videoUrl,
+      audioUrl: lecture.audioUrl,
+      pdfUrl: lecture.pdfUrl,
+      chapterName: lecture.chapter.name,
+      subjectName: lecture.chapter.subject.name,
+      className: lecture.chapter.subject.class.name,
+      classSlug: lecture.chapter.subject.class.slug,
+      subjectId: lecture.chapter.subject.id,
+      chapterId: lecture.chapter.id,
+      isPremium: lecture.isPremium,
+      price: lecture.price,
+      progress: 0,
+      lectures: siblingLectures,
+      currentIndex: currentIndex >= 0 ? currentIndex : 0,
+      resources: lecture.resources.map((r) => ({
+        name: r.title,
+        url: r.url,
+        type: r.type,
+      })),
+    }
+
+    return NextResponse.json(result)
+  } catch (error) {
+    console.error('Get lecture detail error:', error)
+    return NextResponse.json(
+      { error: 'লেকচারের বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
+      { status: 500 }
+    )
+  }
+}

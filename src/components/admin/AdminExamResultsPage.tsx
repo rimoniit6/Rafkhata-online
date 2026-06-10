@@ -1,0 +1,414 @@
+'use client'
+
+import React, { useState, useEffect, useCallback } from 'react'
+import { motion } from 'framer-motion'
+import {
+  ClipboardCheck,
+  Search,
+  Eye,
+  TrendingUp,
+  Clock,
+  Trophy,
+  BarChart3,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useToast } from '@/hooks/use-toast'
+
+interface ExamResultRecord {
+  id: string
+  userId: string
+  examId: string
+  score: number
+  totalMarks: number
+  timeTaken: number
+  answers: string
+  completedAt: string
+  user: { id: string; name: string; email: string }
+  exam: { id: string; title: string; type: string; classLevel: string; totalMarks: number }
+}
+
+interface ExamOption {
+  id: string
+  title: string
+}
+
+function formatTime(seconds: number): string {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m} মি ${s} সে`
+}
+
+function getScoreColor(score: number, total: number): string {
+  const pct = total > 0 ? (score / total) * 100 : 0
+  if (pct >= 80) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+  if (pct >= 50) return 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+  return 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+}
+
+export default function AdminExamResultsPage() {
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [results, setResults] = useState<ExamResultRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [examFilter, setExamFilter] = useState('all')
+  const [userSearch, setUserSearch] = useState('')
+  const [stats, setStats] = useState({ totalResults: 0, avgScore: 0, avgTime: 0, highestScore: 0 })
+  const [detailResult, setDetailResult] = useState<ExamResultRecord | null>(null)
+  const [exams, setExams] = useState<ExamOption[]>([])
+  const limit = 20
+
+  const fetchExams = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/exams?limit=100')
+      if (res.ok) {
+        const json = await res.json()
+        setExams((Array.isArray(json.data) ? json.data : []).map((e: { id: string; title: string }) => ({ id: e.id, title: e.title })))
+      }
+    } catch { /* */ }
+  }, [])
+
+  const fetchResults = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('page', page.toString())
+      params.set('limit', limit.toString())
+      if (examFilter !== 'all') params.set('examId', examFilter)
+      if (userSearch) params.set('userId', userSearch)
+
+      const res = await fetch(`/api/admin/exam-results?${params}`)
+      if (res.ok) {
+        const json = await res.json()
+        setResults(Array.isArray(json.data) ? json.data : [])
+        setTotal(json.pagination?.total || 0)
+        setStats(json.stats || { totalResults: 0, avgScore: 0, avgTime: 0, highestScore: 0 })
+      }
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'ফলাফল লোড করতে সমস্যা হয়েছে', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [page, examFilter, userSearch, toast])
+
+  useEffect(() => { fetchExams() }, [fetchExams])
+  useEffect(() => { fetchResults() }, [fetchResults])
+
+  const totalPages = Math.ceil(total / limit)
+
+  // Parse answers JSON for detail view
+  const parseAnswers = (answersStr: string) => {
+    try {
+      return JSON.parse(answersStr)
+    } catch {
+      return answersStr
+    }
+  }
+
+  if (loading && results.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    )
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <ClipboardCheck className="h-6 w-6 text-emerald-600" /> পরীক্ষার ফলাফল
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">সকল পরীক্ষার ফলাফল দেখুন ও পরিচালনা করুন</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
+              <BarChart3 className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">মোট ফলাফল</p>
+              <p className="text-xl font-bold">{stats.totalResults.toLocaleString('bn-BD')}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30">
+              <TrendingUp className="h-5 w-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">গড় স্কোর</p>
+              <p className="text-xl font-bold">{stats.avgScore}%</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/30">
+              <Clock className="h-5 w-5 text-teal-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">গড় সময়</p>
+              <p className="text-xl font-bold">{formatTime(stats.avgTime)}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-violet-50 dark:bg-violet-950/30">
+              <Trophy className="h-5 w-5 text-violet-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">সর্বোচ্চ স্কোর</p>
+              <p className="text-xl font-bold">{stats.highestScore}%</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="ব্যবহারকারী ID দিয়ে খুঁজুন..."
+                value={userSearch}
+                onChange={(e) => { setUserSearch(e.target.value); setPage(1) }}
+                className="pl-9"
+              />
+            </div>
+            <Select value={examFilter} onValueChange={(v) => { setExamFilter(v); setPage(1) }}>
+              <SelectTrigger className="w-full sm:w-56">
+                <SelectValue placeholder="পরীক্ষা নির্বাচন" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">সব পরীক্ষা</SelectItem>
+                {exams.map((exam) => (
+                  <SelectItem key={exam.id} value={exam.id}>{exam.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>শিক্ষার্থী</TableHead>
+                  <TableHead>পরীক্ষা</TableHead>
+                  <TableHead>স্কোর</TableHead>
+                  <TableHead className="hidden sm:table-cell">সময়</TableHead>
+                  <TableHead className="hidden md:table-cell">তারিখ</TableHead>
+                  <TableHead className="w-20">অ্যাকশন</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {results.map((result) => {
+                  const pct = result.totalMarks > 0 ? Math.round((result.score / result.totalMarks) * 100) : 0
+                  return (
+                    <TableRow key={result.id}>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{result.user?.name || 'N/A'}</p>
+                          <p className="text-xs text-muted-foreground">{result.user?.email || ''}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium line-clamp-1">{result.exam?.title || 'N/A'}</p>
+                          <Badge variant="outline" className="text-[9px] h-4 px-1 mt-0.5">
+                            {result.exam?.type || '-'}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge className={getScoreColor(result.score, result.totalMarks)}>
+                            {result.score}/{result.totalMarks}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">({pct}%)</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-sm">
+                        {formatTime(result.timeTaken)}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-sm">
+                        {new Date(result.completedAt).toLocaleDateString('bn-BD')}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => setDetailResult(result)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+                {results.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      কোনো ফলাফল পাওয়া যায়নি
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            মোট {total.toLocaleString('bn-BD')}টি ফলাফল
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm px-2">
+              {page} / {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailResult} onOpenChange={() => setDetailResult(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>ফলাফলের বিস্তারিত</DialogTitle>
+          </DialogHeader>
+          {detailResult && (
+            <div className="space-y-4">
+              {/* Student info */}
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">শিক্ষার্থী:</div>
+                  <div className="font-medium">{detailResult.user?.name || 'N/A'}</div>
+                  <div className="text-muted-foreground">ইমেইল:</div>
+                  <div className="font-medium text-xs">{detailResult.user?.email || '-'}</div>
+                </div>
+              </div>
+
+              {/* Exam info */}
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">পরীক্ষা:</div>
+                  <div className="font-medium">{detailResult.exam?.title || '-'}</div>
+                  <div className="text-muted-foreground">ধরন:</div>
+                  <div className="font-medium">{detailResult.exam?.type || '-'}</div>
+                  <div className="text-muted-foreground">শ্রেণি:</div>
+                  <div className="font-medium">{detailResult.exam?.classLevel || '-'}</div>
+                </div>
+              </div>
+
+              {/* Score */}
+              <div className="grid grid-cols-2 gap-3">
+                <Card>
+                  <CardContent className="p-3 text-center">
+                    <p className="text-xs text-muted-foreground">স্কোর</p>
+                    <p className="text-xl font-bold">
+                      {detailResult.score}/{detailResult.totalMarks}
+                    </p>
+                    <Badge className={getScoreColor(detailResult.score, detailResult.totalMarks) + ' mt-1'}>
+                      {detailResult.totalMarks > 0
+                        ? Math.round((detailResult.score / detailResult.totalMarks) * 100)
+                        : 0}%
+                    </Badge>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-3 text-center">
+                    <p className="text-xs text-muted-foreground">সময়</p>
+                    <p className="text-xl font-bold">{formatTime(detailResult.timeTaken)}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(detailResult.completedAt).toLocaleDateString('bn-BD')}
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Answers JSON */}
+              <div>
+                <p className="text-sm font-semibold mb-2">উত্তরমালা (JSON)</p>
+                <div className="bg-muted rounded-lg p-3 max-h-64 overflow-y-auto">
+                  <pre className="text-xs whitespace-pre-wrap break-all font-mono">
+                    {JSON.stringify(parseAnswers(detailResult.answers), null, 2)}
+                  </pre>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailResult(null)}>বন্ধ করুন</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  )
+}
