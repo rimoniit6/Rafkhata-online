@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { createAuditLog, AuditActions, EntityTypes, getClientIP } from '@/lib/audit'
 
 async function recalculateSetTotals(setId: string) {
   const result = await db.cQExamSetQuestion.aggregate({
@@ -560,6 +561,18 @@ export async function PUT(request: Request) {
           },
         })
 
+        // Audit log
+        await createAuditLog({
+          adminId: auth.user.id,
+          action: AuditActions.GRADE_UPDATE,
+          entityType: EntityTypes.SUBMISSION,
+          entityId: submissionId,
+          oldData: { obtainedMarks: 0, status: 'submitted' },
+          newData: { obtainedMarks: totalObtained, status: newStatus },
+          ipAddress: getClientIP(request),
+          userAgent: request.headers.get('user-agent') || undefined,
+        })
+
         return apiResponse({ submission: updatedSubmission })
       }
 
@@ -726,6 +739,18 @@ export async function PUT(request: Request) {
           }
         }
 
+        // Audit log for bulk grading
+        await createAuditLog({
+          adminId: auth.user.id,
+          action: AuditActions.GRADE_BULK,
+          entityType: EntityTypes.SUBMISSION,
+          entityId: firstSub?.setId || 'bulk',
+          oldData: { count: gradeUpdates.length },
+          newData: { updatedCount },
+          ipAddress: getClientIP(request),
+          userAgent: request.headers.get('user-agent') || undefined,
+        })
+
         return apiResponse({ updatedCount })
       }
 
@@ -766,6 +791,18 @@ export async function PUT(request: Request) {
           })
         }
 
+        // Audit log
+        await createAuditLog({
+          adminId: auth.user.id,
+          action: 'publish_results',
+          entityType: EntityTypes.SUBMISSION,
+          entityId: setId,
+          oldData: { status: 'graded' },
+          newData: { status: 'published', notifiedCount: userIds.length },
+          ipAddress: getClientIP(request),
+          userAgent: request.headers.get('user-agent') || undefined,
+        })
+
         return apiResponse({ success: true, notifiedCount: userIds.length })
       }
 
@@ -780,12 +817,26 @@ export async function PUT(request: Request) {
         })
         if (!submission) return apiError('Submission not found', 404)
 
+        const oldCanRetake = submission.canRetake
+        const newCanRetake = !submission.canRetake
         await db.cQExamSubmission.update({
           where: { id: submissionId },
-          data: { canRetake: !submission.canRetake },
+          data: { canRetake: newCanRetake },
         })
 
-        return apiResponse({ canRetake: !submission.canRetake })
+        // Audit log
+        await createAuditLog({
+          adminId: auth.user.id,
+          action: newCanRetake ? AuditActions.RETAKE_APPROVE : AuditActions.RETAKE_REJECT,
+          entityType: EntityTypes.SUBMISSION,
+          entityId: submissionId,
+          oldData: { canRetake: oldCanRetake },
+          newData: { canRetake: newCanRetake },
+          ipAddress: getClientIP(request),
+          userAgent: request.headers.get('user-agent') || undefined,
+        })
+
+        return apiResponse({ canRetake: newCanRetake })
       }
 
       // List retake requests for a set
@@ -869,6 +920,18 @@ export async function PUT(request: Request) {
             },
           })
         }
+
+        // Audit log
+        await createAuditLog({
+          adminId: auth.user.id,
+          action: approve ? AuditActions.RETAKE_APPROVE : AuditActions.RETAKE_REJECT,
+          entityType: 'retake_request',
+          entityId: requestId,
+          oldData: { status: existing.status },
+          newData: { status: newStatus },
+          ipAddress: getClientIP(request),
+          userAgent: request.headers.get('user-agent') || undefined,
+        })
 
         return apiResponse({ success: true, status: newStatus })
       }

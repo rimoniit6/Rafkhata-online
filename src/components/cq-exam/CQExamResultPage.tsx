@@ -29,6 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible'
 import { cn, toBengaliNumerals } from '@/lib/utils'
+import { bengaliLabels, getTypeLabel, getStatusBadge, getAnswerModeLabel, formatDuration } from '@/lib/cq-exam/utils'
 import { useToast } from '@/hooks/use-toast'
 import SafeImage from '@/components/ui/safe-image'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
@@ -128,45 +129,6 @@ interface SubmissionData {
   }
   answers: CQAnswer[]
   questions: CQQuestionDetail[]
-}
-
-const bengaliLabels = ['ক', 'খ', 'গ', 'ঘ']
-
-function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds} সেকেন্ড`
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  if (m < 60) return s > 0 ? `${m} মিনিট ${s} সেকেন্ড` : `${m} মিনিট`
-  const h = Math.floor(m / 60)
-  const rm = m % 60
-  return `${h} ঘণ্টা ${rm} মিনিট`
-}
-
-function getStatusBadge(status: string): { label: string; color: string } {
-  switch (status) {
-    case 'graded':
-    case 'published':
-      return { label: 'মূল্যায়ন সম্পন্ন', color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' }
-    case 'submitted':
-      return { label: 'জমা দেওয়া হয়েছে', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' }
-    default:
-      return { label: status, color: 'bg-muted text-muted-foreground' }
-  }
-}
-
-function getAnswerModeLabel(mode: string): { label: string; color: string } {
-  switch (mode) {
-    case 'flexible':
-      return { label: 'টেক্সট + ছবি', color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400' }
-    case 'text-only':
-      return { label: 'শুধু টেক্সট', color: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400' }
-    case 'image-only':
-      return { label: 'শুধু ছবি', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400' }
-    case 'complete-image-only':
-      return { label: 'সম্পূর্ণ ছবি', color: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' }
-    default:
-      return { label: mode, color: 'bg-muted text-muted-foreground' }
-  }
 }
 
 function AnswerBlock({

@@ -4,15 +4,27 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
 }
 
-// Always create a fresh PrismaClient in development to pick up schema changes
-// In production, reuse the global singleton for connection pooling
-const shouldReuse = process.env.NODE_ENV === 'production'
+// PrismaClient singleton with connection pooling for production
+const isProduction = process.env.NODE_ENV === 'production'
 
-export const db =
-  (shouldReuse && globalForPrisma.prisma)
-    ? globalForPrisma.prisma
-    : new PrismaClient({
-        log: ['error'],
-      })
+function createPrismaClient() {
+  return new PrismaClient({
+    log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'query'],
+    datasources: {
+      db: {
+        url: process.env.DATABASE_URL,
+      },
+    },
+  })
+}
 
-if (shouldReuse) globalForPrisma.prisma = db
+export const db = globalForPrisma.prisma ?? createPrismaClient()
+
+if (!isProduction) globalForPrisma.prisma = db
+
+// Graceful shutdown
+if (typeof process !== 'undefined') {
+  process.on('beforeExit', async () => {
+    await db.$disconnect()
+  })
+}

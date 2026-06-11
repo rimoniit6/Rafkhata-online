@@ -85,10 +85,26 @@ export async function POST(request: Request) {
       contentId,
       contentTitle,
       classLevel,
+      idempotencyKey,
     } = validation.data
 
     // Get userId from authenticated session, NOT from request body
     const userId = auth.user.id
+
+    // Check idempotency key if provided
+    if (idempotencyKey) {
+      const existingByIdempotency = await db.payment.findUnique({
+        where: { idempotencyKey },
+        select: { id: true, status: true, createdAt: true },
+      })
+      if (existingByIdempotency) {
+        // Return existing payment instead of creating duplicate
+        return NextResponse.json(
+          { success: true, data: { message: 'পেমেন্ট ইতিমধ্যে প্রক্রিয়াধীন', payment: existingByIdempotency }, idempotent: true },
+          { status: 200 }
+        )
+      }
+    }
 
     // Validate contentType if provided
     const VALID_CONTENT_TYPES = await getValidContentTypes()
@@ -286,6 +302,7 @@ export async function POST(request: Request) {
         contentTitle: resolvedTitle || null,
         classLevel: classLevel || null,
         status: 'pending',
+        idempotencyKey: idempotencyKey || null,
       },
       include: {
         user: {
@@ -304,8 +321,13 @@ export async function POST(request: Request) {
     )
   } catch (error: any) {
     // Handle unique constraint violation (race condition: duplicate payment)
-    if (error?.code === 'P2002' && error?.meta?.target?.includes('userId')) {
-      return apiError('এই কন্টেন্টের জন্য পেমেন্ট ইতিমধ্যে আছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।', 400, 'DUPLICATE_PAYMENT')
+    if (error?.code === 'P2002') {
+      if (error?.meta?.target?.includes('idempotencyKey')) {
+        return apiError('এই অনুরোধ ইতিমধ্যে প্রক্রিয় করা হয়েছে।', 400, 'IDEMPOTENCY_CONFLICT')
+      }
+      if (error?.meta?.target?.includes('userId')) {
+        return apiError('এই কন্টেন্টের জন্য পেমেন্ট ইতিমধ্যে আছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।', 400, 'DUPLICATE_PAYMENT')
+      }
     }
     return handleApiError(error, 'Create payment error')
   }

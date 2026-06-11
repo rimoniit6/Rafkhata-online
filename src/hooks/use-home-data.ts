@@ -85,6 +85,7 @@ export function useNotices(limit = 10) {
         return 0
       })
     },
+    select: (data) => data,
   })
 }
 
@@ -95,6 +96,7 @@ export function useClassList() {
       const json = await fetchJSON<{ classes?: ClassListItem[] }>('/api/classes')
       return json.classes || []
     },
+    select: (data) => data,
   })
 }
 
@@ -105,6 +107,7 @@ export function useFeaturedCourses() {
       const json = await fetchJSON<{ items?: FeaturedItem[] }>('/api/courses/featured')
       return json.items || []
     },
+    select: (data) => data,
   })
 }
 
@@ -120,6 +123,7 @@ export function useBoardQuestionFilters() {
         subjects: data.subjects || [],
       }
     },
+    select: (data) => data,
   })
 }
 
@@ -149,5 +153,6 @@ export function usePremiumPrices() {
 
       return { minContentPrice, minBundlePrice }
     },
+    select: (data) => data,
   })
 }

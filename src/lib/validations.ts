@@ -12,6 +12,7 @@ export const createPaymentSchema = z.object({
   contentId: z.string().optional(),
   contentTitle: z.string().optional(),
   classLevel: z.string().optional(), // For package purchases: which class the user selected
+  idempotencyKey: z.string().min(1, 'ইডেমপটেন্সি কি প্রয়োজন').max(64).optional(), // Client-generated unique key for idempotency
 })
 
 export const reviewPaymentSchema = z.object({

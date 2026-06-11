@@ -1,7 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, Suspense } from 'react'
-import dynamic from 'next/dynamic'
+import React, { useState, useCallback, Suspense, lazy } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
@@ -49,36 +48,55 @@ import { cn } from '@/lib/utils'
 import { useSiteConfig } from '@/hooks/use-metadata'
 import Image from 'next/image'
 
-const AdminDashboardPage = dynamic(() => import('./AdminDashboardPage'))
-const AdminUsersPage = dynamic(() => import('./AdminUsersPage'))
-const AdminContentPage = dynamic(() => import('./AdminContentPage'))
-const AdminMCQPage = dynamic(() => import('./AdminMCQPage'))
-const AdminCQPage = dynamic(() => import('./AdminCQPage'))
-const AdminLecturesPage = dynamic(() => import('./AdminLecturesPage'))
-const AdminPaymentsPage = dynamic(() => import('./AdminPaymentsPage'))
-const AdminSettingsPage = dynamic(() => import('./AdminSettingsPage'))
-const AdminBannersPage = dynamic(() => import('./AdminBannersPage'))
-const AdminNotificationsPage = dynamic(() => import('./AdminNotificationsPage'))
-const AdminExamsPage = dynamic(() => import('./AdminExamsPage'))
-const AdminBoardPage = dynamic(() => import('./AdminBoardPage'))
-const AdminNoticePage = dynamic(() => import('./AdminNoticePage'))
-const AdminSuggestionPage = dynamic(() => import('./AdminSuggestionPage'))
-const AdminBundlesPage = dynamic(() => import('./AdminBundlesPage'))
-const AdminPackagesPage = dynamic(() => import('./AdminPackagesPage'))
-const MCQExamAdminContainer = dynamic(() => import('@/features/mcq-exam/admin/MCQExamAdminContainer'))
-const AdminHierarchyPage = dynamic(() => import('./AdminHierarchyPage'))
-const AdminBulkImportPage = dynamic(() => import('./AdminBulkImportPage'))
-const AdminFeaturedPage = dynamic(() => import('./AdminFeaturedPage'))
-const AdminContentTypesPage = dynamic(() => import('./AdminContentTypesPage'))
-const AdminExamResultsPage = dynamic(() => import('./AdminExamResultsPage'))
-const AdminMCQExamPurchasesPage = dynamic(() => import('./AdminMCQExamPurchasesPage'))
-const AdminSubscriptionsPage = dynamic(() => import('./AdminSubscriptionsPage'))
-const AdminFAQsPage = dynamic(() => import('./AdminFAQsPage'))
-const AdminTestimonialsPage = dynamic(() => import('./AdminTestimonialsPage'))
-const AdminNotesPage = dynamic(() => import('./AdminNotesPage'))
-const AdminContentPurchasesPage = dynamic(() => import('./AdminContentPurchasesPage'))
-const AdminTeacherModeratorsPage = dynamic(() => import('./AdminTeacherModeratorsPage'))
-const CQExamAdminContainer = dynamic(() => import('@/features/cq-exam/admin/CQExamAdminContainer'))
+// Lazy load admin pages by feature group - only loads the needed page
+const AdminPages = {
+  // Core
+  'admin-dashboard': lazy(() => import('./AdminDashboardPage')),
+  'admin-users': lazy(() => import('./AdminUsersPage')),
+  'admin-content': lazy(() => import('./AdminContentPage')),
+  'admin-hierarchy': lazy(() => import('./AdminHierarchyPage')),
+  'admin-bulk-import': lazy(() => import('./AdminBulkImportPage')),
+  
+  // Questions
+  'admin-mcq': lazy(() => import('./AdminMCQPage')),
+  'admin-cq': lazy(() => import('./AdminCQPage')),
+  
+  // Content
+  'admin-lectures': lazy(() => import('./AdminLecturesPage')),
+  'admin-board': lazy(() => import('./AdminBoardPage')),
+  'admin-notices': lazy(() => import('./AdminNoticePage')),
+  'admin-suggestions': lazy(() => import('./AdminSuggestionPage')),
+  'admin-featured': lazy(() => import('./AdminFeaturedPage')),
+  'admin-content-types': lazy(() => import('./AdminContentTypesPage')),
+  
+  // Bundles & Packages
+  'admin-bundles': lazy(() => import('./AdminBundlesPage')),
+  'admin-packages': lazy(() => import('./AdminPackagesPage')),
+  
+  // MCQ Exam
+  'admin-mcq-exam-packages': lazy(() => import('@/features/mcq-exam/admin/MCQExamAdminContainer')),
+  'admin-mcq-exam-purchases': lazy(() => import('./AdminMCQExamPurchasesPage')),
+  
+  // CQ Exam
+  'admin-cq-exam-packages': lazy(() => import('@/features/cq-exam/admin/CQExamAdminContainer')),
+  'admin-exam-results': lazy(() => import('./AdminExamResultsPage')),
+  
+  // Commerce
+  'admin-payments': lazy(() => import('./AdminPaymentsPage')),
+  'admin-subscriptions': lazy(() => import('./AdminSubscriptionsPage')),
+  'admin-content-purchases': lazy(() => import('./AdminContentPurchasesPage')),
+  
+  // CMS
+  'admin-banners': lazy(() => import('./AdminBannersPage')),
+  'admin-notifications': lazy(() => import('./AdminNotificationsPage')),
+  'admin-faqs': lazy(() => import('./AdminFAQsPage')),
+  'admin-testimonials': lazy(() => import('./AdminTestimonialsPage')),
+  'admin-notes': lazy(() => import('./AdminNotesPage')),
+  'admin-teacher-moderators': lazy(() => import('./AdminTeacherModeratorsPage')),
+  
+  // Settings
+  'admin-settings': lazy(() => import('./AdminSettingsPage')),
+}
 
 interface SidebarItem {
   label: string
@@ -335,71 +353,13 @@ function SidebarContent({
 
 function AdminContent() {
   const { currentRoute } = useRouterStore()
+  const Page = AdminPages[currentRoute] || AdminPages['admin-dashboard']
 
-  switch (currentRoute) {
-    case 'admin-dashboard':
-      return <AdminDashboardPage />
-    case 'admin-users':
-      return <AdminUsersPage />
-    case 'admin-content':
-      return <AdminContentPage />
-    case 'admin-mcq':
-      return <AdminMCQPage />
-    case 'admin-cq':
-      return <AdminCQPage />
-    case 'admin-lectures':
-      return <AdminLecturesPage />
-    case 'admin-board':
-      return <AdminBoardPage />
-    case 'admin-payments':
-      return <AdminPaymentsPage />
-    case 'admin-settings':
-      return <AdminSettingsPage />
-    case 'admin-exams':
-      return <AdminExamsPage />
-    case 'admin-featured':
-      return <AdminFeaturedPage />
-    case 'admin-content-types':
-      return <AdminContentTypesPage />
-    case 'admin-banners':
-      return <AdminBannersPage />
-    case 'admin-notifications':
-      return <AdminNotificationsPage />
-    case 'admin-notices':
-      return <AdminNoticePage />
-    case 'admin-suggestions':
-      return <AdminSuggestionPage />
-    case 'admin-bundles':
-      return <AdminBundlesPage />
-    case 'admin-packages':
-      return <AdminPackagesPage />
-    case 'admin-mcq-exam-packages':
-      return <MCQExamAdminContainer />
-    case 'admin-exam-results':
-      return <AdminExamResultsPage />
-    case 'admin-mcq-exam-purchases':
-      return <AdminMCQExamPurchasesPage />
-    case 'admin-subscriptions':
-      return <AdminSubscriptionsPage />
-    case 'admin-hierarchy':
-      return <AdminHierarchyPage />
-    case 'admin-bulk-import':
-      return <AdminBulkImportPage />
-    case 'admin-faqs':
-      return <AdminFAQsPage />
-    case 'admin-testimonials':
-      return <AdminTestimonialsPage />
-    case 'admin-notes':
-      return <AdminNotesPage />
-    case 'admin-content-purchases':
-      return <AdminContentPurchasesPage />
-    case 'admin-teacher-moderators':
-      return <AdminTeacherModeratorsPage />
-    case 'admin-cq-exam-packages':
-      return <CQExamAdminContainer />
-    default:
-      return <AdminDashboardPage />
-  }
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" /></div>}>
+      <Page />
+    </Suspense>
+  )
 }
 
 export default function AdminLayout() {

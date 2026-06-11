@@ -3,6 +3,7 @@ import { apiResponse, apiError, withAdmin, validateBody } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { reviewPaymentSchema } from '@/lib/validations'
 import { NextResponse } from 'next/server'
+import { createAuditLog, AuditActions, EntityTypes, getClientIP } from '@/lib/audit'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -100,6 +101,18 @@ export async function PATCH(request: Request) {
       include: {
         user: { select: { id: true, name: true, email: true, isPremium: true } },
       },
+    })
+
+    // Audit log
+    await createAuditLog({
+      adminId: auth.user.id,
+      action: status === 'approved' ? AuditActions.PAYMENT_APPROVE : AuditActions.PAYMENT_REJECT,
+      entityType: EntityTypes.PAYMENT,
+      entityId: id,
+      oldData: { status: existing.status, adminNote: existing.adminNote },
+      newData: { status: updated.status, adminNote: updated.adminNote },
+      ipAddress: getClientIP(request),
+      userAgent: request.headers.get('user-agent') || undefined,
     })
 
     // Create a notification

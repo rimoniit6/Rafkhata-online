@@ -46,6 +46,7 @@ model User {
   cqExamSubmissions CQExamSubmission[]
   cqExamRetakeRequests CQExamRetakeRequest[]
   mcqExamRetakeRequests MCQExamRetakeRequest[]
+  auditLogs     AuditLog[]
 
   @@index([supabaseUserId])
   @@index([email])
@@ -405,6 +406,7 @@ model Payment {
   reviewedAt      DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+  idempotencyKey  String?   @unique // Client-generated key for idempotent payment creation
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -428,6 +430,27 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
+}
+
+// ============ AUDIT LOG ============
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  adminId     String
+  admin       User      @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action      String    // payment_approve, payment_reject, grade_update, grade_bulk, user_update, user_delete, retake_approve, retake_reject, content_create, content_update, content_delete
+  entityType  String    // payment, submission, user, cq_question, cq_set, cq_package, mcq_question, lecture, bundle, package
+  entityId    String
+  oldData     String?   // JSON string of previous state
+  newData     String?   // JSON string of new state
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime  @default(now())
+
+  @@index([adminId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 // ============ BANNER ============
@@ -942,6 +965,7 @@ model CQExamSubmission {
 
   @@unique([userId, setId])
   @@index([setId, status])
+  @@index([setId, status, submittedAt])
   @@index([userId, setId])
 }
 
@@ -964,6 +988,7 @@ model CQExamAnswer {
 
   @@unique([submissionId, questionId, subIndex])
   @@index([submissionId, questionId])
+  @@index([questionId, obtainedMarks])
 }
 
 model CQExamAnswerImage {

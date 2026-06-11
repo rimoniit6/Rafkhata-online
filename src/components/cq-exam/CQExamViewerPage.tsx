@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { cn, toBengaliNumerals } from '@/lib/utils'
+import { bengaliLabels, formatTime, quickMarkButtons, getTypeLabel, getClassLabel } from '@/lib/cq-exam/utils'
 import { useToast } from '@/hooks/use-toast'
 import { useUploadThing } from '@/lib/uploadthing/client'
 import SafeImage from '@/components/ui/safe-image'
@@ -105,14 +106,6 @@ interface AnswerState {
   images: AnswerImage[]
 }
 
-const bengaliLabels = ['ক', 'খ', 'গ', 'ঘ']
-
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60)
-  const s = seconds % 60
-  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
-}
-
 function NonCQQuestionBlock({
   question,
   index,
@@ -142,16 +135,6 @@ function NonCQQuestionBlock({
 
   const stem = question.stem || ''
   const stemImage = question.stemImage || null
-
-  const getTypeLabel = () => {
-    switch (qType) {
-      case 'mcq-single': return 'MCQ (একক উত্তর)'
-      case 'mcq-multiple': return 'MCQ (একাধিক উত্তর)'
-      case 'fill-blanks': return 'শূন্যস্থান পূরণ'
-      case 'written': return 'রচনামূলক প্রশ্ন'
-      default: return qType
-    }
-  }
 
   const subQuestionCount = qType === 'fill-blanks' ? (config.blanks || []).length : 1
 

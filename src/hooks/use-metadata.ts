@@ -154,6 +154,7 @@ export function useBoards() {
       const json = await fetchJSON<{ data?: MetadataBoard[] }>('/api/boards')
       return Array.isArray(json.data) ? json.data : []
     },
+    select: (data) => data,
   })
 
   const labelMap = useMemo(() => Object.fromEntries(boards.map((b) => [b.slug, b.name])), [boards])
@@ -169,6 +170,7 @@ export function useYears() {
       const json = await fetchJSON<{ data?: MetadataYear[] }>('/api/years')
       return Array.isArray(json.data) ? json.data : []
     },
+    select: (data) => data,
   })
 
   const options = useMemo(() => years.map((y) => ({ value: y.year, label: y.year })), [years])
@@ -183,6 +185,7 @@ export function useFAQs() {
       const json = await fetchJSON<{ faqs?: MetadataFAQ[]; data?: MetadataFAQ[] }>('/api/faqs')
       return Array.isArray(json.faqs) ? json.faqs : (Array.isArray(json.data) ? json.data : [])
     },
+    select: (data) => data,
   })
 
   return { faqs, loading: isLoading, error: error?.message ?? null }
@@ -199,6 +202,7 @@ export function useTestimonials() {
         ? json.testimonials
         : (Array.isArray(json.data) ? json.data : [])
     },
+    select: (data) => data,
   })
 
   return { testimonials, loading: isLoading, error: error?.message ?? null }
@@ -211,6 +215,7 @@ export function useTeacherModerators() {
       const json = await fetchJSON<{ teachers?: MetadataTeacherModerator[] }>('/api/teacher-moderators')
       return Array.isArray(json.teachers) ? json.teachers : []
     },
+    select: (data) => data,
   })
 
   return { teachers, loading: isLoading, error: error?.message ?? null }
@@ -226,6 +231,7 @@ export function useSiteConfig() {
       }
       return data
     },
+    select: (data) => data,
   })
 
   return { config, loading: isLoading, error: error?.message ?? null }

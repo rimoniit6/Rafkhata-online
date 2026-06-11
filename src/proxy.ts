@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
+import { createHash } from 'crypto'
+
+// Generate a CSP nonce
+function generateNonce(): string {
+  const buffer = new Uint8Array(16)
+  crypto.getRandomValues(buffer)
+  return Buffer.from(buffer).toString('base64')
+}
 
 const PUBLIC_API_ROUTES = [
   '/api/auth/callback',
@@ -81,28 +89,39 @@ function isSuperAdminRoute(pathname: string): boolean {
   return SUPER_ADMIN_ROUTES.some((route) => pathname.startsWith(route))
 }
 
-function addSecurityHeaders(response: NextResponse): NextResponse {
+function addSecurityHeaders(response: NextResponse, nonce?: string): NextResponse {
+  const cspNonce = nonce || generateNonce()
+  const scriptSrc = nonce 
+    ? `'self' 'nonce-${cspNonce}' https://cdn.jsdelivr.net https://eylbmvqyrtkfcnfsienv.supabase.co`
+    : `'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://eylbmvqyrtkfcnfsienv.supabase.co`
+  
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-XSS-Protection', '1; mode=block')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://eylbmvqyrtkfcnfsienv.supabase.co; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-    "font-src 'self' https://fonts.gstatic.com; " +
-    "img-src 'self' data: https: blob:; " +
-    "connect-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co https://utfs.io https://api.uploadthing.com; " +
-    "frame-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co; " +
-    "base-uri 'self'; " +
-    "form-action 'self';"
+    `default-src 'self'; ` +
+    `script-src ${scriptSrc}; ` +
+    `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ` +
+    `font-src 'self' https://fonts.gstatic.com; ` +
+    `img-src 'self' data: https: blob:; ` +
+    `connect-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co https://utfs.io https://api.uploadthing.com; ` +
+    `frame-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co; ` +
+    `base-uri 'self'; ` +
+    `form-action 'self';`
   )
+  if (nonce) {
+    response.headers.set('x-csp-nonce', cspNonce)
+  }
   return response
 }
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Generate CSP nonce for this request
+  const cspNonce = generateNonce()
 
   // Skip static files and Next.js internals
   if (
@@ -113,18 +132,18 @@ export async function proxy(request: NextRequest) {
     pathname === '/manifest.json' ||
     pathname === '/sw.js'
   ) {
-    return addSecurityHeaders(NextResponse.next())
+    return addSecurityHeaders(NextResponse.next(), cspNonce)
   }
 
   // Allow public page routes
   if (isPublicPageRoute(pathname)) {
-    return addSecurityHeaders(NextResponse.next())
+    return addSecurityHeaders(NextResponse.next(), cspNonce)
   }
 
   // Handle API routes
   if (pathname.startsWith('/api/')) {
     if (isPublicApiRoute(pathname)) {
-      return addSecurityHeaders(NextResponse.next())
+      return addSecurityHeaders(NextResponse.next(), cspNonce)
     }
 
     const { supabaseResponse, user } = await updateSession(request)
@@ -134,7 +153,7 @@ export async function proxy(request: NextRequest) {
         { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', code: 'UNAUTHORIZED' },
         { status: 401 }
       )
-      return addSecurityHeaders(errorResponse)
+      return addSecurityHeaders(errorResponse, cspNonce)
     }
 
     const role = user.user_metadata?.role || 'student'
@@ -145,7 +164,7 @@ export async function proxy(request: NextRequest) {
           { success: false, error: 'এই কাজের জন্য সুপার অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
           { status: 403 }
         )
-        return addSecurityHeaders(errorResponse)
+        return addSecurityHeaders(errorResponse, cspNonce)
       }
     }
 
@@ -155,7 +174,7 @@ export async function proxy(request: NextRequest) {
           { success: false, error: 'এই কাজের জন্য অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
           { status: 403 }
         )
-        return addSecurityHeaders(errorResponse)
+        return addSecurityHeaders(errorResponse, cspNonce)
       }
     }
 
@@ -166,7 +185,7 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next({
       request: { headers: requestHeaders },
     })
-    return addSecurityHeaders(response)
+    return addSecurityHeaders(response, cspNonce)
   }
 
   // For all other routes (protected pages), verify session
@@ -187,7 +206,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const response = NextResponse.next()
-  return addSecurityHeaders(response)
+  return addSecurityHeaders(response, cspNonce)
 }
 
 export const config = {

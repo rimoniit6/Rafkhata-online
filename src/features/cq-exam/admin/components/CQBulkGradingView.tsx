@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, memo } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Save, Loader2, User, CheckCircle2, Clock, Image as ImageIcon, Edit3 } from 'lucide-react'
+import { ArrowLeft, Save, Loader2, CheckCircle2, User, Image as ImageIcon, Edit3 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,13 +23,192 @@ import { CQExamSetRecord, CQExamSetQuestionRecord, CQExamSubmissionRecord, CQExa
 
 const bengaliLabels = ['ক', 'খ', 'গ', 'ঘ']
 
+interface CQExamAnswerRecordWithSubMarks extends CQExamAnswerRecord {
+  subMarks?: number[]
+}
+
 interface BulkSubmissionItem {
   id: string
   user: { id: string; name: string | null; email: string; classLevel: string | null }
   status: string
-  answers: (CQExamAnswerRecord & { subMarks?: number[] })[]
+  answers: CQExamAnswerRecordWithSubMarks[]
 }
 
+// Memoized submission card to prevent unnecessary re-renders
+const SubmissionCard = memo(function SubmissionCard({
+  sub,
+  selectedQuestion,
+  grades,
+  bengaliLabels,
+  saving,
+  annotatingImage,
+  setAnnotatingImage,
+  setLightboxImages,
+  setLightboxIndex,
+  setLightboxOpen,
+  lightboxImages,
+  lightboxIndex,
+  handleQuickMark,
+  handleSaveAnswer,
+  syncedAnswerIds,
+  triggerAutoSave,
+  quickMarkButtons,
+  cn,
+  ImageAnnotator,
+  SafeImage,
+  RichContentRenderer,
+  ImageLightbox,
+  User,
+  Badge,
+  Separator,
+  Card,
+  CardContent,
+  CheckCircle2,
+  Clock,
+  Edit3,
+  ImageIcon,
+}: any) {
+  const userName = sub.user.name || sub.user.email || 'অজানা'
+  const classLevel = sub.user.classLevel || ''
+
+  return (
+    <Card key={sub.id} className="flex flex-col">
+      <CardContent className="p-3 space-y-3 flex-1 flex flex-col">
+        <div className="flex items-center gap-2 text-sm">
+          <User className="h-4 w-4 text-muted-foreground shrink-0" />
+          <span className="font-medium truncate">{sub.user.name || sub.user.email || 'অজানা'}</span>
+          {sub.user.classLevel && <Badge variant="outline" className="text-[10px]">{sub.user.classLevel}</Badge>}
+        </div>
+
+        <Separator />
+
+        <div className="space-y-2 flex-1">
+          {sub.answers.length === 0 ? (
+            <p className="text-xs text-muted-foreground">উত্তর দেওয়া হয়নি</p>
+          ) : (
+            sub.answers.map(ans => {
+              const maxM = ans.maxMarks ?? (selectedQuestion?.marks ?? 5) / 4
+              const currentGrade = grades[ans.id]?.obtainedMarks ?? ans.obtainedMarks ?? 0
+
+              return (
+                <div key={ans.id} className="space-y-1.5">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <span className="font-semibold">{bengaliLabels[ans.subIndex] ?? ans.subIndex}</span>
+                  </div>
+                  {ans.answerText ? (
+                    <RichContentRenderer content={ans.answerText} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground italic">—</p>
+                  )}
+
+                  {ans.images.length > 0 && (
+                    <div className="flex gap-1 flex-wrap">
+                      {ans.images.map((img, imgIdx) => {
+                        const isAnnotating = annotatingImage === img.id
+                        const allImgs = ans.images.map(i => ({
+                          id: i.id, url: i.imageUrl, alt: 'উত্তর',
+                        }))
+                        return (
+                          <div key={img.id} className="relative group">
+                            <SafeImage
+                              src={img.imageUrl}
+                              alt="উত্তর"
+                              className={cn(
+                                'w-16 h-16 object-cover rounded border cursor-pointer',
+                                isAnnotating && 'ring-2 ring-emerald-500'
+                              )}
+                              onClick={() => {
+                                setLightboxImages(allImgs)
+                                setLightboxIndex(imgIdx)
+                                setLightboxOpen(true)
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className={cn(
+                                'absolute top-0.5 right-0.5 p-0.5 rounded-full text-white transition-all text-[10px]',
+                                isAnnotating
+                                  ? 'bg-emerald-500 opacity-100'
+                                  : 'bg-black/50 opacity-80 hover:opacity-100 hover:bg-emerald-600'
+                              )}
+                              onClick={(e) => { e.stopPropagation(); setAnnotatingImage(isAnnotating ? null : img.id) }}
+                              title="ছবিতে মার্ক করুন"
+                            >
+                              <Edit3 className="size-3" />
+                            </button>
+                            {img.annotations && !isAnnotating && (
+                              <div className="absolute bottom-0.5 left-0.5 bg-emerald-600/80 text-white text-[8px] px-1 rounded">মার্ক</div>
+                            )}
+                            {isAnnotating && (
+                              <div className="mt-1">
+                                <ImageAnnotator
+                                  imageUrl={img.imageUrl}
+                                  annotations={img.annotations || undefined}
+                                  onSave={(ann) => handleAnnotationSave(img.id, ann)}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap gap-1 pt-1">
+                    {quickMarkButtons(maxM).map(m => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => handleQuickMark(ans.id, m)}
+                        className={cn(
+                          'text-[11px] px-1.5 py-0.5 rounded border transition-colors',
+                          currentGrade === m
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background hover:bg-accent border-border'
+                        )}
+                      >
+                        {m}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+
+        {(() => {
+          const rawObtained = sub.answers.reduce((s, a) => s + (grades[a.id]?.obtainedMarks ?? a.obtainedMarks ?? 0), 0)
+          const questionMarks = selectedQuestion?.marks ?? sub.answers.reduce((s, a) => s + a.maxMarks, 0)
+          const isOver = rawObtained > questionMarks
+          const hasDirty = sub.answers.some(a => grades[a.id] !== undefined && !syncedAnswerIds.has(a.id))
+          const allSynced = sub.answers.length > 0 && sub.answers.every(a => syncedAnswerIds.has(a.id))
+          return (
+            <div className="pt-1 border-t space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <div>
+                  {hasDirty ? (
+                    <span className="text-amber-500 flex items-center gap-1">
+                      <Clock className="size-3" /> অপরিবর্তিত
+                    </span>
+                  ) : allSynced ? (
+                    <span className="text-emerald-500 flex items-center gap-1">
+                      <CheckCircle2 className="size-3" /> সংরক্ষিত
+                    </span>
+                  ) : null}
+                </div>
+                <span className={isOver ? 'text-amber-500 font-semibold' : 'text-muted-foreground'}>
+                  {rawObtained.toFixed(1)} / {questionMarks}
+                </span>
+              </div>
+              {isOver && <p className="text-[10px] text-amber-500 text-right">সর্বোচ্চ {questionMarks}</p>}
+            </div>
+          )
+        })()}
+      </CardContent>
+    </Card>
+  )
+})
 interface CQBulkGradingViewProps {
   saving: boolean
   set: (CQExamSetRecord & { questions?: CQExamSetQuestionRecord[] }) | null
@@ -176,148 +355,43 @@ export function CQBulkGradingView({ saving, set: setData, bulkSubmissions, onBul
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {bulkSubmissions.map(sub => {
-          const userName = sub.user.name || sub.user.email || 'অজানা'
-          const classLevel = sub.user.classLevel || ''
-
-          return (
-            <Card key={sub.id} className="flex flex-col">
-              <CardContent className="p-3 space-y-3 flex-1 flex flex-col">
-                <div className="flex items-center gap-2 text-sm">
-                  <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span className="font-medium truncate">{userName}</span>
-                  {classLevel && <Badge variant="outline" className="text-[10px]">{classLevel}</Badge>}
-                </div>
-
-                <Separator />
-
-                <div className="space-y-2 flex-1">
-                  {sub.answers.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">উত্তর দেওয়া হয়নি</p>
-                  ) : (
-                    sub.answers.map(ans => {
-                      const maxM = ans.maxMarks ?? (selectedQuestion?.marks ?? 5) / 4
-                      const currentGrade = grades[ans.id]?.obtainedMarks ?? ans.obtainedMarks ?? 0
-
-                      return (
-                        <div key={ans.id} className="space-y-1.5">
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <span className="font-semibold">{bengaliLabels[ans.subIndex] ?? ans.subIndex}</span>
-                          </div>
-                          {ans.answerText ? (
-                            <RichContentRenderer content={ans.answerText} />
-                          ) : (
-                            <p className="text-xs text-muted-foreground italic">—</p>
-                          )}
-
-                          {ans.images.length > 0 && (
-                            <div className="flex gap-1 flex-wrap">
-                              {ans.images.map((img, imgIdx) => {
-                                const isAnnotating = annotatingImage === img.id
-                                const allImgs = ans.images.map(i => ({
-                                  id: i.id, url: i.imageUrl, alt: 'উত্তর',
-                                }))
-                                return (
-                                  <div key={img.id} className="relative group">
-                                    <SafeImage
-                                      src={img.imageUrl}
-                                      alt="উত্তর"
-                                      className={cn(
-                                        'w-16 h-16 object-cover rounded border cursor-pointer',
-                                        isAnnotating && 'ring-2 ring-emerald-500'
-                                      )}
-                                      onClick={() => {
-                                        setLightboxImages(allImgs)
-                                        setLightboxIndex(imgIdx)
-                                        setLightboxOpen(true)
-                                      }}
-                                    />
-                                    <button
-                                      type="button"
-                                      className={cn(
-                                        'absolute top-0.5 right-0.5 p-0.5 rounded-full text-white transition-all text-[10px]',
-                                        isAnnotating
-                                          ? 'bg-emerald-500 opacity-100'
-                                          : 'bg-black/50 opacity-80 hover:opacity-100 hover:bg-emerald-600'
-                                      )}
-                                      onClick={(e) => { e.stopPropagation(); setAnnotatingImage(isAnnotating ? null : img.id) }}
-                                      title="ছবিতে মার্ক করুন"
-                                    >
-                                      <Edit3 className="size-3" />
-                                    </button>
-                                    {img.annotations && !isAnnotating && (
-                                      <div className="absolute bottom-0.5 left-0.5 bg-emerald-600/80 text-white text-[8px] px-1 rounded">মার্ক</div>
-                                    )}
-                                    {isAnnotating && (
-                                      <div className="mt-1">
-                                        <ImageAnnotator
-                                          imageUrl={img.imageUrl}
-                                          annotations={img.annotations || undefined}
-                                          onSave={(ann) => handleAnnotationSave(img.id, ann)}
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          )}
-
-                          <div className="flex flex-wrap gap-1 pt-1">
-                            {quickMarkButtons(maxM).map(m => (
-                              <button
-                                key={m}
-                                type="button"
-                                onClick={() => handleQuickMark(ans.id, m)}
-                                className={cn(
-                                  'text-[11px] px-1.5 py-0.5 rounded border transition-colors',
-                                  currentGrade === m
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'bg-background hover:bg-accent border-border'
-                                )}
-                              >
-                                {m}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-
-                {(() => {
-                  const rawObtained = sub.answers.reduce((s, a) => s + (grades[a.id]?.obtainedMarks ?? a.obtainedMarks ?? 0), 0)
-                  const questionMarks = selectedQuestion?.marks ?? sub.answers.reduce((s, a) => s + a.maxMarks, 0)
-                  const isOver = rawObtained > questionMarks
-                  const hasDirty = sub.answers.some(a => grades[a.id] !== undefined && !syncedAnswerIds.has(a.id))
-                  const allSynced = sub.answers.length > 0 && sub.answers.every(a => syncedAnswerIds.has(a.id))
-                  return (
-                    <div className="pt-1 border-t space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <div>
-                          {hasDirty ? (
-                            <span className="text-amber-500 flex items-center gap-1">
-                              <Clock className="size-3" /> অপরিবর্তিত
-                            </span>
-                          ) : allSynced ? (
-                            <span className="text-emerald-500 flex items-center gap-1">
-                              <CheckCircle2 className="size-3" /> সংরক্ষিত
-                            </span>
-                          ) : null}
-                        </div>
-                        <span className={isOver ? 'text-amber-500 font-semibold' : 'text-muted-foreground'}>
-                          {rawObtained.toFixed(1)} / {questionMarks}
-                        </span>
-                      </div>
-                      {isOver && <p className="text-[10px] text-amber-500 text-right">সর্বোচ্চ {questionMarks}</p>}
-                    </div>
-                  )
-                })()}
-              </CardContent>
-            </Card>
-          )
-        })}
+        {bulkSubmissions.map(sub => (
+          <SubmissionCard
+            key={sub.id}
+            sub={sub}
+            selectedQuestion={selectedQuestion}
+            grades={grades}
+            bengaliLabels={bengaliLabels}
+            selectedQuestion={selectedQuestion}
+            saving={saving}
+            annotatingImage={annotatingImage}
+            setAnnotatingImage={setAnnotatingImage}
+            setLightboxImages={setLightboxImages}
+            setLightboxIndex={setLightboxIndex}
+            setLightboxOpen={setLightboxOpen}
+            lightboxImages={lightboxImages}
+            lightboxIndex={lightboxIndex}
+            handleQuickMark={handleQuickMark}
+            handleSaveAnswer={handleSaveAnswer}
+            syncedAnswerIds={syncedAnswerIds}
+            triggerAutoSave={triggerAutoSave}
+            quickMarkButtons={quickMarkButtons}
+            cn={cn}
+            ImageAnnotator={ImageAnnotator}
+            SafeImage={SafeImage}
+            RichContentRenderer={RichContentRenderer}
+            ImageLightbox={ImageLightbox}
+            User={User}
+            Badge={Badge}
+            Separator={Separator}
+            Card={Card}
+            CardContent={CardContent}
+            CheckCircle2={CheckCircle2}
+            Clock={Clock}
+            Edit3={Edit3}
+            ImageIcon={ImageIcon}
+          />
+        ))}
       </div>
 
       <ImageLightbox
