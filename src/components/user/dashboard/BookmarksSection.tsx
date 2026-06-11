@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Bookmark, FileQuestion, BookOpen, Play, Zap, XCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,7 +22,7 @@ interface BookmarksSectionProps {
   onExplore: () => void
 }
 
-export function BookmarksSection({ bookmarkedQuestions, onNavigate, onDelete, onExplore }: BookmarksSectionProps) {
+function BookmarksSectionComponent({ bookmarkedQuestions, onNavigate, onDelete, onExplore }: BookmarksSectionProps) {
   return (
     <div className="mt-5 space-y-4">
       <h3 className="text-lg font-semibold flex items-center gap-2.5">
@@ -82,3 +83,5 @@ export function BookmarksSection({ bookmarkedQuestions, onNavigate, onDelete, on
     </div>
   )
 }
+
+export const BookmarksSection = memo(BookmarksSectionComponent)

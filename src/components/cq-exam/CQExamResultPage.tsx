@@ -62,6 +62,9 @@ interface CQQuestionDetail {
   order: number
   type?: string
   subMarks?: string | null
+  stem?: string | null
+  stemImage?: string | null
+  config?: string | null
   typedUddeepok?: string | null
   typedUddeepokImage?: string | null
   typedQuestion1?: string | null
@@ -539,7 +542,236 @@ export default function CQExamResultPage() {
 
           <div className="space-y-6">
             {submission.questions.map((q, qi) => {
-                const isTyped = q.type === 'typed'
+                const questionType = q.type || 'cq'
+
+                // Non-CQ question types
+                if (questionType !== 'cq' && questionType !== 'typed') {
+                  let config: any = {}
+                  try { config = JSON.parse(q.config || '{}') } catch {}
+                  const qStem = q.stem || ''
+                  const qStemImage = q.stemImage || null
+
+                  const getTypeLabel = () => {
+                    switch (questionType) {
+                      case 'mcq-single': return 'MCQ (একক উত্তর)'
+                      case 'mcq-multiple': return 'MCQ (একাধিক উত্তর)'
+                      case 'fill-blanks': return 'শূন্যস্থান পূরণ'
+                      case 'written': return 'রচনামূলক প্রশ্ন'
+                      default: return questionType
+                    }
+                  }
+
+                  return (
+                    <Card key={q.id} className="border-border/50 overflow-hidden">
+                      <div className="bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20 p-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center justify-center size-8 rounded-full bg-emerald-500 text-white font-bold text-sm shrink-0">
+                            {toBengaliNumerals(qi + 1)}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">
+                              {getTypeLabel()}
+                            </span>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {toBengaliNumerals(q.marks)} নম্বর
+                          </Badge>
+                        </div>
+                      </div>
+
+                      <CardContent className="p-4 sm:p-6 space-y-6">
+                        {qStem ? (
+                          <div className="space-y-3">
+                            <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                              <FileQuestion className="size-4" />
+                              প্রশ্ন
+                            </h4>
+                            <div className="rounded-lg bg-muted/50 p-4 border">
+                              <RichContentRenderer content={qStem} className="text-base leading-relaxed" />
+                            </div>
+                            {qStemImage && (
+                              <div className="rounded-lg overflow-hidden border bg-muted/30">
+                                <SafeImage src={qStemImage} alt="প্রশ্নের ছবি" className="max-h-64 object-contain mx-auto" />
+                              </div>
+                            )}
+                            <Separator />
+                          </div>
+                        ) : null}
+
+                        {/* MCQ Single */}
+                        {questionType === 'mcq-single' && (() => {
+                          const options = config.options || []
+                          const answer = submission.answers.find((a) => a.questionId === q.id && a.subIndex === 0)
+                          const selectedIndex = answer?.answerText ? parseInt(answer.answerText) : -1
+                          return (
+                            <div className="space-y-2">
+                              <p className="font-semibold text-sm">আপনার উত্তর:</p>
+                              {options.map((opt: string, oi: number) => (
+                                <div key={oi} className={cn(
+                                  'flex items-center gap-3 p-3 rounded-lg border',
+                                  selectedIndex === oi ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'opacity-70'
+                                )}>
+                                  <span className="size-4 rounded-full border-2 flex items-center justify-center shrink-0">
+                                    {selectedIndex === oi && <span className="size-2.5 rounded-full bg-emerald-500" />}
+                                  </span>
+                                  <span className="text-sm">{opt}</span>
+                                </div>
+                              ))}
+                              {answer && (isGraded || isPending) && (
+                                <AnswerBlock
+                                  label=""
+                                  answerText=""
+                                  images={answer.images || []}
+                                  obtainedMarks={answer.obtainedMarks}
+                                  maxMarks={answer.maxMarks}
+                                  feedback={answer.feedback}
+                                  showAnnotatedImages={showAnnotatedImages}
+                                />
+                              )}
+                            </div>
+                          )
+                        })()}
+
+                        {/* MCQ Multiple */}
+                        {questionType === 'mcq-multiple' && (() => {
+                          const options = config.options || []
+                          const answer = submission.answers.find((a) => a.questionId === q.id && a.subIndex === 0)
+                          let selectedIndices: number[] = []
+                          try { selectedIndices = JSON.parse(answer?.answerText || '[]') } catch {}
+                          return (
+                            <div className="space-y-2">
+                              <p className="font-semibold text-sm">আপনার উত্তর:</p>
+                              {options.map((opt: string, oi: number) => (
+                                <div key={oi} className={cn(
+                                  'flex items-center gap-3 p-3 rounded-lg border',
+                                  selectedIndices.includes(oi) ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20' : 'opacity-70'
+                                )}>
+                                  <span className="size-4 rounded border-2 flex items-center justify-center shrink-0">
+                                    {selectedIndices.includes(oi) && <span className="size-2 bg-emerald-500 rounded-sm" />}
+                                  </span>
+                                  <span className="text-sm">{opt}</span>
+                                </div>
+                              ))}
+                              {answer && (isGraded || isPending) && (
+                                <AnswerBlock
+                                  label=""
+                                  answerText=""
+                                  images={answer.images || []}
+                                  obtainedMarks={answer.obtainedMarks}
+                                  maxMarks={answer.maxMarks}
+                                  feedback={answer.feedback}
+                                  showAnnotatedImages={showAnnotatedImages}
+                                />
+                              )}
+                            </div>
+                          )
+                        })()}
+
+                        {/* Fill Blanks */}
+                        {questionType === 'fill-blanks' && (() => {
+                          const blanks: { id: string; answer: string; marks: number }[] = config.blanks || []
+                          return (
+                            <div className="space-y-3">
+                              <p className="font-semibold text-sm">আপনার উত্তর:</p>
+                              {blanks.map((blank, si) => {
+                                const ans = submission.answers.find((a) => a.questionId === q.id && a.subIndex === si)
+                                return (
+                                  <div key={si} className="space-y-2">
+                                    <div className="flex items-center gap-3 p-3 rounded-lg border">
+                                      <span className="text-sm font-medium text-muted-foreground">{toBengaliNumerals(si + 1)}.</span>
+                                      <div className="flex-1">
+                                        {ans?.answerText ? (
+                                          <span className="text-sm">{ans.answerText}</span>
+                                        ) : (
+                                          <span className="text-sm text-muted-foreground italic">পূরণ করা হয়নি</span>
+                                        )}
+                                      </div>
+                                      {isGraded && (
+                                        <span className={cn(
+                                          'text-xs font-bold',
+                                          (ans?.obtainedMarks ?? 0) >= (ans?.maxMarks ?? 1) ? 'text-emerald-600' : 'text-destructive'
+                                        )}>
+                                          {toBengaliNumerals(Math.round(ans?.obtainedMarks || 0))}/{toBengaliNumerals(Math.round(ans?.maxMarks || 1))}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {ans && ans.feedback && (
+                                      <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 p-3 flex items-baseline gap-2 ml-2">
+                                        <MessageSquare className="size-4 text-emerald-500 shrink-0 mt-0.5" />
+                                        <div>
+                                          <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-0.5">প্রতিক্রিয়া:</p>
+                                          <p className="text-sm text-muted-foreground">{ans.feedback}</p>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )
+                        })()}
+
+                        {/* Written */}
+                        {questionType === 'written' && (() => {
+                          const ans = submission.answers.find((a) => a.questionId === q.id && a.subIndex === 0)
+                          const imgAns = submission.answers.find((a) => a.questionId === q.id && a.subIndex === 1)
+                          const hasImages = imgAns && imgAns.images && imgAns.images.length > 0
+                          return (
+                            <div className="space-y-3">
+                              <p className="font-semibold text-sm">আপনার উত্তর:</p>
+                              {ans?.answerText ? (
+                                <div className="rounded-lg bg-muted/30 p-4 border">
+                                  <RichContentRenderer content={ans.answerText} className="text-sm leading-relaxed" />
+                                </div>
+                              ) : (
+                                <div className="rounded-lg bg-muted/20 p-3 border border-dashed">
+                                  <p className="text-sm text-muted-foreground italic">কোনো উত্তর দেওয়া হয়নি</p>
+                                </div>
+                              )}
+                              {hasImages && (
+                                <div>
+                                  <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                                    <ImageIcon className="size-3" />
+                                    সংযুক্ত ছবি ({imgAns!.images.length})
+                                  </p>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                    {imgAns!.images.map((img) => {
+                                      const hasAnnotations = showAnnotatedImages && img.annotations && img.annotations.trim() !== '' && img.annotations !== '[]'
+                                      return (
+                                        <div key={img.id} className="relative">
+                                          {hasAnnotations ? (
+                                            <ImageAnnotator imageUrl={img.imageUrl} annotations={img.annotations!} readonly={true} />
+                                          ) : (
+                                            <div className="rounded-lg overflow-hidden border bg-muted/30">
+                                              <SafeImage src={img.imageUrl} alt="উত্তরের ছবি" className="w-full h-24 object-cover" />
+                                            </div>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                              {ans && (isGraded || isPending) && (
+                                <AnswerBlock
+                                  label=""
+                                  answerText=""
+                                  images={[]}
+                                  obtainedMarks={ans.obtainedMarks}
+                                  maxMarks={ans.maxMarks}
+                                  feedback={ans.feedback}
+                                  showAnnotatedImages={showAnnotatedImages}
+                                />
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </CardContent>
+                    </Card>
+                  )
+                }
+
+                const isTyped = questionType === 'typed'
                 const cq = q.cq
 
                 let stimulus = ''

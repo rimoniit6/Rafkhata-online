@@ -99,9 +99,64 @@ export function CQQuestionManager({
         </div>
       ) : (
         <div className="space-y-4">
-          {questions.map((q, idx) => {
+            {questions.map((q, idx) => {
             const subMarks = parseSubMarks(q.subMarks)
-            const isTyped = q.type === 'typed'
+            const questionType = q.type || 'cq'
+            const isTyped = questionType === 'typed'
+            const isNonCq = ['mcq-single', 'mcq-multiple', 'fill-blanks', 'written'].includes(questionType)
+
+            if (isNonCq) {
+              let config: any = {}
+              try { config = JSON.parse(q.config || '{}') } catch {}
+
+              const getTypeLabel = () => {
+                switch (questionType) {
+                  case 'mcq-single': return 'MCQ (একক)'
+                  case 'mcq-multiple': return 'MCQ (একাধিক)'
+                  case 'fill-blanks': return 'শূন্যস্থান'
+                  case 'written': return 'রচনামূলক'
+                  default: return questionType
+                }
+              }
+
+              return (
+                <Card key={q.id} className="border-border/50 overflow-hidden">
+                  <div className="bg-gradient-to-r from-amber-50/80 to-orange-50/80 dark:from-amber-950/20 dark:to-orange-950/20 px-4 py-2.5 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs font-mono">Q {idx + 1}</Badge>
+                      <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30">{getTypeLabel()}</Badge>
+                      <span className="text-xs text-muted-foreground">নম্বর: {q.marks}</span>
+                    </div>
+                    <div className="flex items-center gap-0.5">
+                      {onEditQuestion && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-sky-600" onClick={() => onEditQuestion(q)}>
+                          <Edit className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === 0} onClick={() => onMoveQuestion(q.id, 'up')}>
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === questions.length - 1} onClick={() => onMoveQuestion(q.id, 'down')}>
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => onRemoveQuestion(q.id, true)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <CardContent className="p-4 space-y-2">
+                    {q.stem && <RichContentRenderer content={q.stem} className="text-sm mb-2" inline />}
+                    {q.stemImage && <img src={q.stemImage} alt="প্রশ্ন" className="h-12 rounded object-contain" />}
+                    {questionType === 'fill-blanks' && config.blanks && (
+                      <div className="text-xs text-muted-foreground">{config.blanks.length}টি শূন্যস্থান</div>
+                    )}
+                    {questionType !== 'fill-blanks' && config.options && (
+                      <div className="text-xs text-muted-foreground">{config.options.length}টি অপশন</div>
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            }
 
             let stimulus = ''
             let stimulusImage: string | null = null
@@ -129,15 +184,15 @@ export function CQQuestionManager({
 
             return (
               <Card key={q.id} className="border-border/50 overflow-hidden">
-                <div className="bg-gradient-to-r from-sky-50/80 to-blue-50/80 dark:from-sky-950/20 dark:to-blue-950/20 px-4 py-2.5 border-b border-border/30 flex items-center justify-between">
+                <div className="bg-gradient-to-r from-sky-50/80 to-blue-50/80 dark:from-sky-950/20 dark:to-blue-950/20 px-4 py-2.5 border-b flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className="text-xs font-mono">CQ {idx + 1}</Badge>
-                    {isTyped && <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">টাইপকৃত</Badge>}
+                    {isTyped && <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700">টাইপকৃত</Badge>}
                     <span className="text-xs text-muted-foreground">নম্বর: {q.marks}</span>
                   </div>
                   <div className="flex items-center gap-0.5">
                     {isTyped && onEditQuestion && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-sky-600 hover:text-sky-700" onClick={() => onEditQuestion(q)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-sky-600" onClick={() => onEditQuestion(q)}>
                         <Edit className="h-3.5 w-3.5" />
                       </Button>
                     )}
@@ -147,7 +202,7 @@ export function CQQuestionManager({
                     <Button variant="ghost" size="icon" className="h-7 w-7" disabled={idx === questions.length - 1} onClick={() => onMoveQuestion(q.id, 'down')}>
                       <ChevronDown className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600" onClick={() => onRemoveQuestion(isTyped ? q.id : q.cqId!, isTyped)}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500" onClick={() => onRemoveQuestion(isTyped ? q.id : q.cqId!, isTyped)}>
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -155,69 +210,16 @@ export function CQQuestionManager({
                 <CardContent className="p-4 space-y-3">
                   {stimulus ? (
                     <div>
-                      <div className="flex items-center gap-2">
-                    {/* Inline marks editing for non-typed questions */}
-                    {!isTyped && onUpdateQuestionMarks && (
-                      <>
-                        {editingMarks[q.id] !== undefined ? (
-                          <div className="flex items-center gap-1">
-                            <Input
-                              type="number"
-                              step="0.5"
-                              min="0"
-                              value={editingMarks[q.id]}
-                              onChange={(e) => setEditingMarks(prev => ({ ...prev, [q.id]: e.target.value }))}
-                              className="w-16 h-7 text-xs text-center"
-                            />
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6 text-emerald-600"
-                              onClick={async () => {
-                                setMarksSaving(true)
-                                await onUpdateQuestionMarks(q.id, parseFloat(editingMarks[q.id]) || 0)
-                                setMarksSaving(false)
-                                setEditingMarks(prev => { const n = { ...prev }; delete n[q.id]; return n })
-                              }}
-                              disabled={marksSaving}
-                            >
-                              <Save className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
-                              onClick={() => setEditingMarks(prev => { const n = { ...prev }; delete n[q.id]; return n })}
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
-                          </div>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 gap-1 text-xs text-muted-foreground hover:text-amber-600"
-                            onClick={() => setEditingMarks(prev => ({ ...prev, [q.id]: String(q.marks) }))}
-                          >
-                            <Pencil className="h-3 w-3" />
-                            <span className="font-mono">{q.marks} নম্বর</span>
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-700 dark:text-sky-400 mb-1">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-sky-700 mb-1">
                         <BookOpen className="h-3 w-3" /> উদ্দীপক
                       </div>
                       <RichContentRenderer content={stimulus} className="text-sm" inline />
-                      {stimulusImage && (
-                        <img src={stimulusImage} alt="উদ্দীপক" className="h-12 mt-1 rounded object-contain" />
-                      )}
+                      {stimulusImage && <img src={stimulusImage} alt="উদ্দীপক" className="h-12 mt-1 rounded object-contain" />}
                     </div>
                   ) : null}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {subQuestions.map((item, qIdx) => (
-                      <div key={qIdx} className="p-2 rounded border border-border/40 bg-muted/30">
+                      <div key={qIdx} className="p-2 rounded border bg-muted/30">
                         <div className="flex items-center justify-between mb-0.5">
                           <span className="text-[11px] font-semibold text-muted-foreground">{item.label}</span>
                           {subMarks[qIdx] !== undefined && (
@@ -225,9 +227,7 @@ export function CQQuestionManager({
                           )}
                         </div>
                         <RichContentRenderer content={item.value} className="text-sm line-clamp-2" inline />
-                        {item.image && (
-                          <img src={item.image} alt={item.label} className="h-8 mt-1 rounded" />
-                        )}
+                        {item.image && <img src={item.image} alt={item.label} className="h-8 mt-1 rounded" />}
                       </div>
                     ))}
                   </div>

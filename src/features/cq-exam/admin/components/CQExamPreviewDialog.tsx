@@ -37,9 +37,99 @@ function PreviewQuestionCard({
   collapsed: boolean
   onToggle: () => void
 }) {
-  const isTyped = question.type === 'typed'
+  const questionType = question.type || 'cq'
+  const isTyped = questionType === 'typed'
+  const isNonCq = ['mcq-single', 'mcq-multiple', 'fill-blanks', 'written'].includes(questionType)
   const cq = question.cq
 
+  // Non-CQ question preview
+  if (isNonCq) {
+    let config: any = {}
+    try { config = JSON.parse(question.config || '{}') } catch {}
+
+    const getTypeLabel = () => {
+      switch (questionType) {
+        case 'mcq-single': return 'MCQ (একক উত্তর)'
+        case 'mcq-multiple': return 'MCQ (একাধিক উত্তর)'
+        case 'fill-blanks': return 'শূন্যস্থান পূরণ'
+        case 'written': return 'রচনামূলক প্রশ্ন'
+        default: return questionType
+      }
+    }
+
+    return (
+      <Card className="border-border/50 overflow-hidden shadow-sm">
+        <button type="button" onClick={onToggle} className="w-full text-left">
+          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center justify-center size-8 rounded-full bg-emerald-500 text-white font-bold text-sm shrink-0">
+                {toBengaliNumerals(index + 1)}
+              </span>
+              <div>
+                <span className="font-semibold text-amber-700 dark:text-amber-400 text-sm">{getTypeLabel()}</span>
+                <p className="text-xs text-muted-foreground">{question.marks} নম্বর</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">{toBengaliNumerals(question.marks)} নম্বর</Badge>
+              {collapsed ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronUp className="size-4 text-muted-foreground" />}
+            </div>
+          </div>
+        </button>
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+              <CardContent className="p-4 sm:p-6 space-y-5">
+                {question.stem && (
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2 text-amber-700 dark:text-amber-400">
+                      <FileQuestion className="size-4" /> প্রশ্ন
+                    </h4>
+                    <div className="rounded-lg bg-muted/50 p-4 border">
+                      <RichContentRenderer content={question.stem} className="text-base leading-relaxed" />
+                    </div>
+                    {question.stemImage && (
+                      <div className="rounded-lg overflow-hidden border bg-muted/30">
+                        <SafeImage src={question.stemImage} alt="প্রশ্নের ছবি" className="max-h-64 object-contain mx-auto" />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {(questionType === 'mcq-single' || questionType === 'mcq-multiple') && config.options && (
+                  <div className="space-y-2">
+                    {config.options.map((opt: string, oi: number) => (
+                      <div key={oi} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20">
+                        <span className="size-4 rounded-full border-2 flex items-center justify-center shrink-0" />
+                        <span className="text-sm">{opt}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {questionType === 'fill-blanks' && config.blanks && (
+                  <div className="space-y-2">
+                    {config.blanks.map((blank: any, si: number) => (
+                      <div key={si} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20">
+                        <span className="text-sm font-medium text-muted-foreground">{toBengaliNumerals(si + 1)}.</span>
+                        <div className="flex-1 px-3 py-2 rounded bg-background border text-sm text-muted-foreground italic">শিক্ষার্থী উত্তর লিখবে...</div>
+                        <span className="text-xs text-muted-foreground">{blank.marks} নম্বর</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {questionType === 'written' && (
+                  <div className="rounded-lg border-2 border-dashed border-muted-foreground/20 p-6">
+                    <p className="text-sm text-muted-foreground/50 italic text-center">শিক্ষার্থী এখানে রচনামূলক উত্তর লিখবে...</p>
+                  </div>
+                )}
+              </CardContent>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Card>
+    )
+  }
+
+  // CQ / Typed question preview (existing logic)
   let stimulus = ''
   let stimulusImage: string | null = null
   let subQuestions: { text: string; image: string | null }[] = []
@@ -76,15 +166,11 @@ function PreviewQuestionCard({
               <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">
                 CQ {toBengaliNumerals(index + 1)}
               </span>
-              <p className="text-xs text-muted-foreground">
-                {question.marks} নম্বর
-              </p>
+              <p className="text-xs text-muted-foreground">{question.marks} নম্বর</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-              {toBengaliNumerals(question.marks)} নম্বর
-            </Badge>
+            <Badge variant="outline" className="text-xs">{toBengaliNumerals(question.marks)} নম্বর</Badge>
             {collapsed ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronUp className="size-4 text-muted-foreground" />}
           </div>
         </div>
@@ -92,18 +178,12 @@ function PreviewQuestionCard({
 
       <AnimatePresence>
         {!collapsed && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          >
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
             <CardContent className="p-4 sm:p-6 space-y-5">
               {stimulus ? (
                 <div className="space-y-3">
                   <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
-                    <FileQuestion className="size-4" />
-                    উদ্দীপক
+                    <FileQuestion className="size-4" /> উদ্দীপক
                   </h4>
                   <div className="rounded-lg bg-muted/50 p-4 border">
                     <RichContentRenderer content={stimulus} className="text-base leading-relaxed" />
@@ -121,27 +201,19 @@ function PreviewQuestionCard({
               {subQuestions.map((sq, si) => (
                 <div key={si} className="space-y-3">
                   <div className="flex items-center gap-2">
-                    <span className="flex items-center justify-center size-7 rounded-full bg-emerald-500 text-white font-bold text-xs shrink-0">
-                      {bengaliLabels[si]}
-                    </span>
+                    <span className="flex items-center justify-center size-7 rounded-full bg-emerald-500 text-white font-bold text-xs shrink-0">{bengaliLabels[si]}</span>
                     <span className="font-semibold text-sm">প্রশ্ন {bengaliLabels[si]}</span>
                   </div>
-
                   <div className="rounded-lg bg-muted/30 p-3 border text-sm leading-relaxed">
                     <RichContentRenderer content={sq.text} />
                   </div>
-
                   {sq.image && (
                     <div className="rounded-lg overflow-hidden border bg-muted/30">
                       <SafeImage src={sq.image} alt={`প্রশ্ন ${bengaliLabels[si]}-এর ছবি`} className="max-h-48 object-contain mx-auto" />
                     </div>
                   )}
-
-                  {/* Empty answer area - just a placeholder in preview */}
                   <div className="rounded-lg border-2 border-dashed border-muted-foreground/20 p-4">
-                    <p className="text-sm text-muted-foreground/50 italic">
-                      শিক্ষার্থী এখানে উত্তর লিখবে...
-                    </p>
+                    <p className="text-sm text-muted-foreground/50 italic">শিক্ষার্থী এখানে উত্তর লিখবে...</p>
                   </div>
                 </div>
               ))}

@@ -28,8 +28,6 @@ interface CQBulkCreateSetsDialogProps {
   setBulkCount: (v: string) => void
   bulkDuration: string
   setBulkDuration: (v: string) => void
-  bulkMarksPerQ: string
-  setBulkMarksPerQ: (v: string) => void
   onSave: () => void
   saving: boolean
 }
@@ -37,7 +35,7 @@ interface CQBulkCreateSetsDialogProps {
 export function CQBulkCreateSetsDialog({
   open, onOpenChange, bulkPrefix, setBulkPrefix, bulkStartDate, setBulkStartDate,
   bulkIntervalDays, setBulkIntervalDays, bulkCount, setBulkCount,
-  bulkDuration, setBulkDuration, bulkMarksPerQ, setBulkMarksPerQ, onSave, saving
+  bulkDuration, setBulkDuration, onSave, saving
 }: CQBulkCreateSetsDialogProps) {
   const [bulkDatePickerOpen, setBulkDatePickerOpen] = useState(false)
 
@@ -99,11 +97,6 @@ export function CQBulkCreateSetsDialog({
                 <Timer className="h-3.5 w-3.5 text-emerald-600" /> সময়কাল (মিনিট)
               </Label>
               <Input type="number" value={bulkDuration} onChange={(e) => setBulkDuration(e.target.value)} />
-            </div>
-
-            <div className="space-y-2">
-              <Label>প্রতি প্রশ্নে নম্বর</Label>
-              <Input type="number" step="0.5" value={bulkMarksPerQ} onChange={(e) => setBulkMarksPerQ(e.target.value)} />
             </div>
           </div>
         </div>

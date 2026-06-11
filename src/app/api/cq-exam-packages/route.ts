@@ -7,12 +7,17 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'list'
-    const userId = searchParams.get('userId')
+    
+    // Get authenticated user (optional for public endpoints)
+    const auth = await verifyAuth(request)
+    const userId = auth?.user?.id
 
-    // List available packages (public)
+    // List available packages (public) - with pagination
     if (action === 'list') {
       const classSlug = searchParams.get('classSlug') || ''
       const search = searchParams.get('search') || ''
+      const page = parseInt(searchParams.get('page') || '1')
+      const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
 
       const where: Record<string, unknown> = { status: 'published', isActive: true }
       if (classSlug) {
@@ -22,16 +27,21 @@ export async function GET(request: Request) {
         where.title = { contains: search }
       }
 
-      const packages = await db.cQExamPackage.findMany({
-        where,
-        include: {
-          class: { select: { id: true, name: true, slug: true } },
-          _count: { select: { examSets: true } },
-        },
-        orderBy: { order: 'asc' },
-      })
+      const [packages, total] = await Promise.all([
+        db.cQExamPackage.findMany({
+          where,
+          include: {
+            class: { select: { id: true, name: true, slug: true } },
+            _count: { select: { examSets: true } },
+          },
+          orderBy: { order: 'asc' },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        db.cQExamPackage.count({ where }),
+      ])
 
-      return NextResponse.json({ packages })
+      return NextResponse.json({ packages, pagination: { page, limit, total, totalPages: Math.ceil(total / limit) } })
     }
 
     // Package detail with sets
@@ -53,7 +63,7 @@ export async function GET(request: Request) {
       })
       if (!pkg) return NextResponse.json({ error: 'Package not found' }, { status: 404 })
 
-      // Check if user has purchased
+      // Check if user has purchased - use authenticated user only
       let hasPurchased = false
       let hasPendingPayment = false
       if (userId) {
@@ -85,7 +95,14 @@ export async function GET(request: Request) {
             userId,
             set: { packageId: id },
           },
-          include: {
+          select: {
+            id: true,
+            setId: true,
+            totalMarks: true,
+            obtainedMarks: true,
+            timeTaken: true,
+            status: true,
+            canRetake: true,
             set: { select: { id: true, title: true, totalQuestions: true, totalMarks: true } },
           },
           orderBy: { createdAt: 'desc' },
@@ -95,16 +112,14 @@ export async function GET(request: Request) {
       return NextResponse.json({ package: pkg, hasPurchased, hasPendingPayment, submissions })
     }
 
-    // Check purchase status for a user
+    // Check purchase status for a user - requires auth
     if (action === 'check-purchase') {
       const packageId = searchParams.get('packageId')
       if (!packageId) {
         return NextResponse.json({ success: false, error: 'Package ID required' }, { status: 400 })
       }
 
-      const auth = await verifyAuth(request)
-      const purchaseUserId = auth?.user.id || userId
-      if (!purchaseUserId) {
+      if (!userId) {
         return NextResponse.json(
           { success: false, error: 'ক্রয় অবস্থা দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
           { status: 401 }
@@ -114,7 +129,7 @@ export async function GET(request: Request) {
       const purchaseRecord = await db.cQExamPackagePurchase.findUnique({
         where: {
           userId_packageId: {
-            userId: purchaseUserId,
+            userId,
             packageId,
           },
         },
@@ -127,7 +142,7 @@ export async function GET(request: Request) {
       if (!purchased) {
         const pendingPay = await db.payment.findFirst({
           where: {
-            userId: purchaseUserId,
+            userId,
             contentType: 'cq-exam-package',
             contentId: packageId,
             status: 'pending',
@@ -147,15 +162,14 @@ export async function GET(request: Request) {
       })
     }
 
-    // User's retake requests for a package
+    // User's retake requests for a package - requires auth
     if (action === 'my-retake-requests') {
       const packageId = searchParams.get('packageId')
-      const uid = searchParams.get('userId')
-      if (!uid || !packageId) return NextResponse.json({ error: 'User ID and Package ID required' }, { status: 400 })
+      if (!userId || !packageId) return NextResponse.json({ error: 'Package ID required' }, { status: 400 })
 
       const requests = await db.cQExamRetakeRequest.findMany({
         where: {
-          userId: uid,
+          userId,
           set: { packageId },
         },
         include: {
@@ -167,10 +181,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ requests })
     }
 
-    // Get submission detail for user
+    // Get submission detail for user - requires auth
     if (action === 'my-submission') {
       const submissionId = searchParams.get('submissionId')
       if (!submissionId) return NextResponse.json({ error: 'Submission ID required' }, { status: 400 })
+
+      if (!userId) return NextResponse.json({ error: 'লগইন প্রয়োজন', code: 'UNAUTHORIZED' }, { status: 401 })
 
       const submission = await db.cQExamSubmission.findUnique({
         where: { id: submissionId },
@@ -195,6 +211,11 @@ export async function GET(request: Request) {
       })
       if (!submission) return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
 
+      // Verify submission belongs to authenticated user
+      if (submission.userId !== userId) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+      }
+
       // If showAnnotatedImages is false, strip annotations from answer images
       const showAnnotated = submission.set.showAnnotatedImages
       if (!showAnnotated) {
@@ -215,8 +236,7 @@ export async function GET(request: Request) {
       const setId = searchParams.get('setId')
       if (!setId) return NextResponse.json({ error: 'Set ID required' }, { status: 400 })
 
-      const auth = await verifyAuth(request)
-      if (!auth) {
+      if (!userId) {
         return NextResponse.json({ error: 'লগইন প্রয়োজন', code: 'UNAUTHORIZED' }, { status: 401 })
       }
 
@@ -238,7 +258,7 @@ export async function GET(request: Request) {
 
       if (set.package.isPremium) {
         const purchase = await db.cQExamPackagePurchase.findUnique({
-          where: { userId_packageId: { userId: auth.user.id, packageId: set.package.id } },
+          where: { userId_packageId: { userId, packageId: set.package.id } },
         })
         if (!purchase?.isActive) {
           return NextResponse.json({ error: 'আপনি এই প্যাকেজটি কিনেননি। প্রথমে প্যাকেজটি কিনুন।', code: 'NOT_PURCHASED' }, { status: 403 })
@@ -257,13 +277,19 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await verifyAuth(request)
+    if (!auth) {
+      return NextResponse.json({ error: 'লগইন প্রয়োজন', code: 'UNAUTHORIZED' }, { status: 401 })
+    }
+    const userId = auth.user.id
+
     const body = await request.json()
-    const { action, userId } = body
+    const { action } = body
 
     // Start exam attempt
     if (action === 'start-exam') {
       const { setId } = body
-      if (!setId || !userId) return NextResponse.json({ error: 'Set ID and User ID required' }, { status: 400 })
+      if (!setId) return NextResponse.json({ error: 'Set ID required' }, { status: 400 })
 
       // Get set details with package info
       const set = await db.cQExamSet.findUnique({
@@ -285,6 +311,47 @@ export async function POST(request: Request) {
         }
       }
 
+      // Helper to create answer slots per question based on type
+      const createAnswersForQuestions = (questions: typeof set.questions) => questions.flatMap((q) => {
+        const qType = q.type || 'cq'
+        if (qType === 'cq' || qType === 'typed') {
+          let subMarks: number[] = []
+          if (q.subMarks) {
+            try { subMarks = JSON.parse(q.subMarks) } catch { subMarks = [] }
+          }
+          const ans = Array.from({ length: 4 }, (_, si) => ({
+            questionId: q.id,
+            subIndex: si,
+            maxMarks: subMarks[si] ?? q.marks / 4,
+            answerText: null,
+            obtainedMarks: 0,
+          }))
+          ans.push({ questionId: q.id, subIndex: 4, maxMarks: 0, answerText: null, obtainedMarks: 0 })
+          return ans
+        }
+        if (qType === 'fill-blanks') {
+          let blanks: { id: string; marks: number }[] = []
+          try { const cfg = JSON.parse(q.config || '{}'); blanks = cfg.blanks || [] } catch {}
+          return blanks.map((blank, si) => ({
+            questionId: q.id,
+            subIndex: si,
+            maxMarks: blank.marks || q.marks / (blanks.length || 1),
+            answerText: null,
+            obtainedMarks: 0,
+          }))
+        }
+        if (qType === 'written') {
+          return [
+            { questionId: q.id, subIndex: 0, maxMarks: q.marks, answerText: null, obtainedMarks: 0 },
+            { questionId: q.id, subIndex: 1, maxMarks: 0, answerText: null, obtainedMarks: 0 },
+          ]
+        }
+        // mcq-single, mcq-multiple: 1 slot
+        return [
+          { questionId: q.id, subIndex: 0, maxMarks: q.marks, answerText: null, obtainedMarks: 0 },
+        ]
+      })
+
       // Check if already started
       const existing = await db.cQExamSubmission.findUnique({
         where: { userId_setId: { userId, setId } },
@@ -302,29 +369,7 @@ export async function POST(request: Request) {
             canRetake: hadCanRetake,
             status: 'in-progress',
             startedAt: new Date(),
-            answers: {
-              create: set.questions.flatMap((q) => {
-                let subMarks: number[] = []
-                if (q.subMarks) {
-                  try { subMarks = JSON.parse(q.subMarks) } catch { subMarks = [] }
-                }
-                const ans = Array.from({ length: 4 }, (_, si) => ({
-                  questionId: q.id,
-                  subIndex: si,
-                  maxMarks: subMarks[si] ?? q.marks / 4,
-                  answerText: null,
-                  obtainedMarks: 0,
-                }))
-                ans.push({
-                  questionId: q.id,
-                  subIndex: 4,
-                  maxMarks: 0,
-                  answerText: null,
-                  obtainedMarks: 0,
-                })
-                return ans
-              }),
-            },
+            answers: { create: createAnswersForQuestions(set.questions) },
           },
           include: {
             answers: {
@@ -364,8 +409,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ submission, status: 'submitted' })
       }
 
-      // Create submission + 5 answers per question (subIndex 0-4)
-      // subIndex 0-3 are individual sub-questions, subIndex 4 is for global "whole CQ" images
+      // Create submission with type-appropriate answer slots
       const submission = await db.cQExamSubmission.create({
         data: {
           userId,
@@ -373,30 +417,7 @@ export async function POST(request: Request) {
           totalMarks: set.totalMarks,
           status: 'in-progress',
           startedAt: new Date(),
-          answers: {
-            create: set.questions.flatMap((q) => {
-              let subMarks: number[] = []
-              if (q.subMarks) {
-                try { subMarks = JSON.parse(q.subMarks) } catch { subMarks = [] }
-              }
-              const ans = Array.from({ length: 4 }, (_, si) => ({
-                questionId: q.id,
-                subIndex: si,
-                maxMarks: subMarks[si] ?? q.marks / 4,
-                answerText: null,
-                obtainedMarks: 0,
-              }))
-              // Add global answer slot for "whole CQ" images (subIndex 4, 0 marks)
-              ans.push({
-                questionId: q.id,
-                subIndex: 4,
-                maxMarks: 0,
-                answerText: null,
-                obtainedMarks: 0,
-              })
-              return ans
-            }),
-          },
+          answers: { create: createAnswersForQuestions(set.questions) },
         },
         include: {
           answers: {
@@ -460,8 +481,8 @@ export async function POST(request: Request) {
 
     // Request retake
     if (action === 'request-retake') {
-      const { setId, userId, reason } = body
-      if (!setId || !userId) return NextResponse.json({ error: 'Set ID and User ID required' }, { status: 400 })
+      const { setId, reason } = body
+      if (!setId) return NextResponse.json({ error: 'Set ID required' }, { status: 400 })
 
       // Check if already requested
       const existing = await db.cQExamRetakeRequest.findUnique({

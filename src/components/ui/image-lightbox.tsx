@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Maximize, Minimize } from 'lucide-react'
+import { X, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw, Maximize, Edit3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -17,6 +17,7 @@ interface ImageLightboxProps {
   initialIndex?: number
   open: boolean
   onClose: () => void
+  onAnnotate?: (imageId: string) => void
 }
 
 export default function ImageLightbox({
@@ -24,6 +25,7 @@ export default function ImageLightbox({
   initialIndex = 0,
   open,
   onClose,
+  onAnnotate,
 }: ImageLightboxProps) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex)
   const [zoom, setZoom] = useState(1)
@@ -198,6 +200,17 @@ export default function ImageLightbox({
           >
             <RotateCw className="h-4 w-4" />
           </Button>
+          {onAnnotate && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30"
+              onClick={(e) => { e.stopPropagation(); onAnnotate(currentImage.id); }}
+              title="ছবিতে মার্ক করুন"
+            >
+              <Edit3 className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"

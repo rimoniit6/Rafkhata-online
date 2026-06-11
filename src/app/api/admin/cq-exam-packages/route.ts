@@ -4,11 +4,13 @@ import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
 async function recalculateSetTotals(setId: string) {
-  const questions = await db.cQExamSetQuestion.findMany({
+  const result = await db.cQExamSetQuestion.aggregate({
     where: { setId },
+    _count: { id: true },
+    _sum: { marks: true },
   })
-  const totalQuestions = questions.length
-  const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0)
+  const totalQuestions = result._count.id
+  const totalMarks = result._sum.marks || 0
   await db.cQExamSet.update({
     where: { id: setId },
     data: { totalQuestions, totalMarks },
@@ -157,24 +159,38 @@ export async function GET(request: Request) {
         })
       }
 
-      // List submissions for a set
+      // List submissions for a set (with pagination)
       case 'submissions': {
         const subSetId = searchParams.get('setId')
         if (!subSetId) return apiError('Set ID is required', 400)
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
+        const status = searchParams.get('status') || ''
 
-        const subs = await db.cQExamSubmission.findMany({
-          where: { setId: subSetId },
-          include: {
-            user: { select: { id: true, name: true, email: true, avatar: true, classLevel: true } },
-            answers: {
-              include: { images: { orderBy: { order: 'asc' } } },
-              orderBy: { createdAt: 'asc' },
+        const where: Record<string, unknown> = { setId: subSetId }
+        if (status) where.status = status
+
+        const [subs, total] = await Promise.all([
+          db.cQExamSubmission.findMany({
+            where,
+            include: {
+              user: { select: { id: true, name: true, email: true, avatar: true, classLevel: true } },
+              answers: {
+                include: { images: { orderBy: { order: 'asc' } } },
+                orderBy: { createdAt: 'asc' },
+              },
             },
-          },
-          orderBy: { createdAt: 'desc' },
-        })
+            orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+          db.cQExamSubmission.count({ where }),
+        ])
 
-        return apiResponse({ submissions: subs })
+        return apiResponse({
+          submissions: subs,
+          pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        })
       }
 
       // Bulk grading by question — all submissions with answer for a specific question
@@ -295,31 +311,43 @@ export async function POST(request: Request) {
         return apiResponse({ set }, 201)
       }
 
-      // Add questions to set
+      // Add questions to set (batched)
       case 'add-questions': {
-        const { setId, cqIds, marks } = body
+        const { setId, cqIds } = body
         if (!setId || !cqIds?.length) return apiError('Set ID and CQ IDs are required', 400)
 
         // Get existing question count for ordering
         const existingCount = await db.cQExamSetQuestion.count({ where: { setId } })
 
-        const created: Array<Record<string, unknown>> = []
-        for (let i = 0; i < cqIds.length; i++) {
-          const existing = await db.cQExamSetQuestion.findUnique({
-            where: { setId_cqId: { setId, cqId: cqIds[i] } },
-          })
-          if (!existing) {
-            const q = await db.cQExamSetQuestion.create({
-              data: {
-                setId,
-                cqId: cqIds[i],
-                marks: marks?.[i] || 1,
-                order: existingCount + i,
-              },
-            })
-            created.push(q)
-          }
+        // Batch check existing questions
+        const existingQuestions = await db.cQExamSetQuestion.findMany({
+          where: { setId, cqId: { in: cqIds } },
+          select: { cqId: true },
+        })
+        const existingCqIds = new Set(existingQuestions.map(q => q.cqId))
+
+        // Filter to only new CQ IDs
+        const newCqIds = cqIds.filter(id => !existingCqIds.has(id))
+        const defaultSubMarks = [1, 2, 3, 4]
+        const totalMarks = defaultSubMarks.reduce((a, b) => a + b, 0)
+
+        if (newCqIds.length > 0) {
+          // Batch create new questions
+          const data = newCqIds.map((cqId, i) => ({
+            setId,
+            cqId,
+            marks: totalMarks,
+            subMarks: JSON.stringify(defaultSubMarks),
+            order: existingCount + cqIds.indexOf(cqId),
+          }))
+          await db.cQExamSetQuestion.createMany({ data })
         }
+
+        // Return created questions
+        const created = await db.cQExamSetQuestion.findMany({
+          where: { setId, cqId: { in: newCqIds } },
+          orderBy: { order: 'asc' },
+        })
         await recalculateSetTotals(setId)
         return apiResponse({ created })
       }
@@ -353,6 +381,31 @@ export async function POST(request: Request) {
             typedQuestion3Image: typedQuestion3Image || null,
             typedQuestion4: typedQuestion4 || null,
             typedQuestion4Image: typedQuestion4Image || null,
+          },
+        })
+        await recalculateSetTotals(setId)
+        return apiResponse({ question }, 201)
+      }
+
+      // Create non-CQ question (mcq-single, mcq-multiple, fill-blanks, written)
+      case 'create-non-cq-question': {
+        const { setId, questionType, stem, stemImage, config, marks } = body
+        if (!setId || !questionType) return apiError('Set ID and question type required', 400)
+        if (!['mcq-single', 'mcq-multiple', 'fill-blanks', 'written'].includes(questionType)) {
+          return apiError('Invalid question type', 400)
+        }
+
+        const existingCount = await db.cQExamSetQuestion.count({ where: { setId } })
+
+        const question = await db.cQExamSetQuestion.create({
+          data: {
+            setId,
+            type: questionType,
+            marks: marks || 1,
+            order: existingCount,
+            stem: stem || null,
+            stemImage: stemImage || null,
+            config: config || '{}',
           },
         })
         await recalculateSetTotals(setId)
@@ -443,6 +496,13 @@ export async function PUT(request: Request) {
         const { submissionId, answers } = body
         if (!submissionId || !answers?.length) return apiError('Submission ID and answers required', 400)
 
+        // Fetch submission to get setId
+        const submission = await db.cQExamSubmission.findUnique({
+          where: { id: submissionId },
+          select: { setId: true, userId: true },
+        })
+        if (!submission) return apiError('Submission not found', 404)
+
         let totalObtained = 0
         for (const ans of answers) {
           if (ans.id) {
@@ -491,7 +551,7 @@ export async function PUT(request: Request) {
         return apiResponse({ submission: updatedSubmission })
       }
 
-      // Bulk grade all pending submissions for a set
+      // Bulk grade all pending submissions for a set (batched)
       case 'bulk-grade': {
         const { setId, defaultMarks } = body
         if (!setId) return apiError('Set ID is required', 400)
@@ -500,39 +560,54 @@ export async function PUT(request: Request) {
           ? Math.max(0, defaultMarks)
           : 0
 
-        // Find all pending (submitted) submissions for this set
+        // Find all pending (submitted) submissions for this set with their answers
         const pendingSubmissions = await db.cQExamSubmission.findMany({
           where: { setId, status: 'submitted' },
           include: { answers: true },
         })
 
-        let gradedCount = 0
+        if (pendingSubmissions.length === 0) {
+          return apiResponse({ gradedCount: 0, defaultMarks: marks })
+        }
+
+        // Collect all answer IDs and compute obtained marks per submission
+        const answerUpdates: Array<{ id: string; obtainedMarks: number }> = []
+        const submissionUpdates: Array<{ id: string; obtainedMarks: number }> = []
+
         for (const sub of pendingSubmissions) {
-          // Calculate total obtained marks based on maxMarks per answer
           let totalObtained = 0
           for (const ans of sub.answers) {
             const answerMarks = Math.min(marks, ans.maxMarks || 0)
-            await db.cQExamAnswer.update({
-              where: { id: ans.id },
-              data: {
-                obtainedMarks: answerMarks,
-                gradedAt: new Date(),
-              },
-            })
+            answerUpdates.push({ id: ans.id, obtainedMarks: answerMarks })
             totalObtained += answerMarks
           }
-          // Mark submission as graded
-          await db.cQExamSubmission.update({
-            where: { id: sub.id },
-            data: {
-              obtainedMarks: totalObtained,
-              status: 'graded',
-              gradedAt: new Date(),
-              gradedBy: auth?.user?.id || null,
-            },
-          })
-          gradedCount++
+          submissionUpdates.push({ id: sub.id, obtainedMarks: totalObtained })
         }
+
+        // Batch update all answers
+        await Promise.all(
+          answerUpdates.map(({ id, obtainedMarks }) =>
+            db.cQExamAnswer.update({
+              where: { id },
+              data: { obtainedMarks, gradedAt: new Date() },
+            })
+          )
+        )
+
+        // Batch update all submissions
+        await Promise.all(
+          submissionUpdates.map(({ id, obtainedMarks }) =>
+            db.cQExamSubmission.update({
+              where: { id },
+              data: {
+                obtainedMarks,
+                status: 'graded',
+                gradedAt: new Date(),
+                gradedBy: auth?.user?.id || null,
+              },
+            })
+          )
+        )
 
         // Check if autoPublishResults is enabled for the set
         const bulkExamSet = await db.cQExamSet.findUnique({
@@ -553,51 +628,63 @@ export async function PUT(request: Request) {
           }
         }
 
-        return apiResponse({ gradedCount, defaultMarks: marks })
+        return apiResponse({ gradedCount: pendingSubmissions.length, defaultMarks: marks })
       }
 
-      // Save bulk grades by question — saves marks for all submissions' answers for one question
+      // Save bulk grades by question — saves marks for all submissions' answers for one question (batched)
       case 'save-bulk-grades-by-question': {
         const { submissions: gradeUpdates } = body
         if (!gradeUpdates?.length) return apiError('Submissions data required', 400)
 
-        let updatedCount = 0
+        // Collect all answer updates and submission totals
+        const answerUpdates: Array<{ id: string; obtainedMarks: number }> = []
+        const submissionTotals = new Map<string, number>()
+
         for (const item of gradeUpdates) {
           const { submissionId, answers } = item
           if (!submissionId || !answers?.length) continue
 
-          let totalObtained = 0
+          let totalForSubmission = 0
           for (const ans of answers) {
             if (ans.id) {
-              await db.cQExamAnswer.update({
-                where: { id: ans.id },
-                data: {
-                  obtainedMarks: ans.obtainedMarks ?? 0,
-                  gradedAt: new Date(),
-                },
-              })
-              totalObtained += ans.obtainedMarks ?? 0
+              const obtainedMarks = ans.obtainedMarks ?? 0
+              answerUpdates.push({ id: ans.id, obtainedMarks })
+              totalForSubmission += obtainedMarks
             }
           }
-
-          // Recalculate total from ALL answers for this submission
-          const allAnswers = await db.cQExamAnswer.findMany({
-            where: { submissionId },
-            select: { obtainedMarks: true },
-          })
-          const allObtained = allAnswers.reduce((s, a) => s + a.obtainedMarks, 0)
-
-          await db.cQExamSubmission.update({
-            where: { id: submissionId },
-            data: {
-              obtainedMarks: allObtained,
-              status: 'graded',
-              gradedAt: new Date(),
-              gradedBy: auth?.user?.id || null,
-            },
-          })
-          updatedCount++
+          // Add to existing total from other questions (will be merged with current answers)
+          const existingTotal = submissionTotals.get(submissionId) || 0
+          submissionTotals.set(submissionId, existingTotal + totalForSubmission)
         }
+
+        // Batch update all answers
+        if (answerUpdates.length > 0) {
+          await Promise.all(
+            answerUpdates.map(({ id, obtainedMarks }) =>
+              db.cQExamAnswer.update({
+                where: { id },
+                data: { obtainedMarks, gradedAt: new Date() },
+              })
+            )
+          )
+        }
+
+        // Batch update all submissions
+        await Promise.all(
+          Array.from(submissionTotals.entries()).map(([submissionId, obtainedMarks]) =>
+            db.cQExamSubmission.update({
+              where: { id: submissionId },
+              data: {
+                obtainedMarks,
+                status: 'graded',
+                gradedAt: new Date(),
+                gradedBy: auth?.user?.id || null,
+              },
+            })
+          )
+        )
+
+        const updatedCount = submissionTotals.size
 
         // Check auto-publish for the set of the first submission (all items are for the same set)
         if (gradeUpdates.length > 0 && gradeUpdates[0].submissionId) {
@@ -771,6 +858,28 @@ export async function PUT(request: Request) {
         return apiResponse({ success: true, status: newStatus })
       }
 
+      // Update non-CQ question (mcq-single, mcq-multiple, fill-blanks, written)
+      case 'update-non-cq-question': {
+        const { questionId, stem, stemImage, config, marks } = body
+        if (!questionId) return apiError('Question ID required', 400)
+
+        const updateData: Record<string, unknown> = {}
+        if (stem !== undefined) updateData.stem = stem || null
+        if (stemImage !== undefined) updateData.stemImage = stemImage || null
+        if (config !== undefined) updateData.config = config || '{}'
+        if (marks !== undefined) updateData.marks = parseFloat(marks) || 0
+
+        const question = await db.cQExamSetQuestion.update({
+          where: { id: questionId },
+          data: updateData,
+        })
+
+        const setQ = await db.cQExamSetQuestion.findFirst({ where: { id: questionId } })
+        if (setQ) await recalculateSetTotals(setQ.setId)
+
+        return apiResponse({ question })
+      }
+
       // Update a typed question's content
       case 'update-typed-question': {
         const { questionId, typedUddeepok, typedUddeepokImage, typedQuestion1, typedQuestion1Image, typedQuestion2, typedQuestion2Image, typedQuestion3, typedQuestion3Image, typedQuestion4, typedQuestion4Image, subMarks } = body
@@ -820,6 +929,35 @@ export async function PUT(request: Request) {
         if (setQ) await recalculateSetTotals(setQ.setId)
 
         return apiResponse({ question })
+      }
+
+      // Reopen grading — revert a graded submission back to submitted for re-editing
+      case 'reopen-grading': {
+        const { submissionId } = body
+        if (!submissionId) return apiError('Submission ID is required', 400)
+
+        await db.cQExamSubmission.update({
+          where: { id: submissionId },
+          data: { status: 'submitted', gradedAt: null, gradedBy: null },
+        })
+
+        // Also clear obtainedMarks and feedback on answers so they can be re-graded
+        const answers = await db.cQExamAnswer.findMany({
+          where: { submissionId },
+          select: { id: true },
+        })
+        if (answers.length > 0) {
+          await Promise.all(
+            answers.map(ans =>
+              db.cQExamAnswer.update({
+                where: { id: ans.id },
+                data: { obtainedMarks: 0, feedback: null, gradedAt: null },
+              })
+            )
+          )
+        }
+
+        return apiResponse({ success: true })
       }
 
       // Save annotation on image

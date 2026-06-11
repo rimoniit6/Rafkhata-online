@@ -64,7 +64,6 @@ export type RoutePath =
   | 'cq-exam-package-detail'
   | 'cq-exam-viewer'
   | 'cq-exam-result'
-
 // Single source of truth for admin routes — used by AppShell, page.tsx, and AdminLayout
 export const ADMIN_ROUTES: RoutePath[] = [
   'admin-dashboard',

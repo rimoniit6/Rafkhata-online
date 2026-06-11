@@ -44,8 +44,6 @@ interface CQExamSetFormProps {
   setSetEndTime: (v: string) => void
   setDuration: string
   setSetDuration: (v: string) => void
-  setMarksPerQ: string
-  setSetMarksPerQ: (v: string) => void
   setInstructions: string
   setSetInstructions: (v: string) => void
   setOrder: string
@@ -78,7 +76,7 @@ interface CQExamSetFormProps {
 export function CQExamSetForm({
   editId, currentSet, setTitle, setSetTitle, setDescription, setSetDescription,
   setScheduledDate, setSetScheduledDate, setStartTime, setSetStartTime,
-  setEndTime, setSetEndTime, setDuration, setSetDuration, setMarksPerQ, setSetMarksPerQ,
+  setEndTime, setSetEndTime, setDuration, setSetDuration,
   setInstructions, setSetInstructions, setOrder, setSetOrder, setStatus, setSetStatus,
   setAllowRetake, setSetAllowRetake,
   setAnswerMode, setSetAnswerMode,
@@ -92,8 +90,6 @@ export function CQExamSetForm({
   saving, onSave, onCancel
 }: CQExamSetFormProps) {
   const [datePickerOpen, setDatePickerOpen] = useState(false)
-  const questionCount = currentSet?.totalQuestions || 0
-  const autoTotalMarks = parseFloat(setMarksPerQ || '1') * questionCount
 
   return (
     <div className="space-y-4">
@@ -204,27 +200,6 @@ export function CQExamSetForm({
               </Label>
               <Input type="number" placeholder="30" value={setDuration} onChange={(e) => setSetDuration(e.target.value)} />
             </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3">
-            <Label className="text-sm font-semibold flex items-center gap-2">
-              <Tag className="h-4 w-4 text-amber-600" /> নম্বর বিবরণ
-            </Label>
-            <div className="space-y-2">
-              <Label>প্রতি প্রশ্নে নম্বর</Label>
-              <Input type="number" step="0.5" value={setMarksPerQ} onChange={(e) => setSetMarksPerQ(e.target.value)} />
-            </div>
-
-            {questionCount > 0 && (
-              <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800">
-                <div className="flex items-center gap-4 text-sm">
-                  <span className="text-muted-foreground">প্রশ্ন সংখ্যা: <span className="font-semibold text-emerald-700 dark:text-emerald-300">{questionCount}</span></span>
-                  <span className="text-muted-foreground">মোট নম্বর: <span className="font-semibold text-emerald-700 dark:text-emerald-300">{autoTotalMarks}</span></span>
-                </div>
-              </div>
-            )}
           </div>
 
           <Separator />

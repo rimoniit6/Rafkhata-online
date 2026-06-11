@@ -40,7 +40,7 @@ const PUBLIC_API_ROUTES = [
   '/api/favicon',
   '/api/content-types',
   '/api/content-types/seed',
-  '/api/upload',
+  '/api/uploadthing',
 ]
 
 const ADMIN_ROUTES = ['/api/admin/']

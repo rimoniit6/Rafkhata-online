@@ -17,7 +17,7 @@ model User {
   email         String    @unique
   name          String?
   password      String?
-  role          String    @default("student") // super_admin, admin, student
+  role          String    @default("student") // super_admin, admin, evaluator, teacher, student
   avatar        String?
   phone         String?
   institute     String?
@@ -200,6 +200,8 @@ model MCQ {
 
   chapter         Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   examSetQuestions MCQExamSetQuestion[]
+
+  @@index([isActive, classLevel, subjectId, chapterId])
 }
 
 // ============ CQ SYSTEM ============
@@ -241,6 +243,8 @@ model CQ {
   chapter         Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   examSetQuestions CQExamSetQuestion[]
+
+  @@index([isActive, classLevel, subjectId, chapterId])
 }
 
 // ============ EXAM SYSTEM ============
@@ -403,6 +407,8 @@ model Payment {
   updatedAt       DateTime  @updatedAt
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, contentType, contentId, status])
 }
 
 // ============ NOTIFICATION ============
@@ -418,6 +424,9 @@ model Notification {
   createdAt   DateTime  @default(now())
 
   user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
 }
 
 // ============ BANNER ============
@@ -763,6 +772,7 @@ model MCQExamSetResult {
   canRetake     Boolean   @default(false) // Admin-granted individual retake permission
 
   @@unique([userId, setId])
+  @@index([userId, status])
 }
 
 // ============ MCQ EXAM RETAKE REQUESTS ============
@@ -818,6 +828,9 @@ model CQExamPackage {
 
   examSets    CQExamSet[]
   purchases   CQExamPackagePurchase[]
+
+  @@index([status, isActive, order])
+  @@index([classId])
 }
 
 model CQExamSet {
@@ -854,6 +867,9 @@ model CQExamSet {
   questions       CQExamSetQuestion[]
   submissions     CQExamSubmission[]
   retakeRequests  CQExamRetakeRequest[]
+
+  @@index([packageId])
+  @@index([status])
 }
 
 model CQExamSetQuestion {
@@ -864,8 +880,13 @@ model CQExamSetQuestion {
   cq              CQ?       @relation(fields: [cqId], references: [id])
   marks           Float     @default(1)
   order           Int       @default(0)
-  type            String    @default("cq") // "cq" or "typed"
+  type            String    @default("cq") // cq, typed, mcq-single, mcq-multiple, fill-blanks, written
   subMarks        String?   // JSON array [a,b,c,d] marks per sub-question
+
+  // For non-CQ question types (mcq-single, mcq-multiple, fill-blanks, written)
+  stem            String?   // Question stem (question text)
+  stemImage       String?   // Question stem image URL
+  config          String    @default("{}") // JSON: {options:[], correctIndex:N} for MCQ, {blanks:[]} for fill-blanks
 
   // For typed questions (type = "typed")
   typedUddeepok       String?   // Stimulus text
@@ -882,6 +903,7 @@ model CQExamSetQuestion {
   answers         CQExamAnswer[]
 
   @@unique([setId, cqId])
+  @@index([setId, order])
 }
 
 model CQExamPackagePurchase {
@@ -918,6 +940,8 @@ model CQExamSubmission {
   answers       CQExamAnswer[]
 
   @@unique([userId, setId])
+  @@index([setId, status])
+  @@index([userId, setId])
 }
 
 model CQExamAnswer {
@@ -938,6 +962,7 @@ model CQExamAnswer {
   images          CQExamAnswerImage[]
 
   @@unique([submissionId, questionId, subIndex])
+  @@index([submissionId, questionId])
 }
 
 model CQExamAnswerImage {
@@ -949,6 +974,8 @@ model CQExamAnswerImage {
   order           Int       @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  @@index([answerId])
 }
 
 // ============ CQ EXAM RETAKE REQUESTS ============
@@ -968,6 +995,8 @@ model CQExamRetakeRequest {
 
   @@unique([userId, setId])
 }
+
+
 
 // ============ TEACHERS & MODERATORS ============
 

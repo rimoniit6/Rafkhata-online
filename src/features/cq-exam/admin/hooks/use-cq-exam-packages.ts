@@ -109,7 +109,6 @@ export function useCQExamPackages() {
   const [setStartTime, setSetStartTime] = useState('00:00')
   const [setEndTime, setSetEndTime] = useState('23:59')
   const [setDuration, setSetDuration] = useState('30')
-  const [setMarksPerQ, setSetMarksPerQ] = useState('1')
   const [setInstructions, setSetInstructions] = useState('')
   const [setOrder, setSetOrder] = useState('0')
   const [setStatus, setSetStatus] = useState('draft')
@@ -152,7 +151,6 @@ export function useCQExamPackages() {
   const [bulkIntervalDays, setBulkIntervalDays] = useState('7')
   const [bulkCount, setBulkCount] = useState('10')
   const [bulkDuration, setBulkDuration] = useState('30')
-  const [bulkMarksPerQ, setBulkMarksPerQ] = useState('1')
 
   // Retake Requests
   const [retakeRequests, setRetakeRequests] = useState<CQExamRetakeRequestRecord[]>([])
@@ -309,7 +307,6 @@ export function useCQExamPackages() {
         startTime: setStartTime,
         endTime: setEndTime,
         duration: parseInt(setDuration) || 30,
-        marksPerQ: parseFloat(setMarksPerQ) || 1,
         instructions: setInstructions || undefined,
         allowRetake: setAllowRetake,
         order: parseInt(setOrder) || 0,
@@ -429,7 +426,6 @@ export function useCQExamPackages() {
           action: 'add-questions',
           setId: selectedSetId,
           cqIds: selectedCqIds,
-          marks: selectedCqIds.map(() => parseFloat(setMarksPerQ) || 1),
         }),
       })
       toast({ title: `${selectedCqIds.length}টি প্রশ্ন যোগ করা হয়েছে` })
@@ -473,6 +469,58 @@ export function useCQExamPackages() {
       const msg = err?.message || 'প্রশ্ন তৈরি করতে সমস্যা হয়েছে'
       toast({ title: 'ত্রুটি', description: msg, variant: 'destructive' })
       throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleCreateNonCqQuestion = async (data: {
+    questionType: string
+    stem: string
+    stemImage: string
+    config: string
+    marks: number
+  }) => {
+    if (!selectedSetId) return
+    setSaving(true)
+    try {
+      await unwrapResponse('/api/admin/cq-exam-packages', {
+        method: 'POST',
+        body: JSON.stringify({
+          action: 'create-non-cq-question',
+          setId: selectedSetId,
+          ...data,
+        }),
+      })
+      toast({ title: 'প্রশ্ন তৈরি করা হয়েছে' })
+      if (selectedSetId) await fetchSetDetail(selectedSetId)
+    } catch (err: any) {
+      toast({ title: 'ত্রুটি', description: err?.message || 'প্রশ্ন তৈরি করতে সমস্যা হয়েছে', variant: 'destructive' })
+      throw err
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleUpdateNonCqQuestion = async (data: {
+    questionId: string
+    stem?: string
+    stemImage?: string
+    config?: string
+    marks?: number
+  }) => {
+    setSaving(true)
+    try {
+      await unwrapResponse('/api/admin/cq-exam-packages', {
+        method: 'PUT',
+        body: JSON.stringify({ action: 'update-non-cq-question', ...data }),
+      })
+      toast({ title: 'প্রশ্ন আপডেট করা হয়েছে' })
+      if (selectedSetId) await fetchSetDetail(selectedSetId)
+      return true
+    } catch (err: any) {
+      toast({ title: 'ত্রুটি', description: err?.message || 'প্রশ্ন আপডেট করতে সমস্যা হয়েছে', variant: 'destructive' })
+      return false
     } finally {
       setSaving(false)
     }
@@ -707,6 +755,22 @@ export function useCQExamPackages() {
     }
   }
 
+  const handleReopenGrading = async (submissionId: string) => {
+    setSaving(true)
+    try {
+      await unwrapResponse('/api/admin/cq-exam-packages', {
+        method: 'PUT',
+        body: JSON.stringify({ action: 'reopen-grading', submissionId }),
+      })
+      toast({ title: 'গ্রেডিং পুনরায় খোলা হয়েছে', description: 'এখন আবার গ্রেড করতে পারবেন' })
+      if (selectedSetId) fetchSubmissions(selectedSetId)
+    } catch {
+      toast({ title: 'ত্রুটি', variant: 'destructive' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const handleSaveAnnotation = async (imageId: string, annotations: string) => {
     try {
       await unwrapResponse('/api/admin/cq-exam-packages', {
@@ -783,7 +847,6 @@ export function useCQExamPackages() {
             startTime: '00:00',
             endTime: '23:59',
             duration: parseInt(bulkDuration) || 30,
-            marksPerQ: parseFloat(bulkMarksPerQ) || 1,
             order: i,
             status: 'draft',
           }),
@@ -871,7 +934,6 @@ export function useCQExamPackages() {
     setStartTime, setSetStartTime,
     setEndTime, setSetEndTime,
     setDuration, setSetDuration,
-    setMarksPerQ, setSetMarksPerQ,
     setInstructions, setSetInstructions,
     setOrder, setSetOrder,
     setStatus, setSetStatus,
@@ -908,7 +970,6 @@ export function useCQExamPackages() {
     bulkIntervalDays, setBulkIntervalDays,
     bulkCount, setBulkCount,
     bulkDuration, setBulkDuration,
-    bulkMarksPerQ, setBulkMarksPerQ,
 
     retakeRequests, retakeRequestsLoading,
 
@@ -922,10 +983,10 @@ export function useCQExamPackages() {
 
     handleSavePackage, handleSaveSet, handleDelete,
     handleBulkCreateSets, handleSearchCqs, handleAddCqs,
-    handleCreateTypedQuestion, handleUpdateTypedQuestion, handleUpdateQuestionMarks,
-    handleRemoveQuestion, handleMoveQuestion,
+    handleCreateTypedQuestion, handleUpdateTypedQuestion, handleCreateNonCqQuestion, handleUpdateNonCqQuestion,
+    handleUpdateQuestionMarks, handleRemoveQuestion, handleMoveQuestion,
     editQuestionData, setEditQuestionData,
-    handleGradeSubmission, handleBulkGrade, handlePublishResults, handleAllowRetake, handleSaveAnnotation,
+    handleGradeSubmission, handleBulkGrade, handlePublishResults, handleAllowRetake, handleReopenGrading, handleSaveAnnotation,
     handleFetchBulkSubmissions, handleSaveBulkGrades,
     fetchRetakeRequests, handleApproveRetakeRequest,
     openLeaderboard, togglePackageActive,

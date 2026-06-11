@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { BookOpen, BarChart3, Bookmark, ShoppingBag } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -29,7 +30,7 @@ interface StatCardsProps {
   onPurchasedClick: () => void
 }
 
-export function StatCards({ stats, approvedPaymentsCount, onPurchasedClick }: StatCardsProps) {
+function StatCardsComponent({ stats, approvedPaymentsCount, onPurchasedClick }: StatCardsProps) {
   return (
     <motion.div
       variants={container}
@@ -103,3 +104,5 @@ export function StatCards({ stats, approvedPaymentsCount, onPurchasedClick }: St
     </motion.div>
   )
 }
+
+export const StatCards = memo(StatCardsComponent)

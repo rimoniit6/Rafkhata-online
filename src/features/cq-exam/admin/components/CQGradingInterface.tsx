@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
-import { cn } from '@/lib/utils'
+import { cn, toBengaliNumerals } from '@/lib/utils'
 import ImageAnnotator from '@/components/ui/image-annotator'
 import ImageLightbox from '@/components/ui/image-lightbox'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
@@ -100,13 +100,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
     setSavedAnswers(prev => { const next = new Set(prev); next.add(answerId); return next })
   }, [])
 
-  const handleSaveAll = useCallback(() => {
-    if (!submission) return
-    const allIds = new Set(submission.answers.map(a => a.id))
-    setSavedAnswers(allIds)
-  }, [submission])
-
-  const handleSubmitGrade = useCallback(() => {
+  const handleSubmitGrade = useCallback(async () => {
     if (!submission) return
     const answers = submission.answers.map(a => {
       const grade = answerGrades[a.id]
@@ -116,8 +110,9 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
         feedback: grade?.feedback ?? a.feedback ?? '',
       }
     })
-    onGrade(submission.id, answers)
-  }, [submission, answerGrades, onGrade])
+    await onGrade(submission.id, answers)
+    onBack()
+  }, [submission, answerGrades, onGrade, onBack])
 
   // Build a map of questionId -> question data
   const questionsMap = useMemo(() => {
@@ -165,8 +160,6 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
 
   const totalMax = submission.answers.reduce((sum, a) => sum + (a.maxMarks || 0), 0)
 
-  const allSaved = submission.answers.every(a => savedAnswers.has(a.id))
-
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
@@ -195,17 +188,9 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
 
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            className="gap-2"
-            onClick={handleSaveAll}
-            disabled={saving || allSaved}
-          >
-            <Save className="h-4 w-4" /> সব সংরক্ষণ
-          </Button>
-          <Button
             className="gap-2 bg-emerald-600 hover:bg-emerald-700"
             onClick={handleSubmitGrade}
-            disabled={saving || !allSaved}
+            disabled={saving}
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -221,10 +206,266 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
         {orderedQuestionIds.map((questionId, qIdx) => {
           const question = questionsMap.get(questionId)
           const answers = answersByQuestion.get(questionId) || []
-          const isTyped = question?.type === 'typed'
+          const questionType = question?.type || 'cq'
+          const isTyped = questionType === 'typed'
+          const isNonCq = ['mcq-single', 'mcq-multiple', 'fill-blanks', 'written'].includes(questionType)
           const cq = question?.cq
+          const isExpanded = expandedQuestions[questionId] ?? true
 
-          // Extract stimulus and sub-questions
+          // Parse non-CQ config
+          let config: any = {}
+          if (isNonCq) {
+            try { config = JSON.parse(question?.config || '{}') } catch {}
+          }
+
+          // Non-CQ question grading interface
+          if (isNonCq) {
+            const getTypeLabel = () => {
+              switch (questionType) {
+                case 'mcq-single': return 'MCQ (একক উত্তর)'
+                case 'mcq-multiple': return 'MCQ (একাধিক উত্তর)'
+                case 'fill-blanks': return 'শূন্যস্থান পূরণ'
+                case 'written': return 'রচনামূলক'
+                default: return questionType
+              }
+            }
+
+            return (
+              <motion.div key={questionId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: qIdx * 0.05 }}>
+                <Card className="border-border/50 overflow-hidden">
+                  <button type="button" onClick={() => setExpandedQuestions(prev => ({ ...prev, [questionId]: !isExpanded }))} className="w-full text-left">
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50/50 dark:from-amber-950/30 dark:to-orange-950/20 px-4 py-3 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs font-mono">{getTypeLabel()}</Badge>
+                        <span className="text-xs text-muted-foreground">{question?.marks || 0} নম্বর</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className={cn('text-[10px]', answers.some(a => a.answerText?.trim() || (a.images?.length ?? 0) > 0) ? 'text-emerald-600' : 'text-amber-600')}>
+                          {answers.filter(a => a.answerText?.trim() || (a.images?.length ?? 0) > 0).length}/{answers.length} উত্তর
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">{isExpanded ? 'সংকুচিত' : 'বিস্তারিত'}</span>
+                      </div>
+                    </div>
+                  </button>
+                  {isExpanded && (
+                    <CardContent className="p-4 sm:p-6 space-y-6">
+                      {/* Question stem */}
+                      {question?.stem && (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-400">
+                            <BookOpen className="h-3.5 w-3.5" /> প্রশ্ন
+                          </div>
+                          <div className="rounded-lg bg-muted/40 p-3 border text-sm leading-relaxed">
+                            <RichContentRenderer content={question.stem} />
+                          </div>
+                          {question.stemImage && (
+                            <div className="rounded-lg overflow-hidden border bg-muted/30">
+                              <SafeImage src={question.stemImage} alt="প্রশ্নের ছবি" className="max-h-40 object-contain mx-auto" />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* MCQ answers */}
+                      {(questionType === 'mcq-single' || questionType === 'mcq-multiple') && answers.map((answer) => {
+                        const maxMarks = answer.maxMarks || 0
+                        const grade = answerGrades[answer.id] || { obtainedMarks: answer.obtainedMarks ?? 0, feedback: answer.feedback ?? '' }
+                        const isSaved = savedAnswers.has(answer.id)
+                        let selectedIdx: number | null = null
+                        let selectedIndices: number[] = []
+                        try {
+                          const ansData = JSON.parse(answer.answerText || '{}')
+                          if (questionType === 'mcq-single') selectedIdx = ansData.selectedIndex
+                          else selectedIndices = ansData.selectedIndices || []
+                        } catch {}
+
+                        return (
+                          <div key={answer.id} className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">ছাত্রের উত্তর</span>
+                              <span className="text-xs text-muted-foreground">({maxMarks} নম্বর)</span>
+                              {isSaved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto" />}
+                            </div>
+                            <div className="space-y-1.5">
+                              {config.options?.map((opt: string, oi: number) => {
+                                const isSelected = questionType === 'mcq-single' ? selectedIdx === oi : selectedIndices.includes(oi)
+                                return (
+                                  <div key={oi} className={cn(
+                                    'flex items-center gap-3 p-2.5 rounded-lg border text-sm transition-colors',
+                                    isSelected ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 dark:border-emerald-700' : 'bg-muted/10'
+                                  )}>
+                                    <span className={cn(
+                                      'size-4 flex items-center justify-center shrink-0 rounded',
+                                      questionType === 'mcq-single' ? 'rounded-full' : 'rounded',
+                                      isSelected ? 'bg-emerald-500 text-white' : 'border-2 border-muted-foreground/30'
+                                    )}>
+                                      {isSelected && <CheckCircle2 className="size-3" />}
+                                    </span>
+                                    <span className={isSelected ? 'font-medium' : ''}>{opt}</span>
+                                    {isSelected && <Badge variant="secondary" className="text-[10px] ml-auto">নির্বাচিত</Badge>}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                            <Separator />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <label className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <Star className="h-3 w-3 text-amber-500" /> প্রাপ্ত নম্বর (সর্বোচ্চ {maxMarks})
+                                </label>
+                                <Input type="number" step="0.5" min={0} max={maxMarks} value={grade.obtainedMarks ?? 0} onChange={(e) => handleMarksChange(answer.id, e.target.value)} className="h-9" />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <MessageSquare className="h-3 w-3 text-blue-500" /> মন্তব্য / ফিডব্যাক
+                                </label>
+                                <Textarea rows={2} value={grade.feedback ?? ''} onChange={(e) => handleFeedbackChange(answer.id, e.target.value)} placeholder="ছাত্রের উত্তরের উপর মন্তব্য..." className="resize-none text-sm min-h-[36px]" />
+                              </div>
+                            </div>
+                            <div className="flex justify-end">
+                              <Button size="sm" variant={isSaved ? 'ghost' : 'default'} className={cn('gap-1.5 text-xs', !isSaved && 'bg-emerald-600 hover:bg-emerald-700')} onClick={() => handleSaveAnswer(answer.id)} disabled={saving}>
+                                {isSaved ? <><CheckCircle2 className="h-3.5 w-3.5" /> সংরক্ষিত</> : <><Save className="h-3.5 w-3.5" /> সংরক্ষণ</>}
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {/* Fill-blanks answers */}
+                      {questionType === 'fill-blanks' && (
+                        <div className="space-y-4">
+                          {answers.map((answer, ai) => {
+                            const maxMarks = answer.maxMarks || 0
+                            const grade = answerGrades[answer.id] || { obtainedMarks: answer.obtainedMarks ?? 0, feedback: answer.feedback ?? '' }
+                            const isSaved = savedAnswers.has(answer.id)
+                            const blankIdx = answer.subIndex ?? ai
+
+                            return (
+                              <div key={answer.id} className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="flex items-center justify-center size-7 rounded-full bg-amber-500 text-white font-bold text-xs shrink-0">{toBengaliNumerals(blankIdx + 1)}</span>
+                                  <span className="font-semibold text-sm">শূন্যস্থান {toBengaliNumerals(blankIdx + 1)}</span>
+                                  <span className="text-xs text-muted-foreground">({maxMarks} নম্বর)</span>
+                                  {isSaved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto" />}
+                                </div>
+                                <div className="rounded-lg bg-muted/20 p-3 border">
+                                  {answer.answerText?.trim() ? (
+                                    <p className="text-sm">{answer.answerText}</p>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground italic">কোনো উত্তর দেওয়া হয়নি</p>
+                                  )}
+                                </div>
+                                <Separator />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  <div className="space-y-1.5">
+                                    <label className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <Star className="h-3 w-3 text-amber-500" /> প্রাপ্ত নম্বর (সর্বোচ্চ {maxMarks})
+                                    </label>
+                                    <Input type="number" step="0.5" min={0} max={maxMarks} value={grade.obtainedMarks ?? 0} onChange={(e) => handleMarksChange(answer.id, e.target.value)} className="h-9" />
+                                  </div>
+                                  <div className="space-y-1.5">
+                                    <label className="text-xs text-muted-foreground flex items-center gap-1">
+                                      <MessageSquare className="h-3 w-3 text-blue-500" /> মন্তব্য / ফিডব্যাক
+                                    </label>
+                                    <Textarea rows={2} value={grade.feedback ?? ''} onChange={(e) => handleFeedbackChange(answer.id, e.target.value)} placeholder="ছাত্রের উত্তরের উপর মন্তব্য..." className="resize-none text-sm min-h-[36px]" />
+                                  </div>
+                                </div>
+                                <div className="flex justify-end">
+                                  <Button size="sm" variant={isSaved ? 'ghost' : 'default'} className={cn('gap-1.5 text-xs', !isSaved && 'bg-emerald-600 hover:bg-emerald-700')} onClick={() => handleSaveAnswer(answer.id)} disabled={saving}>
+                                    {isSaved ? <><CheckCircle2 className="h-3.5 w-3.5" /> সংরক্ষিত</> : <><Save className="h-3.5 w-3.5" /> সংরক্ষণ</>}
+                                  </Button>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      )}
+
+                      {/* Written answer */}
+                      {questionType === 'written' && answers.map((answer) => {
+                        const maxMarks = answer.maxMarks || 0
+                        const grade = answerGrades[answer.id] || { obtainedMarks: answer.obtainedMarks ?? 0, feedback: answer.feedback ?? '' }
+                        const isSaved = savedAnswers.has(answer.id)
+                        const hasImages = (answer.images?.length ?? 0) > 0
+                        const hasAnnotation = answer.images?.some(img => img.annotations)
+
+                        return (
+                          <div key={answer.id} className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-sm">{answer.subIndex === 1 ? 'ছবি' : 'লিখিত উত্তর'}</span>
+                              <span className="text-xs text-muted-foreground">({maxMarks} নম্বর)</span>
+                              {isSaved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto" />}
+                            </div>
+
+                            {/* Text answer (subIndex 0) */}
+                            {answer.subIndex === 0 && (
+                              <div className={cn('rounded-lg p-3 border', answer.answerText?.trim() ? 'bg-white dark:bg-muted/10' : 'bg-muted/10 border-dashed')}>
+                                {answer.answerText?.trim() ? (
+                                  <RichContentRenderer content={answer.answerText} className="text-sm leading-relaxed" />
+                                ) : (
+                                  <p className="text-sm text-muted-foreground italic">কোনো উত্তর দেওয়া হয়নি</p>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Images (subIndex 1) */}
+                            {hasImages && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                                  <ImageIcon className="h-3.5 w-3.5" />
+                                  ছাত্রের আপলোড করা ছবি ({answer.images.length}টি)
+                                  {hasAnnotation && <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 ml-1">মার্ক করা আছে</Badge>}
+                                </p>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                  {answer.images.map((img, imgIdx) => {
+                                    const isAnnotating = annotatingImage === img.id
+                                    const allImages = answer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: `উত্তর ছবি ${i.order + 1}`, annotations: i.annotations }))
+                                    return (
+                                      <div key={img.id} className="space-y-1">
+                                        <div className={cn('relative group rounded-lg overflow-hidden border transition-all', isAnnotating && 'ring-2 ring-emerald-500', img.annotations && !isAnnotating && 'ring-1 ring-amber-400')}>
+                                          <img src={img.imageUrl} alt={`উত্তর ছবি ${img.order + 1}`} className="w-full h-28 object-cover cursor-pointer" onClick={() => openLightbox(allImages, imgIdx)} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
+                                          <button className="absolute top-1 right-1 p-1.5 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-emerald-600" onClick={(e) => { e.stopPropagation(); setAnnotatingImage(isAnnotating ? null : img.id) }} title="ছবিতে মার্ক করুন"><Edit3 className="h-3.5 w-3.5" /></button>
+                                          <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">বড় করে দেখুন</div>
+                                          {img.annotations && !isAnnotating && <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-emerald-600/90 text-white text-[10px] px-1.5 py-0.5 rounded-full"><CheckCircle2 className="h-2.5 w-2.5" /> মার্ক করা আছে</div>}
+                                          {!img.annotations && !isAnnotating && <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100"><Edit3 className="h-2.5 w-2.5 inline mr-0.5" /> মার্ক করুন</div>}
+                                        </div>
+                                        {isAnnotating && <ImageAnnotator imageUrl={img.imageUrl} annotations={img.annotations || undefined} onSave={(ann) => handleAnnotationSave(img.id, ann)} />}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+
+                            {(answer.subIndex === 0 || hasImages) && <Separator />}
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="space-y-1.5">
+                                <label className="text-xs text-muted-foreground flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" /> প্রাপ্ত নম্বর (সর্বোচ্চ {maxMarks})</label>
+                                <Input type="number" step="0.5" min={0} max={maxMarks} value={grade.obtainedMarks ?? 0} onChange={(e) => handleMarksChange(answer.id, e.target.value)} className="h-9" />
+                              </div>
+                              <div className="space-y-1.5">
+                                <label className="text-xs text-muted-foreground flex items-center gap-1"><MessageSquare className="h-3 w-3 text-blue-500" /> মন্তব্য / ফিডব্যাক</label>
+                                <Textarea rows={2} value={grade.feedback ?? ''} onChange={(e) => handleFeedbackChange(answer.id, e.target.value)} placeholder="ছাত্রের উত্তরের উপর মন্তব্য..." className="resize-none text-sm min-h-[36px]" />
+                              </div>
+                            </div>
+                            <div className="flex justify-end">
+                              <Button size="sm" variant={isSaved ? 'ghost' : 'default'} className={cn('gap-1.5 text-xs', !isSaved && 'bg-emerald-600 hover:bg-emerald-700')} onClick={() => handleSaveAnswer(answer.id)} disabled={saving}>
+                                {isSaved ? <><CheckCircle2 className="h-3.5 w-3.5" /> সংরক্ষিত</> : <><Save className="h-3.5 w-3.5" /> সংরক্ষণ</>}
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </CardContent>
+                  )}
+                </Card>
+              </motion.div>
+            )
+          }
+
+          // CQ / Typed question grading (existing logic)
           let stimulus = ''
           let stimulusImage: string | null = null
           let subQuestions: { text: string; image: string | null }[] = []
@@ -249,49 +490,20 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
             ]
           }
 
-          const isExpanded = expandedQuestions[questionId] ?? true
-
           return (
-            <motion.div
-              key={questionId}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: qIdx * 0.05 }}
-            >
+            <motion.div key={questionId} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: qIdx * 0.05 }}>
               <Card className="border-border/50 overflow-hidden">
-                {/* Question header */}
-                <button
-                  type="button"
-                  onClick={() => setExpandedQuestions(prev => ({ ...prev, [questionId]: !isExpanded }))}
-                  className="w-full text-left"
-                >
+                <button type="button" onClick={() => setExpandedQuestions(prev => ({ ...prev, [questionId]: !isExpanded }))} className="w-full text-left">
                   <div className="bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20 px-4 py-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs font-mono">
-                        CQ {qIdx + 1}
-                      </Badge>
-                      {isTyped && (
-                        <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                          টাইপকৃত
-                        </Badge>
-                      )}
-                      <span className="text-xs text-muted-foreground">
-                        {question?.marks || 0} নম্বর
-                      </span>
+                      <Badge variant="outline" className="text-xs font-mono">CQ {toBengaliNumerals(qIdx + 1)}</Badge>
+                      {isTyped && <Badge variant="secondary" className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">টাইপকৃত</Badge>}
+                      <span className="text-xs text-muted-foreground">{question?.marks || 0} নম্বর</span>
                     </div>
                     <div className="flex items-center gap-2">
                       {(() => {
-                        const answeredCount = answers.filter(
-                          a => a.subIndex < 4 && (a.answerText?.trim() || (a.images?.length ?? 0) > 0)
-                        ).length
-                        return (
-                          <Badge variant="secondary" className={cn(
-                            'text-[10px]',
-                            answeredCount === 4 ? 'text-emerald-600' : 'text-amber-600'
-                          )}>
-                            {answeredCount}/4 উত্তর
-                          </Badge>
-                        )
+                        const answeredCount = answers.filter(a => a.subIndex < 4 && (a.answerText?.trim() || (a.images?.length ?? 0) > 0)).length
+                        return <Badge variant="secondary" className={cn('text-[10px]', answeredCount === 4 ? 'text-emerald-600' : 'text-amber-600')}>{answeredCount}/4 উত্তর</Badge>
                       })()}
                       <span className="text-xs text-muted-foreground">{isExpanded ? 'সংকুচিত' : 'বিস্তারিত'}</span>
                     </div>
@@ -300,36 +512,21 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
 
                 {isExpanded && (
                   <CardContent className="p-4 sm:p-6 space-y-6">
-                    {/* Stimulus */}
                     {stimulus && (
                       <div className="space-y-2">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-                          <BookOpen className="h-3.5 w-3.5" />
-                          উদ্দীপক
-                        </div>
-                        <div className="rounded-lg bg-muted/40 p-3 border text-sm leading-relaxed">
-                          <RichContentRenderer content={stimulus} />
-                        </div>
-                        {stimulusImage && (
-                          <div className="rounded-lg overflow-hidden border bg-muted/30">
-                            <SafeImage src={stimulusImage} alt="উদ্দীপকের ছবি" className="max-h-40 object-contain mx-auto" />
-                          </div>
-                        )}
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400"><BookOpen className="h-3.5 w-3.5" /> উদ্দীপক</div>
+                        <div className="rounded-lg bg-muted/40 p-3 border text-sm leading-relaxed"><RichContentRenderer content={stimulus} /></div>
+                        {stimulusImage && <div className="rounded-lg overflow-hidden border bg-muted/30"><SafeImage src={stimulusImage} alt="উদ্দীপকের ছবি" className="max-h-40 object-contain mx-auto" /></div>}
                         <Separator />
                       </div>
                     )}
 
-                    {/* Sub-questions with answers */}
                     {subQuestions.map((sq, si) => {
                       const actualAnswer = answers.find(a => a.subIndex === si)
-
                       if (!actualAnswer) return null
 
                       const maxMarks = actualAnswer.maxMarks || 0
-                      const grade = answerGrades[actualAnswer.id] || {
-                        obtainedMarks: actualAnswer.obtainedMarks ?? 0,
-                        feedback: actualAnswer.feedback ?? '',
-                      }
+                      const grade = answerGrades[actualAnswer.id] || { obtainedMarks: actualAnswer.obtainedMarks ?? 0, feedback: actualAnswer.feedback ?? '' }
                       const isSaved = savedAnswers.has(actualAnswer.id)
                       const hasImages = (actualAnswer.images?.length ?? 0) > 0
                       const hasAnnotation = actualAnswer.images?.some(img => img.annotations)
@@ -337,110 +534,41 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
                       return (
                         <div key={si} className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <span className="flex items-center justify-center size-7 rounded-full bg-emerald-500 text-white font-bold text-xs shrink-0">
-                              {bengaliLabels[si]}
-                            </span>
+                            <span className="flex items-center justify-center size-7 rounded-full bg-emerald-500 text-white font-bold text-xs shrink-0">{bengaliLabels[si]}</span>
                             <span className="font-semibold text-sm">প্রশ্ন {bengaliLabels[si]}</span>
                             <span className="text-xs text-muted-foreground">({maxMarks} নম্বর)</span>
                             {isSaved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto" />}
                           </div>
 
-                          {/* Sub-question text */}
-                          {sq.text && (
-                            <div className="rounded-lg bg-muted/20 p-2.5 border text-sm">
-                              <RichContentRenderer content={sq.text} />
-                            </div>
-                          )}
+                          {sq.text && <div className="rounded-lg bg-muted/20 p-2.5 border text-sm"><RichContentRenderer content={sq.text} /></div>}
+                          {sq.image && <div className="rounded-lg overflow-hidden border bg-muted/30 w-fit max-w-full"><SafeImage src={sq.image} alt={`প্রশ্ন ${bengaliLabels[si]}-এর ছবি`} className="max-h-32 object-contain" /></div>}
 
-                          {sq.image && (
-                            <div className="rounded-lg overflow-hidden border bg-muted/30 w-fit max-w-full">
-                              <SafeImage src={sq.image} alt={`প্রশ্ন ${bengaliLabels[si]}-এর ছবি`} className="max-h-32 object-contain" />
-                            </div>
-                          )}
-
-                          {/* Student's answer */}
-                          <div className={cn(
-                            'rounded-lg p-3 border',
-                            actualAnswer.answerText?.trim()
-                              ? 'bg-white dark:bg-muted/10 border-muted-foreground/20'
-                              : 'bg-muted/10 border-dashed border-muted-foreground/20'
-                          )}>
-                            {actualAnswer.answerText?.trim() ? (
-                              <RichContentRenderer content={actualAnswer.answerText} className="text-sm leading-relaxed" />
-                            ) : (
-                              <p className="text-sm text-muted-foreground italic">কোনো উত্তর দেওয়া হয়নি</p>
-                            )}
+                          <div className={cn('rounded-lg p-3 border', actualAnswer.answerText?.trim() ? 'bg-white dark:bg-muted/10 border-muted-foreground/20' : 'bg-muted/10 border-dashed border-muted-foreground/20')}>
+                            {actualAnswer.answerText?.trim() ? <RichContentRenderer content={actualAnswer.answerText} className="text-sm leading-relaxed" /> : <p className="text-sm text-muted-foreground italic">কোনো উত্তর দেওয়া হয়নি</p>}
                           </div>
 
-                          {/* Student's images with annotation support */}
                           {hasImages && (
                             <div>
                               <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1.5">
                                 <ImageIcon className="h-3.5 w-3.5" />
                                 ছাত্রের আপলোড করা ছবি ({actualAnswer.images.length}টি)
-                                {hasAnnotation && (
-                                  <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 ml-1">
-                                    মার্ক করা আছে
-                                  </Badge>
-                                )}
+                                {hasAnnotation && <Badge variant="secondary" className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 ml-1">মার্ক করা আছে</Badge>}
                               </p>
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {actualAnswer.images.map((img, imgIdx) => {
                                   const isAnnotating = annotatingImage === img.id
-                                  const allImages = actualAnswer.images.map(i => ({
-                                    id: i.id,
-                                    url: i.imageUrl,
-                                    alt: `উত্তর ছবি ${i.order + 1}`,
-                                    annotations: i.annotations,
-                                  }))
+                                  const allImages = actualAnswer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: `উত্তর ছবি ${i.order + 1}`, annotations: i.annotations }))
                                   return (
                                     <div key={img.id} className="space-y-1">
-                                      <div className={cn(
-                                        'relative group rounded-lg overflow-hidden border transition-all',
-                                        isAnnotating && 'ring-2 ring-emerald-500',
-                                        img.annotations && !isAnnotating && 'ring-1 ring-amber-400'
-                                      )}>
-                                        <img
-                                          src={img.imageUrl}
-                                          alt={`উত্তর ছবি ${img.order + 1}`}
-                                          className="w-full h-28 object-cover cursor-pointer"
-                                          onClick={() => openLightbox(allImages, imgIdx)}
-                                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                                        />
-                                        {/* Image zoom indicator */}
+                                      <div className={cn('relative group rounded-lg overflow-hidden border transition-all', isAnnotating && 'ring-2 ring-emerald-500', img.annotations && !isAnnotating && 'ring-1 ring-amber-400')}>
+                                        <img src={img.imageUrl} alt={`উত্তর ছবি ${img.order + 1}`} className="w-full h-28 object-cover cursor-pointer" onClick={() => openLightbox(allImages, imgIdx)} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors pointer-events-none" />
-                                        {/* Overlay annotation button */}
-                                        <button
-                                          className="absolute top-1 right-1 p-1.5 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-emerald-600"
-                                          onClick={(e) => { e.stopPropagation(); setAnnotatingImage(isAnnotating ? null : img.id) }}
-                                          title="ছবিতে মার্ক করুন"
-                                        >
-                                          <Edit3 className="h-3.5 w-3.5" />
-                                        </button>
-                                        {/* Zoom hint on hover */}
-                                        <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                                          বড় করে দেখুন
-                                        </div>
-                                        {img.annotations && !isAnnotating && (
-                                          <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-emerald-600/90 text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                                            <CheckCircle2 className="h-2.5 w-2.5" />
-                                            মার্ক করা আছে
-                                          </div>
-                                        )}
-                                        {!img.annotations && !isAnnotating && (
-                                          <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Edit3 className="h-2.5 w-2.5 inline mr-0.5" />
-                                            মার্ক করুন
-                                          </div>
-                                        )}
+                                        <button className="absolute top-1 right-1 p-1.5 rounded-full bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-all hover:bg-emerald-600" onClick={(e) => { e.stopPropagation(); setAnnotatingImage(isAnnotating ? null : img.id) }} title="ছবিতে মার্ক করুন"><Edit3 className="h-3.5 w-3.5" /></button>
+                                        <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">বড় করে দেখুন</div>
+                                        {img.annotations && !isAnnotating && <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-emerald-600/90 text-white text-[10px] px-1.5 py-0.5 rounded-full"><CheckCircle2 className="h-2.5 w-2.5" /> মার্ক করা আছে</div>}
+                                        {!img.annotations && !isAnnotating && <div className="absolute bottom-1 left-1 bg-black/50 text-white text-[10px] px-1.5 py-0.5 rounded-full opacity-0 group-hover:opacity-100"><Edit3 className="h-2.5 w-2.5 inline mr-0.5" /> মার্ক করুন</div>}
                                       </div>
-                                      {isAnnotating && (
-                                        <ImageAnnotator
-                                          imageUrl={img.imageUrl}
-                                          annotations={img.annotations || undefined}
-                                          onSave={(ann) => handleAnnotationSave(img.id, ann)}
-                                        />
-                                      )}
+                                      {isAnnotating && <ImageAnnotator imageUrl={img.imageUrl} annotations={img.annotations || undefined} onSave={(ann) => handleAnnotationSave(img.id, ann)} />}
                                     </div>
                                   )
                                 })}
@@ -450,56 +578,26 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
 
                           <Separator />
 
-                          {/* Marks & feedback */}
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div className="space-y-1.5">
-                              <label className="text-xs text-muted-foreground flex items-center gap-1">
-                                <Star className="h-3 w-3 text-amber-500" /> প্রাপ্ত নম্বর (সর্বোচ্চ {maxMarks})
-                              </label>
-                              <Input
-                                type="number"
-                                step="0.5"
-                                min={0}
-                                max={maxMarks}
-                                value={grade.obtainedMarks ?? 0}
-                                onChange={(e) => handleMarksChange(actualAnswer.id, e.target.value)}
-                                className="h-9"
-                              />
+                              <label className="text-xs text-muted-foreground flex items-center gap-1"><Star className="h-3 w-3 text-amber-500" /> প্রাপ্ত নম্বর (সর্বোচ্চ {maxMarks})</label>
+                              <Input type="number" step="0.5" min={0} max={maxMarks} value={grade.obtainedMarks ?? 0} onChange={(e) => handleMarksChange(actualAnswer.id, e.target.value)} className="h-9" />
                             </div>
                             <div className="space-y-1.5">
-                              <label className="text-xs text-muted-foreground flex items-center gap-1">
-                                <MessageSquare className="h-3 w-3 text-blue-500" /> মন্তব্য / ফিডব্যাক
-                              </label>
-                              <Textarea
-                                rows={2}
-                                value={grade.feedback ?? ''}
-                                onChange={(e) => handleFeedbackChange(actualAnswer.id, e.target.value)}
-                                placeholder="ছাত্রের উত্তরের উপর মন্তব্য... যেমন: ভালো উত্তর, কিন্তু আরও বিস্তারিত প্রয়োজন"
-                                className="resize-none text-sm min-h-[36px]"
-                              />
+                              <label className="text-xs text-muted-foreground flex items-center gap-1"><MessageSquare className="h-3 w-3 text-blue-500" /> মন্তব্য / ফিডব্যাক</label>
+                              <Textarea rows={2} value={grade.feedback ?? ''} onChange={(e) => handleFeedbackChange(actualAnswer.id, e.target.value)} placeholder="ছাত্রের উত্তরের উপর মন্তব্য... যেমন: ভালো উত্তর, কিন্তু আরও বিস্তারিত প্রয়োজন" className="resize-none text-sm min-h-[36px]" />
                             </div>
                           </div>
 
                           <div className="flex justify-end">
-                            <Button
-                              size="sm"
-                              variant={isSaved ? 'ghost' : 'default'}
-                              className={cn('gap-1.5 text-xs', !isSaved && 'bg-emerald-600 hover:bg-emerald-700')}
-                              onClick={() => handleSaveAnswer(actualAnswer.id)}
-                              disabled={saving}
-                            >
-                              {isSaved ? (
-                                <><CheckCircle2 className="h-3.5 w-3.5" /> সংরক্ষিত</>
-                              ) : (
-                                <><Save className="h-3.5 w-3.5" /> সংরক্ষণ</>
-                              )}
+                            <Button size="sm" variant={isSaved ? 'ghost' : 'default'} className={cn('gap-1.5 text-xs', !isSaved && 'bg-emerald-600 hover:bg-emerald-700')} onClick={() => handleSaveAnswer(actualAnswer.id)} disabled={saving}>
+                              {isSaved ? <><CheckCircle2 className="h-3.5 w-3.5" /> সংরক্ষিত</> : <><Save className="h-3.5 w-3.5" /> সংরক্ষণ</>}
                             </Button>
                           </div>
                         </div>
                       )
                     })}
 
-                    {/* Global images for whole CQ (subIndex 4) */}
                     {(() => {
                       const globalAnswer = answers.find(a => a.subIndex === 4)
                       if (!globalAnswer || !globalAnswer.images?.length) return null
@@ -507,49 +605,23 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
                       return (
                         <div className="space-y-3 pt-2 border-t border-dashed border-border/50">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
-                              <ImageIcon className="size-4" />
-                              সম্পূর্ণ প্রশ্নের জন্য ছবি
-                            </span>
+                            <span className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5"><ImageIcon className="size-4" /> সম্পূর্ণ প্রশ্নের জন্য ছবি</span>
                             {isSaved && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                             {globalAnswer.images.map((img, gi) => {
-                              const globalImgs = globalAnswer.images.map(i => ({
-                                id: i.id,
-                                url: i.imageUrl,
-                                alt: 'সম্পূর্ণ উত্তরের ছবি',
-                                annotations: i.annotations,
-                              }))
+                              const globalImgs = globalAnswer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: 'সম্পূর্ণ উত্তরের ছবি', annotations: i.annotations }))
                               return (
                                 <div key={img.id} className="relative group rounded-lg overflow-hidden border bg-muted/30">
-                                  <SafeImage
-                                    src={img.imageUrl}
-                                    alt="সম্পূর্ণ উত্তরের ছবি"
-                                    className="w-full h-24 object-cover cursor-pointer"
-                                    onClick={() => openLightbox(globalImgs, gi)}
-                                  />
-                                  <button
-                                    className="absolute top-1 right-1 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-600"
-                                    onClick={(e) => { e.stopPropagation(); setAnnotatingImage(annotatingImage === img.id ? null : img.id) }}
-                                  >
-                                    <Edit3 className="h-3 w-3" />
-                                  </button>
-                                  {img.annotations && (
-                                    <div className="absolute bottom-1 left-1 bg-emerald-600/80 text-white text-[10px] px-1.5 py-0.5 rounded">
-                                      মার্ক করা আছে
-                                    </div>
-                                  )}
+                                  <SafeImage src={img.imageUrl} alt="সম্পূর্ণ উত্তরের ছবি" className="w-full h-24 object-cover cursor-pointer" onClick={() => openLightbox(globalImgs, gi)} />
+                                  <button className="absolute top-1 right-1 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-emerald-600" onClick={(e) => { e.stopPropagation(); setAnnotatingImage(annotatingImage === img.id ? null : img.id) }}><Edit3 className="h-3 w-3" /></button>
+                                  {img.annotations && <div className="absolute bottom-1 left-1 bg-emerald-600/80 text-white text-[10px] px-1.5 py-0.5 rounded">মার্ক করা আছে</div>}
                                 </div>
                               )
                             })}
                           </div>
                           {annotatingImage && globalAnswer.images.some(img => img.id === annotatingImage) && (
-                            <ImageAnnotator
-                              imageUrl={globalAnswer.images.find(img => img.id === annotatingImage)!.imageUrl}
-                              annotations={globalAnswer.images.find(img => img.id === annotatingImage)!.annotations || undefined}
-                              onSave={(ann) => handleAnnotationSave(annotatingImage, ann)}
-                            />
+                            <ImageAnnotator imageUrl={globalAnswer.images.find(img => img.id === annotatingImage)!.imageUrl} annotations={globalAnswer.images.find(img => img.id === annotatingImage)!.annotations || undefined} onSave={(ann) => handleAnnotationSave(annotatingImage, ann)} />
                           )}
                         </div>
                       )

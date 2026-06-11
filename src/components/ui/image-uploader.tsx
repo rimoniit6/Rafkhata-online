@@ -1,8 +1,9 @@
 'use client'
 
-import React, { useState, useRef, useCallback } from 'react'
-import { ImagePlus, X, Loader2, FileText } from 'lucide-react'
+import React, { useState, useCallback } from 'react'
+import { ImagePlus, X, FileText, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { UploadDropzone } from '@/lib/uploadthing/client'
 
 interface ImageUploaderProps {
   value?: string
@@ -24,55 +25,9 @@ export default function ImageUploader({
   className,
   placeholder = 'ছবি আপলোড করুন বা টেনে আনুন',
   allowPdf = false,
-  accept,
   maxSize = 5 * 1024 * 1024,
 }: ImageUploaderProps) {
   const [uploading, setUploading] = useState(false)
-  const [dragOver, setDragOver] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const uploadFile = useCallback(async (file: File) => {
-    if (allowPdf && file.type === 'application/pdf') {
-      // PDF files are allowed
-    } else if (!file.type.startsWith('image/')) {
-      alert('শুধুমাত্র ছবি ফাইল আপলোড করুন')
-      return
-    }
-    if (file.size > maxSize) {
-      alert(`ফাইলের আকার ${Math.round(maxSize / 1024 / 1024)}MB এর কম হতে হবে`)
-      return
-    }
-
-    setUploading(true)
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const res = await fetch('/api/upload', { method: 'POST', body: formData })
-      if (res.ok) {
-        const data = await res.json()
-        onChange(data.url)
-      } else {
-        const err = await res.json()
-        alert(err.error || 'আপলোড করতে সমস্যা হয়েছে')
-      }
-    } catch {
-      alert('নেটওয়ার্ক সমস্যা')
-    } finally {
-      setUploading(false)
-    }
-  }, [onChange, allowPdf, maxSize])
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) uploadFile(file)
-  }, [uploadFile])
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) uploadFile(file)
-  }, [uploadFile])
 
   const handleRemove = useCallback(() => {
     if (onRemove) onRemove()
@@ -99,14 +54,7 @@ export default function ImageUploader({
           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
             <button
               type="button"
-              onClick={() => inputRef.current?.click()}
-              className="px-3 py-1.5 bg-white text-black rounded-md text-sm font-medium hover:bg-gray-100 transition-colors"
-            >
-              পরিবর্তন
-            </button>
-            <button
-              type="button"
-              onClick={handleRemove}
+              onClick={() => handleRemove()}
               className="p-1.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors"
             >
               <X className="h-4 w-4" />
@@ -114,40 +62,55 @@ export default function ImageUploader({
           </div>
         </div>
       ) : (
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => !uploading && inputRef.current?.click()}
-          className={cn(
-            'flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors',
-            dragOver
-              ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/20'
-              : 'border-border hover:border-emerald-400 hover:bg-muted/30',
-            uploading && 'pointer-events-none opacity-60'
-          )}
-        >
+        <div className="relative">
           {uploading ? (
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-6">
               <Loader2 className="h-8 w-8 text-emerald-600 animate-spin" />
-              <p className="text-sm text-muted-foreground">আপলোড হচ্ছে...</p>
+              <p className="text-sm text-muted-foreground mt-2">আপলোড হচ্ছে...</p>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-2">
-              {allowPdf ? <FileText className="h-8 w-8 text-muted-foreground" /> : <ImagePlus className="h-8 w-8 text-muted-foreground" />}
-              <p className="text-sm text-muted-foreground">{placeholder}</p>
-              <p className="text-xs text-muted-foreground/60">{allowPdf ? 'JPEG, PNG, GIF, WebP, SVG, PDF' : 'JPEG, PNG, GIF, WebP, SVG'} (সর্বোচ্চ {Math.round(maxSize / 1024 / 1024)}MB)</p>
-            </div>
+            <UploadDropzone
+              endpoint={allowPdf ? 'mediaUploader' : 'imageUploader'}
+              onUploadBegin={() => setUploading(true)}
+              onClientUploadComplete={(res) => {
+                setUploading(false)
+                if (res?.[0]?.ufsUrl ?? res?.[0]?.url) {
+                  onChange(res[0].ufsUrl ?? res[0].url)
+                }
+              }}
+              onUploadError={(error: Error) => {
+                setUploading(false)
+                alert(error.message || 'আপলোড করতে সমস্যা হয়েছে')
+              }}
+              appearance={{
+                container: {
+                  borderRadius: '0.5rem',
+                  border: '2px dashed hsl(var(--border))',
+                  background: 'transparent',
+                  padding: '1.5rem',
+                  cursor: 'pointer',
+                },
+                label: {
+                  color: 'hsl(var(--muted-foreground))',
+                  fontSize: '0.875rem',
+                },
+                allowedContent: {
+                  color: 'hsl(var(--muted-foreground))',
+                  fontSize: '0.75rem',
+                },
+                button: {
+                  background: 'hsl(var(--primary))',
+                  color: 'hsl(var(--primary-foreground))',
+                  fontSize: '0.875rem',
+                  padding: '0.5rem 1rem',
+                  borderRadius: '0.375rem',
+                },
+              }}
+              config={{ mode: 'auto' }}
+            />
           )}
         </div>
       )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept={accept || (allowPdf ? 'image/*,.pdf' : 'image/*')}
-        className="hidden"
-        onChange={handleChange}
-      />
     </div>
   )
 }

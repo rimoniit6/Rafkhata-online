@@ -39,6 +39,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn, toBengaliNumerals } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { useUploadThing } from '@/lib/uploadthing/client'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -239,31 +240,30 @@ export default function MCQExamPackagePurchaseDialog({
   }
 
   const [uploadingScreenshot, setUploadingScreenshot] = useState(false)
+  const { startUpload } = useUploadThing('screenshotUploader', {
+    onClientUploadComplete: (res) => {
+      setUploadingScreenshot(false)
+      if (res?.[0]?.ufsUrl ?? res?.[0]?.url) {
+        setScreenshotUrl(res[0].ufsUrl ?? res[0].url)
+      } else {
+        toast({ title: 'স্ক্রিনশট আপলোড ব্যর্থ', description: 'আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' })
+        setScreenshot(null)
+        setScreenshotUrl(null)
+      }
+    },
+    onUploadError: () => {
+      setUploadingScreenshot(false)
+      toast({ title: 'নেটওয়ার্ক সমস্যা', description: 'স্ক্রিনশট আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' })
+      setScreenshot(null)
+      setScreenshotUrl(null)
+    },
+  })
 
   const handleScreenshotChange = async (file: File | null) => {
     setScreenshot(file)
     if (file) {
       setUploadingScreenshot(true)
-      try {
-        const formData = new FormData()
-        formData.append('file', file)
-        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        if (res.ok) {
-          const data = await res.json()
-          setScreenshotUrl(data.url)
-        } else {
-          const err = await res.json().catch(() => ({ error: 'আপলোড করতে সমস্যা হয়েছে' }))
-          toast({ title: 'স্ক্রিনশট আপলোড ব্যর্থ', description: err.error || 'আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' })
-          setScreenshot(null)
-          setScreenshotUrl(null)
-        }
-      } catch {
-        toast({ title: 'নেটওয়ার্ক সমস্যা', description: 'স্ক্রিনশট আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' })
-        setScreenshot(null)
-        setScreenshotUrl(null)
-      } finally {
-        setUploadingScreenshot(false)
-      }
+      await startUpload([file])
     } else {
       setScreenshotUrl(null)
     }

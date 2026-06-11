@@ -1,10 +1,10 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
+import { Prisma } from '@prisma/client'
 
 export async function GET(request: Request) {
   try {
-    // Require authentication
     const auth = await verifyAuth(request)
     if (!auth) {
       return NextResponse.json(
@@ -13,10 +13,47 @@ export async function GET(request: Request) {
       )
     }
 
-    // Use session userId, not query param
     const userId = auth.user.id
 
-    const user = await db.user.findUnique({ where: { id: userId } })
+    const [
+      user,
+      progress,
+      totalLectures,
+      examResults,
+      savedQuestions,
+      bookmarks,
+      payments,
+      recentlyViewed,
+    ] = await Promise.all([
+      db.user.findUnique({ where: { id: userId } }),
+      db.progress.findMany({
+        where: { userId },
+        orderBy: { lastAccessed: 'desc' },
+        take: 10,
+      }),
+      db.lecture.count({ where: { isActive: true } }),
+      db.examResult.findMany({
+        where: { userId },
+        orderBy: { completedAt: 'desc' },
+        take: 5,
+      }),
+      db.bookmark.count({ where: { userId } }),
+      db.bookmark.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      db.payment.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 5,
+      }),
+      db.recentlyViewed.findMany({
+        where: { userId },
+        orderBy: { viewedAt: 'desc' },
+        take: 5,
+      }),
+    ])
 
     if (!user) {
       return NextResponse.json(
@@ -25,43 +62,8 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get progress records
-    const progress = await db.progress.findMany({
-      where: { userId },
-      orderBy: { lastAccessed: 'desc' },
-      take: 10,
-    })
-
     const lectureProgress = progress.filter((p) => p.contentType === 'lecture')
     const completedLectures = lectureProgress.filter((p) => p.progress >= 100).length
-
-    const totalLectures = await db.lecture.count({ where: { isActive: true } })
-
-    const examResults = await db.examResult.findMany({
-      where: { userId },
-      orderBy: { completedAt: 'desc' },
-      take: 5,
-    })
-
-    const savedQuestions = await db.bookmark.count({ where: { userId } })
-
-    const bookmarks = await db.bookmark.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    })
-
-    const payments = await db.payment.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    })
-
-    const recentlyViewed = await db.recentlyViewed.findMany({
-      where: { userId },
-      orderBy: { viewedAt: 'desc' },
-      take: 5,
-    })
 
     const mcqResults = examResults.filter((r) => r.totalMarks > 0)
     const avgMcqScore =
@@ -69,13 +71,15 @@ export async function GET(request: Request) {
         ? Math.round(mcqResults.reduce((sum, r) => sum + (r.score / r.totalMarks) * 100, 0) / mcqResults.length)
         : 0
 
+    const progressMap = new Map(lectureProgress.map((p) => [p.contentId, p.progress]))
+
     const recentLectures = recentlyViewed
       .filter((rv) => rv.contentType === 'lecture')
       .map((rv) => ({
         id: rv.contentId,
         title: rv.title,
         subject: '',
-        progress: lectureProgress.find((p) => p.contentId === rv.contentId)?.progress || 0,
+        progress: progressMap.get(rv.contentId) || 0,
       }))
 
     const recentExams = examResults.map((er) => ({

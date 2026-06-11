@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { BookOpen, Play, TrendingUp, ChevronRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -18,7 +19,7 @@ interface LearningSectionProps {
   onNavigate: (type: string, id: string) => void
 }
 
-export function LearningSection({ recentLectures, onNavigate }: LearningSectionProps) {
+function LearningSectionComponent({ recentLectures, onNavigate }: LearningSectionProps) {
   return (
     <div className="mt-5 space-y-4">
       <div className="flex items-center justify-between">
@@ -71,3 +72,5 @@ export function LearningSection({ recentLectures, onNavigate }: LearningSectionP
     </div>
   )
 }
+
+export const LearningSection = memo(LearningSectionComponent)

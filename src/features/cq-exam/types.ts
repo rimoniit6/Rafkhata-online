@@ -62,6 +62,9 @@ export interface CQExamSetQuestionRecord {
   order: number
   type: string
   subMarks: string | null
+  stem: string | null
+  stemImage: string | null
+  config: string | null
   typedUddeepok: string | null
   typedUddeepokImage: string | null
   typedQuestion1: string | null

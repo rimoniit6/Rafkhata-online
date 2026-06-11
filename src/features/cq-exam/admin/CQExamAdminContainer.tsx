@@ -59,7 +59,6 @@ export default function AdminCQExamPackagesPage() {
     setStartTime, setSetStartTime,
     setEndTime, setSetEndTime,
     setDuration, setSetDuration,
-    setMarksPerQ, setSetMarksPerQ,
     setInstructions, setSetInstructions,
     setOrder, setSetOrder,
     setStatus, setSetStatus,
@@ -89,7 +88,6 @@ export default function AdminCQExamPackagesPage() {
     bulkIntervalDays, setBulkIntervalDays,
     bulkCount, setBulkCount,
     bulkDuration, setBulkDuration,
-    bulkMarksPerQ, setBulkMarksPerQ,
     retakeRequests, retakeRequestsLoading,
     leaderboardData, leaderboardSetTitle, leaderboardLoading,
     bulkSubmissions, bulkGradingLoading,
@@ -98,7 +96,7 @@ export default function AdminCQExamPackagesPage() {
     handleSavePackage, handleSaveSet, handleDelete,
     handleBulkCreateSets, handleSearchCqs, handleAddCqs,
     handleCreateTypedQuestion, handleRemoveQuestion, handleMoveQuestion,
-    handleGradeSubmission, handleBulkGrade, handlePublishResults, handleAllowRetake,
+    handleGradeSubmission, handleBulkGrade, handlePublishResults, handleAllowRetake, handleReopenGrading,
     handleFetchBulkSubmissions, handleSaveBulkGrades,
     fetchRetakeRequests, handleApproveRetakeRequest,
     handleUpdateTypedQuestion, handleUpdateQuestionMarks,
@@ -173,15 +171,14 @@ export default function AdminCQExamPackagesPage() {
                 setViewMode('set-editor');
               }}
               onOpenQuestionManager={(id) => { setSelectedSetId(id); fetchSetDetail(id); setViewMode('question-manager'); }}
-              onOpenSubmissions={(id) => { setSelectedSetId(id); fetchSubmissions(id); setViewMode('submissions'); }}
+              onOpenSubmissions={(id) => { setSelectedSetId(id); fetchSetDetail(id); fetchSubmissions(id); setViewMode('submissions'); }}
               onOpenRetakeRequests={(id) => { setSelectedSetId(id); fetchRetakeRequests(id); setViewMode('retake-requests'); }}
               onOpenLeaderboard={openLeaderboard}
               onOpenEditSet={(set) => {
                 setEditId(set.id); setSetTitle(set.title); setSetDescription(set.description || '');
                 setSetScheduledDate(set.scheduledDate ? new Date(set.scheduledDate).toISOString().split('T')[0] : '');
                 setSetStartTime(set.startTime || '00:00'); setSetEndTime(set.endTime || '23:59');
-                setSetDuration(String(set.duration)); setSetMarksPerQ(String(set.marksPerQ));
-                setSetInstructions(set.instructions || ''); setSetOrder(String(set.order)); setSetStatus(set.status);
+                setSetDuration(String(set.duration)); setSetInstructions(set.instructions || ''); setSetOrder(String(set.order)); setSetStatus(set.status);
                 setSetAllowRetake(set.allowRetake);
                 setSetAnswerMode(set.answerMode || 'flexible');
                 setSetShowAnnotatedImages(set.showAnnotatedImages ?? true);
@@ -203,8 +200,8 @@ export default function AdminCQExamPackagesPage() {
             <CQExamSetForm
               editId={editId} currentSet={currentSet} setTitle={setTitle} setSetTitle={setSetTitle} setDescription={setDescription} setSetDescription={setSetDescription}
               setScheduledDate={setScheduledDate} setSetScheduledDate={setSetScheduledDate} setStartTime={setStartTime} setSetStartTime={setSetStartTime}
-              setEndTime={setEndTime} setSetEndTime={setSetEndTime} setDuration={setDuration} setSetDuration={setSetDuration} setMarksPerQ={setMarksPerQ}
-              setSetMarksPerQ={setSetMarksPerQ} setInstructions={setInstructions}
+              setEndTime={setEndTime} setSetEndTime={setSetEndTime} setDuration={setDuration} setSetDuration={setSetDuration}
+              setInstructions={setInstructions}
               setSetInstructions={setSetInstructions} setOrder={setOrder} setSetOrder={setSetOrder} setStatus={setStatus} setSetStatus={setSetStatus}
               setAllowRetake={setAllowRetake} setSetAllowRetake={setSetAllowRetake}
               setAnswerMode={setAnswerMode} setSetAnswerMode={setSetAnswerMode}
@@ -300,6 +297,7 @@ export default function AdminCQExamPackagesPage() {
               onBulkGrade={(setId, marks) => { handleBulkGrade(setId, marks); }}
               onOpenBulkGrading={() => { if (currentSet) { setViewMode('bulk-grading'); } }}
               onAllowRetake={handleAllowRetake}
+              onReopenGrading={handleReopenGrading}
               saving={saving}
             />
           </motion.div>
@@ -353,7 +351,7 @@ export default function AdminCQExamPackagesPage() {
         open={bulkCreateDialogOpen} onOpenChange={setBulkCreateDialogOpen}
         bulkPrefix={bulkPrefix} setBulkPrefix={setBulkPrefix} bulkStartDate={bulkStartDate} setBulkStartDate={setBulkStartDate}
         bulkIntervalDays={bulkIntervalDays} setBulkIntervalDays={setBulkIntervalDays} bulkCount={bulkCount} setBulkCount={setBulkCount}
-        bulkDuration={bulkDuration} setBulkDuration={setBulkDuration} bulkMarksPerQ={bulkMarksPerQ} setBulkMarksPerQ={setBulkMarksPerQ}
+        bulkDuration={bulkDuration} setBulkDuration={setBulkDuration}
         onSave={handleBulkCreateSets} saving={saving}
       />
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { memo } from 'react'
 import { Trophy, ClipboardCheck, ArrowRight, CheckCircle2, TrendingUp } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -19,7 +20,7 @@ interface ExamsSectionProps {
   onHistoryClick: () => void
 }
 
-export function ExamsSection({ recentExams, onHistoryClick }: ExamsSectionProps) {
+function ExamsSectionComponent({ recentExams, onHistoryClick }: ExamsSectionProps) {
   const formatDate = (dateStr: string) => {
     try {
       return new Date(dateStr).toLocaleDateString('bn-BD', {
@@ -113,3 +114,5 @@ export function ExamsSection({ recentExams, onHistoryClick }: ExamsSectionProps)
     </div>
   )
 }
+
+export const ExamsSection = memo(ExamsSectionComponent)

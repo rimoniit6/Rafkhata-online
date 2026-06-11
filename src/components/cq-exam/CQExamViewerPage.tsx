@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/dialog'
 import { cn, toBengaliNumerals } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
+import { useUploadThing } from '@/lib/uploadthing/client'
 import SafeImage from '@/components/ui/safe-image'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 
@@ -46,6 +47,9 @@ interface CQQuestionData {
   order: number
   type?: string
   subMarks?: string | null
+  stem?: string | null
+  stemImage?: string | null
+  config?: string | null
   typedUddeepok?: string | null
   typedUddeepokImage?: string | null
   typedQuestion1?: string | null
@@ -109,6 +113,274 @@ function formatTime(seconds: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
 }
 
+function NonCQQuestionBlock({
+  question,
+  index,
+  answers,
+  onAnswerChange,
+  collapsed,
+  onToggle,
+  answerIdMap,
+  onAddImage,
+  onRemoveImage,
+  maxImagesPerAnswer = 5,
+}: {
+  question: CQQuestionData
+  index: number
+  answers: Record<string, AnswerState>
+  onAnswerChange: (questionId: string, subIndex: number, value: string) => void
+  collapsed: boolean
+  onToggle: () => void
+  answerIdMap: Record<string, string[]>
+  onAddImage: (answerId: string, questionId: string, subIndex: number) => void
+  onRemoveImage: (imageId: string, questionId: string, subIndex: number) => void
+  maxImagesPerAnswer?: number
+}) {
+  const qType = question.type || 'mcq-single'
+  let config: any = {}
+  try { config = JSON.parse(question.config || '{}') } catch {}
+
+  const stem = question.stem || ''
+  const stemImage = question.stemImage || null
+
+  const getTypeLabel = () => {
+    switch (qType) {
+      case 'mcq-single': return 'MCQ (একক উত্তর)'
+      case 'mcq-multiple': return 'MCQ (একাধিক উত্তর)'
+      case 'fill-blanks': return 'শূন্যস্থান পূরণ'
+      case 'written': return 'রচনামূলক প্রশ্ন'
+      default: return qType
+    }
+  }
+
+  const subQuestionCount = qType === 'fill-blanks' ? (config.blanks || []).length : 1
+
+  const answeredCount = (() => {
+    if (qType === 'fill-blanks') {
+      const blanks = config.blanks || []
+      return blanks.filter((_: any, si: number) => {
+        const key = `${question.id}-${si}`
+        return !!answers[key]?.answerText?.trim()
+      }).length
+    }
+    const key = `${question.id}-0`
+    const ans = answers[key]
+    if (qType === 'written') {
+      return ans?.answerText?.trim() || (answers[`${question.id}-1`]?.images?.length ?? 0) > 0 ? 1 : 0
+    }
+    return ans?.answerText?.trim() ? 1 : 0
+  })()
+
+  return (
+    <Card className="border-border/50 overflow-hidden">
+      <button type="button" onClick={onToggle} className="w-full text-left">
+        <div className="flex items-center justify-between p-4 bg-gradient-to-r from-emerald-50 to-teal-50/50 dark:from-emerald-950/30 dark:to-teal-950/20">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center justify-center size-8 rounded-full bg-emerald-500 text-white font-bold text-sm shrink-0">
+              {toBengaliNumerals(index + 1)}
+            </span>
+            <div>
+              <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">
+                {getTypeLabel()}
+              </span>
+              <p className="text-xs text-muted-foreground">
+                {answeredCount}/{subQuestionCount} উত্তর দেওয়া হয়েছে | {question.marks} নম্বর
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="text-xs">
+              {toBengaliNumerals(question.marks)} নম্বর
+            </Badge>
+            {collapsed ? <ChevronDown className="size-4 text-muted-foreground" /> : <ChevronUp className="size-4 text-muted-foreground" />}
+          </div>
+        </div>
+      </button>
+
+      <AnimatePresence>
+        {!collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <CardContent className="p-4 sm:p-6 space-y-6">
+              {stem ? (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
+                    <FileQuestion className="size-4" />
+                    প্রশ্ন
+                  </h4>
+                  <div className="rounded-lg bg-muted/50 p-4 border">
+                    <RichContentRenderer content={stem} className="text-base leading-relaxed" />
+                  </div>
+                  {stemImage && (
+                    <div className="rounded-lg overflow-hidden border bg-muted/30">
+                      <SafeImage src={stemImage} alt="প্রশ্নের ছবি" className="max-h-64 object-contain mx-auto" />
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {qType === 'mcq-single' && (() => {
+                const options = config.options || []
+                const key = `${question.id}-0`
+                const ans = answers[key] || { answerText: '', images: [] }
+                const selectedIndex = ans.answerText !== '' ? parseInt(ans.answerText) : -1
+                return (
+                  <div className="space-y-2">
+                    {options.map((opt: string, oi: number) => (
+                      <label
+                        key={oi}
+                        className={cn(
+                          'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+                          selectedIndex === oi
+                            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-700'
+                            : 'hover:bg-muted/50'
+                        )}
+                      >
+                        <input
+                          type="radio"
+                          name={`mcq-${question.id}`}
+                          checked={selectedIndex === oi}
+                          onChange={() => onAnswerChange(question.id, 0, String(oi))}
+                          className="text-emerald-500"
+                        />
+                        <span className="text-sm">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                )
+              })()}
+
+              {qType === 'mcq-multiple' && (() => {
+                const options = config.options || []
+                const key = `${question.id}-0`
+                const ans = answers[key] || { answerText: '', images: [] }
+                let selectedIndices: number[] = []
+                try { selectedIndices = JSON.parse(ans.answerText || '[]') } catch {}
+                const toggleIndex = (oi: number) => {
+                  const newIndices = selectedIndices.includes(oi)
+                    ? selectedIndices.filter((i: number) => i !== oi)
+                    : [...selectedIndices, oi]
+                  onAnswerChange(question.id, 0, JSON.stringify(newIndices.sort((a: number, b: number) => a - b)))
+                }
+                return (
+                  <div className="space-y-2">
+                    {options.map((opt: string, oi: number) => (
+                      <label
+                        key={oi}
+                        className={cn(
+                          'flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all',
+                          selectedIndices.includes(oi)
+                            ? 'border-emerald-400 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-700'
+                            : 'hover:bg-muted/50'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedIndices.includes(oi)}
+                          onChange={() => toggleIndex(oi)}
+                          className="text-emerald-500"
+                        />
+                        <span className="text-sm">{opt}</span>
+                      </label>
+                    ))}
+                  </div>
+                )
+              })()}
+
+              {qType === 'fill-blanks' && (() => {
+                const blanks: { id: string; answer: string; marks: number }[] = config.blanks || []
+                return (
+                  <div className="space-y-3">
+                    {blanks.map((blank, si) => {
+                      const key = `${question.id}-${si}`
+                      const ans = answers[key] || { answerText: '', images: [] }
+                      return (
+                        <div key={si} className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-muted-foreground w-6 shrink-0">{toBengaliNumerals(si + 1)}.</span>
+                          <input
+                            type="text"
+                            value={ans.answerText || ''}
+                            onChange={(e) => onAnswerChange(question.id, si, e.target.value)}
+                            placeholder={`শূন্যস্থান ${si + 1} পূরণ করুন...`}
+                            className="flex-1 px-3 py-2 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                          />
+                          {blank.marks > 0 && (
+                            <span className="text-xs text-muted-foreground shrink-0">{toBengaliNumerals(blank.marks)} নম্বর</span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
+
+              {qType === 'written' && (() => {
+                const key = `${question.id}-0`
+                const ans = answers[key] || { answerText: '', images: [] }
+                return (
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="আপনার উত্তর লিখুন... (প্রয়োজনে নিচে থেকে ছবি সংযুক্ত করতে পারেন)"
+                      value={ans.answerText || ''}
+                      onChange={(e) => onAnswerChange(question.id, 0, e.target.value)}
+                      rows={8}
+                      className="text-base min-h-[200px]"
+                    />
+                  </div>
+                )
+              })()}
+
+              {qType === 'written' && (() => {
+                const imgKey = `${question.id}-1`
+                const imgAns = answers[imgKey] || { answerText: '', images: [] }
+                const imgAnswerId = answerIdMap[question.id]?.[1]
+                return (
+                  <div className="space-y-3 pt-2 border-t border-dashed border-border/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                        <ImagePlus className="size-4" />
+                        ছবি সংযুক্ত করুন (ঐচ্ছিক)
+                      </span>
+                    </div>
+                    {imgAns.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {imgAns.images.map((img: AnswerImage) => (
+                          <div key={img.id} className="relative group rounded-lg overflow-hidden border bg-muted/30">
+                            <SafeImage src={img.imageUrl} alt="উত্তরের ছবি" className="size-20 object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => onRemoveImage(img.id, question.id, 1)}
+                              className="absolute top-0.5 right-0.5 p-0.5 rounded bg-black/60 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => imgAnswerId && onAddImage(imgAnswerId, question.id, 1)}
+                      className="flex items-center justify-center gap-2 w-full rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 transition-colors text-muted-foreground hover:text-emerald-600 text-sm py-3"
+                    >
+                      <ImagePlus className="size-5" />
+                      ছবি যোগ করুন
+                    </button>
+                  </div>
+                )
+              })()}
+            </CardContent>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </Card>
+  )
+}
+
 function CQBlock({
   question,
   index,
@@ -138,7 +410,25 @@ function CQBlock({
   answerMode?: AnswerMode
   maxImagesPerAnswer?: number
 }) {
-  const isTyped = question.type === 'typed'
+  const questionType = question.type || 'cq'
+  if (questionType !== 'cq' && questionType !== 'typed') {
+    return (
+      <NonCQQuestionBlock
+        question={question}
+        index={index}
+        answers={answers}
+        onAnswerChange={onAnswerChange}
+        collapsed={collapsed}
+        onToggle={onToggle}
+        answerIdMap={answerIdMap}
+        onAddImage={onAddImage}
+        onRemoveImage={onRemoveImage}
+        maxImagesPerAnswer={maxImagesPerAnswer}
+      />
+    )
+  }
+
+  const isTyped = questionType === 'typed'
   const cq = question.cq
 
   let stimulus = ''
@@ -389,6 +679,19 @@ export default function CQExamViewerPage() {
   const { params, goBack, navigate } = useRouterStore()
   const { user, isAuthenticated } = useAuthStore()
   const { toast } = useToast()
+  const uploadResolveRef = useRef<((url: string | null) => void) | null>(null)
+  const { startUpload } = useUploadThing('screenshotUploader', {
+    onClientUploadComplete: (res) => {
+      const resolve = uploadResolveRef.current
+      uploadResolveRef.current = null
+      resolve?.(res?.[0]?.ufsUrl ?? res?.[0]?.url ?? null)
+    },
+    onUploadError: () => {
+      const resolve = uploadResolveRef.current
+      uploadResolveRef.current = null
+      resolve?.(null)
+    },
+  })
 
   const setId = params.examId || ''
   const packageId = params.packageId || ''
@@ -548,13 +851,15 @@ export default function CQExamViewerPage() {
       const file = input.files?.[0]
       if (!file) return
 
-      // Upload file
-      const formData = new FormData()
-      formData.append('file', file)
+      // Upload file via UploadThing
+      let imageUrl: string | null = null
       try {
-        const res = await fetch('/api/upload', { method: 'POST', body: formData })
-        if (!res.ok) throw new Error('Upload failed')
-        const data = await res.json()
+        const url = await new Promise<string | null>((resolve) => {
+          uploadResolveRef.current = resolve
+          startUpload([file])
+        })
+        imageUrl = url
+        if (!imageUrl) throw new Error('Upload failed')
 
         // Save image record
         const imgRes = await fetch('/api/cq-exam-packages', {
@@ -563,7 +868,7 @@ export default function CQExamViewerPage() {
           body: JSON.stringify({
             action: 'add-image',
             answerId,
-            imageUrl: data.url,
+            imageUrl,
           }),
         })
         if (!imgRes.ok) throw new Error('Failed to save image')
@@ -576,7 +881,7 @@ export default function CQExamViewerPage() {
             ...prev,
             [key]: {
               ...current,
-              images: [...current.images, { id: imgData.image.id, imageUrl: data.url, order: current.images.length }],
+              images: [...current.images, { id: imgData.image.id, imageUrl, order: current.images.length }],
             },
           }
         })
@@ -806,34 +1111,55 @@ export default function CQExamViewerPage() {
   const answerMode = setData.set.answerMode || 'flexible'
   const questions = setData.questions || []
 
-  const totalAnswered = questions.reduce((sum, q) => {
-    if (answerMode === 'complete-image-only') {
-      const globalKey = `${q.id}-4`
-      const globalAns = answers[globalKey]
-      return sum + ((globalAns?.images?.length ?? 0) > 0 ? 4 : 0)
-    }
-    if (answerMode === 'image-only') {
-      // If global image exists, count all sub-questions as answered
-      const globalKey = `${q.id}-4`
-      const globalAns = answers[globalKey]
-      if ((globalAns?.images?.length ?? 0) > 0) return sum + 4
-    }
-    let count = 0
-    for (let si = 0; si < 4; si++) {
-      const key = `${q.id}-${si}`
-      const ans = answers[key]
-      if (answerMode === 'text-only') {
-        if (ans?.answerText?.trim()) count++
-      } else if (answerMode === 'image-only') {
-        if ((ans?.images?.length ?? 0) > 0) count++
-      } else {
-        // flexible
-        if (ans?.answerText?.trim() || (ans?.images?.length ?? 0) > 0) count++
+  const countAnswersForQuestion = (q: CQQuestionData): number => {
+    const qt = q.type || 'cq'
+    if (qt === 'cq' || qt === 'typed') {
+      if (answerMode === 'complete-image-only') {
+        const gk = `${q.id}-4`
+        return (answers[gk]?.images?.length ?? 0) > 0 ? 4 : 0
       }
+      if (answerMode === 'image-only') {
+        const gk = `${q.id}-4`
+        if ((answers[gk]?.images?.length ?? 0) > 0) return 4
+      }
+      let count = 0
+      for (let si = 0; si < 4; si++) {
+        const ans = answers[`${q.id}-${si}`]
+        if (answerMode === 'text-only') {
+          if (ans?.answerText?.trim()) count++
+        } else if (answerMode === 'image-only') {
+          if ((ans?.images?.length ?? 0) > 0) count++
+        } else {
+          if (ans?.answerText?.trim() || (ans?.images?.length ?? 0) > 0) count++
+        }
+      }
+      return count
     }
-    return sum + count
-  }, 0)
-  const totalSubQuestions = questions.length * 4
+    if (qt === 'fill-blanks') {
+      let blanks: any[] = []
+      try { const c = JSON.parse(q.config || '{}'); blanks = c.blanks || [] } catch {}
+      return blanks.filter((_, si) => !!answers[`${q.id}-${si}`]?.answerText?.trim()).length
+    }
+    const ans = answers[`${q.id}-0`]
+    if (qt === 'written') {
+      return (ans?.answerText?.trim() || (answers[`${q.id}-1`]?.images?.length ?? 0) > 0) ? 1 : 0
+    }
+    return ans?.answerText?.trim() ? 1 : 0
+  }
+
+  const subQuestionCountForQuestion = (q: CQQuestionData): number => {
+    const qt = q.type || 'cq'
+    if (qt === 'cq' || qt === 'typed') return 4
+    if (qt === 'fill-blanks') {
+      let blanks: any[] = []
+      try { const c = JSON.parse(q.config || '{}'); blanks = c.blanks || [] } catch {}
+      return blanks.length || 1
+    }
+    return 1
+  }
+
+  const totalAnswered = questions.reduce((sum, q) => sum + countAnswersForQuestion(q), 0)
+  const totalSubQuestions = questions.reduce((sum, q) => sum + subQuestionCountForQuestion(q), 0)
   const progressPercent = totalSubQuestions > 0 ? (totalAnswered / totalSubQuestions) * 100 : 0
 
   return (

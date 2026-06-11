@@ -19,6 +19,7 @@ import {
   Target,
   Trophy,
   Timer,
+  RefreshCw,
 } from 'lucide-react'
 import { useRouterStore } from '@/store/router'
 import { useAuthStore } from '@/store/auth'
@@ -74,6 +75,7 @@ interface SubmissionBrief {
   obtainedMarks: number
   timeTaken: number
   status: string
+  canRetake?: boolean
   set: { id: string; title: string; totalQuestions: number; totalMarks: number }
 }
 
@@ -569,6 +571,26 @@ export default function CQExamPackageDetailPage() {
                                 <Crown className="size-3" />
                                 প্যাকেজ কিনুন
                               </Button>
+                            ) : isGraded && submission?.canRetake ? (
+                              <div className="flex items-center gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-1 text-xs"
+                                  onClick={() => handleViewResult(submission!.id)}
+                                >
+                                  <Trophy className="size-3" />
+                                  ফলাফল
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="gap-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs"
+                                  onClick={() => handleStartExam(submission!.setId)}
+                                >
+                                  <RefreshCw className="size-3" />
+                                  পুনরায় দিন
+                                </Button>
+                              </div>
                             ) : isGraded ? (
                               <Button
                                 size="sm"
