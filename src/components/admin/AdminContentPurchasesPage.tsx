@@ -11,25 +11,16 @@ import {
   Package,
   Users,
   UserX,
-  ChevronLeft,
-  ChevronRight,
   ShieldCheck,
   ShieldOff,
   Filter,
   BarChart3,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -48,6 +39,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { Textarea } from '@/components/ui/textarea'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
+import { useTableSelection } from '@/hooks/use-table-selection'
 
 interface PurchaseRecord {
   id: string
@@ -111,8 +104,6 @@ export default function AdminContentPurchasesPage() {
 
   useEffect(() => { fetchPurchases() }, [fetchPurchases])
 
-  const totalPages = Math.ceil(total / limit)
-
   const handleToggleActive = async () => {
     if (!toggleDialog) return
     setProcessing(true)
@@ -145,6 +136,161 @@ export default function AdminContentPurchasesPage() {
       setToggleReason('')
     }
   }
+
+  const selection = useTableSelection(purchases)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/content-purchases?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+  }
+
+  const handleBulkDeactivate = async (ids: string[]) => {
+    const res = await fetch('/api/admin/content-purchases', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, isActive: false }),
+    })
+    if (res.ok) { toast({ title: 'নিষ্ক্রিয় করা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+  }
+
+  const columns: ColumnDef<PurchaseRecord>[] = [
+    {
+      key: 'student',
+      header: 'শিক্ষার্থী',
+      render: (purchase) => (
+        <div>
+          <p className="font-medium text-sm">{purchase.user?.name || 'N/A'}</p>
+          <p className="text-xs text-muted-foreground">{purchase.user?.email || ''}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'content',
+      header: 'কন্টেন্ট',
+      render: (purchase) => (
+        <p className="text-sm font-medium line-clamp-1 max-w-[200px]">{purchase.contentTitle || 'N/A'}</p>
+      ),
+    },
+    {
+      key: 'type',
+      header: 'টাইপ',
+      headerClass: 'hidden md:table-cell',
+      cellClass: 'hidden md:table-cell',
+      render: (purchase) => (
+        <Badge className={getContentTypeBadgeColor(purchase.contentType)}>
+          {contentTypeLabels[purchase.contentType || ''] || purchase.contentType || '-'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'amount',
+      header: 'মূল্য',
+      headerClass: 'hidden sm:table-cell',
+      cellClass: 'hidden sm:table-cell',
+      render: (purchase) => <span className="text-sm font-medium">৳{purchase.amount}</span>,
+    },
+    {
+      key: 'method',
+      header: 'পদ্ধতি',
+      headerClass: 'hidden lg:table-cell',
+      cellClass: 'hidden lg:table-cell',
+      render: (purchase) => <span className="text-sm">{getMethodLabel(purchase.method)}</span>,
+    },
+    {
+      key: 'date',
+      header: 'ক্রয়ের তারিখ',
+      headerClass: 'hidden sm:table-cell',
+      cellClass: 'hidden sm:table-cell',
+      render: (purchase) => <span className="text-sm">{new Date(purchase.createdAt).toLocaleDateString('bn-BD')}</span>,
+    },
+    {
+      key: 'status',
+      header: 'স্ট্যাটাস',
+      render: (purchase) => (
+        <Badge className={
+          purchase.isActive
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+            : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+        }>
+          {purchase.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      cellClass: 'w-28',
+      render: (purchase) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailPurchase(purchase)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-8 w-8 ${purchase.isActive ? 'text-destructive' : 'text-emerald-600'}`}
+            onClick={() => { setToggleDialog(purchase); setToggleReason('') }}
+          >
+            {purchase.isActive ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'নিষ্ক্রিয়',
+      icon: <XCircle className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDeactivate,
+    },
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+  ]
+
+  const filters = (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="নাম, ইমেইল বা আইডি দিয়ে খুঁজুন..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="pl-9"
+            />
+          </div>
+          <Select value={contentTypeFilter} onValueChange={(v) => { setContentTypeFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-52">
+              <SelectValue placeholder="কন্টেন্ট টাইপ" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব টাইপ</SelectItem>
+              {Object.entries(contentTypeLabels).map(([key, label]) => (
+                <SelectItem key={key} value={key}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="স্ট্যাটাস" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
+              <SelectItem value="true">সক্রিয়</SelectItem>
+              <SelectItem value="false">নিষ্ক্রিয়</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  )
 
   const getContentTypeBadgeColor = (ct: string | null) => {
     switch (ct) {
@@ -288,147 +434,24 @@ export default function AdminContentPurchasesPage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="নাম, ইমেইল বা আইডি দিয়ে খুঁজুন..."
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-                className="pl-9"
-              />
-            </div>
-            <Select value={contentTypeFilter} onValueChange={(v) => { setContentTypeFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-52">
-                <SelectValue placeholder="কন্টেন্ট টাইপ" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব টাইপ</SelectItem>
-                {Object.entries(contentTypeLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="স্ট্যাটাস" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
-                <SelectItem value="true">সক্রিয়</SelectItem>
-                <SelectItem value="false">নিষ্ক্রিয়</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>শিক্ষার্থী</TableHead>
-                  <TableHead>কন্টেন্ট</TableHead>
-                  <TableHead className="hidden md:table-cell">টাইপ</TableHead>
-                  <TableHead className="hidden sm:table-cell">মূল্য</TableHead>
-                  <TableHead className="hidden lg:table-cell">পদ্ধতি</TableHead>
-                  <TableHead className="hidden sm:table-cell">ক্রয়ের তারিখ</TableHead>
-                  <TableHead>স্ট্যাটাস</TableHead>
-                  <TableHead className="w-28">অ্যাকশন</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {purchases.map((purchase) => (
-                  <TableRow key={purchase.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{purchase.user?.name || 'N/A'}</p>
-                        <p className="text-xs text-muted-foreground">{purchase.user?.email || ''}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm font-medium line-clamp-1 max-w-[200px]">
-                        {purchase.contentTitle || 'N/A'}
-                      </p>
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell">
-                      <Badge className={getContentTypeBadgeColor(purchase.contentType)}>
-                        {contentTypeLabels[purchase.contentType || ''] || purchase.contentType || '-'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm font-medium">
-                      ৳{purchase.amount}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm">
-                      {getMethodLabel(purchase.method)}
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm">
-                      {new Date(purchase.createdAt).toLocaleDateString('bn-BD')}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={
-                          purchase.isActive
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                        }
-                      >
-                        {purchase.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailPurchase(purchase)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={`h-8 w-8 ${purchase.isActive ? 'text-destructive' : 'text-emerald-600'}`}
-                          onClick={() => { setToggleDialog(purchase); setToggleReason('') }}
-                        >
-                          {purchase.isActive ? <XCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {purchases.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      কোনো ক্রয়ের তথ্য পাওয়া যায়নি
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            মোট {total.toLocaleString('bn-BD')}টি ক্রয়
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm px-2">{page} / {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={purchases}
+        total={total}
+        page={page}
+        pageSize={limit}
+        onPageChange={setPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো ক্রয়ের তথ্য পাওয়া যায়নি"
+        filters={filters}
+      />
 
       {/* Detail Dialog */}
       <Dialog open={!!detailPurchase} onOpenChange={() => setDetailPurchase(null)}>

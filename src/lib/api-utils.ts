@@ -143,6 +143,30 @@ export async function withAuth(request: Request): Promise<AuthResult | NextRespo
 }
 
 /**
+ * Parse comma-separated IDs from search params (e.g. ?ids=abc,def,ghi)
+ */
+export function parseIdsParam(searchParams: URLSearchParams): string[] | null {
+  const ids = searchParams.get('ids')
+  if (!ids) return null
+  const parts = ids.split(',').map((s) => s.trim()).filter(Boolean)
+  return parts.length > 0 ? parts : null
+}
+
+/**
+ * Parse bulk action body: { ids: string[], action?: string }
+ */
+export function parseBulkActionBody(body: Record<string, unknown>): {
+  ids: string[]
+  action?: string
+} | { error: NextResponse } {
+  const ids = body.ids as string[] | undefined
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { error: apiError('কমপক্ষে একটি ID প্রয়োজন', 400) }
+  }
+  return { ids, action: typeof body.action === 'string' ? body.action : undefined }
+}
+
+/**
  * Require admin role for an API route handler
  */
 export async function withAdmin(request: Request): Promise<AuthResult | NextResponse> {

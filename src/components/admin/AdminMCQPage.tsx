@@ -29,14 +29,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -63,6 +55,9 @@ import BulkImportDialog from '@/components/admin/BulkImportDialog'
 import { useMCQAdmin } from './mcq/use-mcq-admin'
 import { difficultyLabels, difficultyColors, STEPS, emptyForm } from './mcq/constants'
 import type { MCQRecord, StepNumber } from './mcq/types'
+import { useToast } from '@/hooks/use-toast'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 
 export default function AdminMCQPage() {
   const admin = useMCQAdmin()
@@ -71,7 +66,7 @@ export default function AdminMCQPage() {
     loading, mcqs, total, search, setSearch,
     classFilter, setClassFilter, boardFilter, setBoardFilter,
     yearFilter, setYearFilter, difficultyFilter, setDifficultyFilter,
-    premiumFilter, setPremiumFilter, page, setPage, totalPages,
+    premiumFilter, setPremiumFilter, page, setPage,
     deleteId, setDeleteId, bulkImportOpen, setBulkImportOpen,
     viewMode, currentStep, setCurrentStep,
     editId, saving, form, setForm,
@@ -81,6 +76,22 @@ export default function AdminMCQPage() {
     openCreate, openEdit, handleNext, handlePrev, saveMCQ, deleteMCQ,
     fetchMcqs, setViewMode, setSubjects, setChapters, canGoNext,
   } = admin
+
+  const { toast } = useToast()
+  const selection = useTableSelection(mcqs)
+
+  const handleBulkDelete = useCallback(async (ids: string[]) => {
+    try {
+      const res = await fetch(`/api/admin/mcq?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast({ title: 'মুছে ফেলা হয়েছে' })
+        selection.clearSelection()
+        fetchMcqs()
+      }
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'নেটওয়ার্ক সমস্যা', variant: 'destructive' })
+    }
+  }, [selection, fetchMcqs, toast])
 
   const perPage = 10
 
@@ -769,42 +780,92 @@ export default function AdminMCQPage() {
   }
 
   // ─── LIST VIEW ─────────────────────────────────────────────
-  const ListView = () => (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20">
-              <FileQuestion className="h-5 w-5" />
-            </div>
-            MCQ ব্যবস্থাপনা
-          </h1>
-          <p className="text-muted-foreground text-sm mt-2 ml-12">মোট {total}টি MCQ</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={() => setBulkImportOpen(true)}
-          >
-            <Upload className="h-4 w-4" />
-            বাল্ক ইম্পোর্ট
-          </Button>
-          <BulkImportDialog
-            open={bulkImportOpen}
-            onOpenChange={setBulkImportOpen}
-            defaultType="mcq"
-            onSuccess={fetchMcqs}
-          />
-          <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={openCreate}>
-            <Plus className="h-4 w-4" />
-            নতুন MCQ যোগ করুন
-          </Button>
-        </div>
-      </div>
+  const ListView = () => {
+    const columns: ColumnDef<MCQRecord>[] = [
+      {
+        key: 'question',
+        header: 'প্রশ্ন',
+        render: (mcq) => <RichContentRenderer content={mcq.question} inline />,
+        cellClass: 'font-medium max-w-[200px] truncate',
+      },
+      {
+        key: 'classLevel',
+        header: 'ক্লাস',
+        render: (mcq) => classLabelMap[mcq.classLevel] || mcq.classLevel,
+        cellClass: 'hidden sm:table-cell',
+      },
+      {
+        key: 'chapter',
+        header: 'অধ্যায়',
+        render: (mcq) => mcq.chapter?.name || '-',
+        cellClass: 'hidden md:table-cell',
+      },
+      {
+        key: 'board',
+        header: 'বোর্ড',
+        render: (mcq) => (mcq.board ? boardLabelMap[mcq.board] || mcq.board : '-'),
+        cellClass: 'hidden lg:table-cell',
+      },
+      {
+        key: 'year',
+        header: 'সাল',
+        render: (mcq) => mcq.year || '-',
+        cellClass: 'hidden lg:table-cell',
+      },
+      {
+        key: 'difficulty',
+        header: 'কঠিনতা',
+        render: (mcq) => (
+          <Badge className={difficultyColors[mcq.difficulty] || ''}>
+            {difficultyLabels[mcq.difficulty] || mcq.difficulty}
+          </Badge>
+        ),
+      },
+      {
+        key: 'premium',
+        header: 'প্রিমিয়াম',
+        render: (mcq) =>
+          mcq.isPremium ? (
+            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 gap-1">
+              <Crown className="h-3 w-3" />
+              প্রিমিয়াম
+            </Badge>
+          ) : (
+            <Badge variant="secondary">ফ্রি</Badge>
+          ),
+      },
+      {
+        key: 'actions',
+        header: 'অ্যাকশন',
+        cellClass: 'w-20',
+        render: (mcq) => (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => openEdit(mcq)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={() => setDeleteId(mcq.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ]
 
-      {/* Filters */}
+    const bulkActions: BulkAction[] = [
+      { label: 'মুছুন', variant: 'destructive', handler: handleBulkDelete },
+    ]
+
+    const filters = (
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-3">
@@ -903,135 +964,64 @@ export default function AdminMCQPage() {
           </div>
         </CardContent>
       </Card>
+    )
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>প্রশ্ন</TableHead>
-                <TableHead className="hidden sm:table-cell">ক্লাস</TableHead>
-                <TableHead className="hidden md:table-cell">অধ্যায়</TableHead>
-                <TableHead className="hidden lg:table-cell">বোর্ড</TableHead>
-                <TableHead className="hidden lg:table-cell">সাল</TableHead>
-                <TableHead>কঠিনতা</TableHead>
-                <TableHead>প্রিমিয়াম</TableHead>
-                <TableHead className="w-20">অ্যাকশন</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mcqs.map((mcq) => (
-                <TableRow key={mcq.id}>
-                  <TableCell className="font-medium max-w-[200px] truncate">
-                    <RichContentRenderer content={mcq.question} inline />
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {classLabelMap[mcq.classLevel] || mcq.classLevel}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {mcq.chapter?.name || '-'}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {mcq.board ? boardLabelMap[mcq.board] || mcq.board : '-'}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {mcq.year || '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={difficultyColors[mcq.difficulty] || ''}>
-                      {difficultyLabels[mcq.difficulty] || mcq.difficulty}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {mcq.isPremium ? (
-                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 gap-1">
-                        <Crown className="h-3 w-3" />
-                        প্রিমিয়াম
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">ফ্রি</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEdit(mcq)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => setDeleteId(mcq.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {mcqs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    কোনো MCQ পাওয়া যায়নি
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {(page - 1) * perPage + 1}-{Math.min(page * perPage, total)} / {total}
-          </p>
-          <div className="flex items-center gap-2">
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20">
+                <FileQuestion className="h-5 w-5" />
+              </div>
+              MCQ ব্যবস্থাপনা
+            </h1>
+            <p className="text-muted-foreground text-sm mt-2 ml-12">মোট {total}টি MCQ</p>
+          </div>
+          <div className="flex gap-2">
             <Button
               variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
+              className="gap-2"
+              onClick={() => setBulkImportOpen(true)}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <Upload className="h-4 w-4" />
+              বাল্ক ইম্পোর্ট
             </Button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const p = page <= 3 ? i + 1 : page + i - 2
-              if (p < 1 || p > totalPages) return null
-              return (
-                <Button
-                  key={p}
-                  variant={page === p ? 'default' : 'outline'}
-                  size="icon"
-                  className={`h-8 w-8 ${page === p ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </Button>
-              )
-            })}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
+            <BulkImportDialog
+              open={bulkImportOpen}
+              onOpenChange={setBulkImportOpen}
+              defaultType="mcq"
+              onSuccess={fetchMcqs}
+            />
+            <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={openCreate}>
+              <Plus className="h-4 w-4" />
+              নতুন MCQ যোগ করুন
             </Button>
           </div>
         </div>
-      )}
-    </motion.div>
-  )
+
+        <DataTable
+          columns={columns}
+          data={mcqs}
+          total={total}
+          page={page}
+          pageSize={perPage}
+          onPageChange={setPage}
+          loading={loading}
+          selectable
+          selectedIds={selection.selectedIds}
+          onToggleOne={selection.toggleOne}
+          onToggleAll={selection.toggleAll}
+          allVisibleSelected={selection.allVisibleSelected}
+          someVisibleSelected={selection.someVisibleSelected}
+          bulkActions={bulkActions}
+          emptyMessage="কোনো MCQ পাওয়া যায়নি"
+          filters={filters}
+        />
+      </motion.div>
+    )
+  }
 
   // ─── EDITOR VIEW ───────────────────────────────────────────
   const EditorView = () => (

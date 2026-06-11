@@ -12,22 +12,14 @@ import {
   Users,
   UserCheck,
   AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
+  Trash2,
+  Power,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -45,6 +37,8 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 
 interface SubscriptionRecord {
   id: string
@@ -90,6 +84,8 @@ export default function AdminSubscriptionsPage() {
   const [packages, setPackages] = useState<PackageOption[]>([])
   const limit = 20
 
+  const selection = useTableSelection(subscriptions)
+
   const fetchPackages = useCallback(async () => {
     try {
       const res = await fetch('/api/admin/packages?limit=200')
@@ -126,8 +122,6 @@ export default function AdminSubscriptionsPage() {
 
   useEffect(() => { fetchPackages() }, [fetchPackages])
   useEffect(() => { fetchSubscriptions() }, [fetchSubscriptions])
-
-  const totalPages = Math.ceil(total / limit)
 
   const handleToggleActive = async (sub: SubscriptionRecord) => {
     setProcessing(true)
@@ -202,6 +196,175 @@ export default function AdminSubscriptionsPage() {
     }
   }
 
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/subscriptions?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
+    else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+  }
+
+  const handleBulkToggle = async (ids: string[], isActive: boolean) => {
+    const res = await fetch('/api/admin/subscriptions', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, isActive }),
+    })
+    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
+    else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+  }
+
+  const columns: ColumnDef<SubscriptionRecord>[] = [
+    {
+      key: 'user',
+      header: 'শিক্ষার্থী',
+      render: (sub) => (
+        <div>
+          <p className="font-medium text-sm">{sub.user?.name || 'N/A'}</p>
+          <p className="text-xs text-muted-foreground">{sub.user?.email || ''}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'package',
+      header: 'প্যাকেজ',
+      render: (sub) => <p className="text-sm font-medium line-clamp-1">{sub.package?.title || 'N/A'}</p>,
+    },
+    {
+      key: 'classLevel',
+      header: 'শ্রেণি',
+      headerClass: 'hidden md:table-cell',
+      cellClass: 'hidden md:table-cell',
+      render: (sub) => <Badge variant="outline" className="text-[9px] h-4 px-1">{sub.classLevel || '-'}</Badge>,
+    },
+    {
+      key: 'startDate',
+      header: 'শুরু',
+      headerClass: 'hidden sm:table-cell',
+      cellClass: 'hidden sm:table-cell text-sm',
+      render: (sub) => new Date(sub.startDate).toLocaleDateString('bn-BD'),
+    },
+    {
+      key: 'endDate',
+      header: 'মেয়াদ',
+      headerClass: 'hidden sm:table-cell',
+      cellClass: 'hidden sm:table-cell text-sm',
+      render: (sub) => new Date(sub.endDate).toLocaleDateString('bn-BD'),
+    },
+    {
+      key: 'daysLeft',
+      header: 'দিন বাকি',
+      render: (sub) => {
+        const daysLeft = getDaysLeft(sub.endDate)
+        const isExpired = daysLeft <= 0
+        return (
+          <Badge className={
+            isExpired
+              ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+              : daysLeft <= 7
+                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+          }>
+            {isExpired ? 'মেয়াদোত্তীর্ণ' : `${daysLeft} দিন`}
+          </Badge>
+        )
+      },
+    },
+    {
+      key: 'isActive',
+      header: 'স্ট্যাটাস',
+      render: (sub) => (
+        <Badge className={
+          sub.isActive
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+            : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+        }>
+          {sub.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      cellClass: 'w-32',
+      render: (sub) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailSub(sub)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => { setExtendDialog(sub); setExtendDays(30) }} title="মেয়াদ বাড়ান">
+            <CalendarPlus className="h-4 w-4" />
+          </Button>
+          {sub.isActive ? (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeactivateDialog(sub)}>
+              <XCircle className="h-4 w-4" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => handleToggleActive(sub)} title="সক্রিয় করুন">
+              <CheckCircle className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+    {
+      label: 'সক্রিয় করুন',
+      icon: <Power className="size-4" />,
+      handler: (ids) => handleBulkToggle(ids, true),
+    },
+    {
+      label: 'নিষ্ক্রিয় করুন',
+      icon: <XCircle className="size-4" />,
+      handler: (ids) => handleBulkToggle(ids, false),
+    },
+  ]
+
+  const filters = (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ব্যবহারকারী ID দিয়ে খুঁজুন..."
+              value={userSearch}
+              onChange={(e) => { setUserSearch(e.target.value); setPage(1) }}
+              className="pl-9"
+            />
+          </div>
+          <Select value={packageFilter} onValueChange={(v) => { setPackageFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-56">
+              <SelectValue placeholder="প্যাকেজ নির্বাচন" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব প্যাকেজ</SelectItem>
+              {packages.map((pkg) => (
+                <SelectItem key={pkg.id} value={pkg.id}>{pkg.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="স্ট্যাটাস" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
+              <SelectItem value="true">সক্রিয়</SelectItem>
+              <SelectItem value="false">নিষ্ক্রিয়</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   if (loading && subscriptions.length === 0) {
     return (
       <div className="space-y-4">
@@ -263,181 +426,25 @@ export default function AdminSubscriptionsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ব্যবহারকারী ID দিয়ে খুঁজুন..."
-                value={userSearch}
-                onChange={(e) => { setUserSearch(e.target.value); setPage(1) }}
-                className="pl-9"
-              />
-            </div>
-            <Select value={packageFilter} onValueChange={(v) => { setPackageFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-56">
-                <SelectValue placeholder="প্যাকেজ নির্বাচন" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব প্যাকেজ</SelectItem>
-                {packages.map((pkg) => (
-                  <SelectItem key={pkg.id} value={pkg.id}>{pkg.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-40">
-                <SelectValue placeholder="স্ট্যাটাস" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
-                <SelectItem value="true">সক্রিয়</SelectItem>
-                <SelectItem value="false">নিষ্ক্রিয়</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>শিক্ষার্থী</TableHead>
-                  <TableHead>প্যাকেজ</TableHead>
-                  <TableHead className="hidden md:table-cell">শ্রেণি</TableHead>
-                  <TableHead className="hidden sm:table-cell">শুরু</TableHead>
-                  <TableHead className="hidden sm:table-cell">মেয়াদ</TableHead>
-                  <TableHead>দিন বাকি</TableHead>
-                  <TableHead>স্ট্যাটাস</TableHead>
-                  <TableHead className="w-32">অ্যাকশন</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subscriptions.map((sub) => {
-                  const daysLeft = getDaysLeft(sub.endDate)
-                  const isExpired = daysLeft <= 0
-                  return (
-                    <TableRow key={sub.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{sub.user?.name || 'N/A'}</p>
-                          <p className="text-xs text-muted-foreground">{sub.user?.email || ''}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm font-medium line-clamp-1">{sub.package?.title || 'N/A'}</p>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">
-                        <Badge variant="outline" className="text-[9px] h-4 px-1">
-                          {sub.classLevel || '-'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm">
-                        {new Date(sub.startDate).toLocaleDateString('bn-BD')}
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm">
-                        {new Date(sub.endDate).toLocaleDateString('bn-BD')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            isExpired
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                              : daysLeft <= 7
-                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
-                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                          }
-                        >
-                          {isExpired ? 'মেয়াদোত্তীর্ণ' : `${daysLeft} দিন`}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            sub.isActive
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                              : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
-                          }
-                        >
-                          {sub.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailSub(sub)}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-emerald-600"
-                            onClick={() => { setExtendDialog(sub); setExtendDays(30) }}
-                            title="মেয়াদ বাড়ান"
-                          >
-                            <CalendarPlus className="h-4 w-4" />
-                          </Button>
-                          {sub.isActive && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => setDeactivateDialog(sub)}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {!sub.isActive && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-emerald-600"
-                              onClick={() => handleToggleActive(sub)}
-                              title="সক্রিয় করুন"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-                {subscriptions.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      কোনো সাবস্ক্রিপশন পাওয়া যায়নি
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            মোট {total.toLocaleString('bn-BD')}টি সাবস্ক্রিপশন
-          </p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm px-2">{page} / {totalPages}</span>
-            <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* DataTable */}
+      <DataTable
+        columns={columns}
+        data={subscriptions}
+        total={total}
+        page={page}
+        pageSize={limit}
+        onPageChange={setPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো সাবস্ক্রিপশন পাওয়া যায়নি"
+        filters={filters}
+      />
 
       {/* Detail Dialog */}
       <Dialog open={!!detailSub} onOpenChange={() => setDetailSub(null)}>

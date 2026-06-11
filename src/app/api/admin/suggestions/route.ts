@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, withAdmin } from '@/lib/api-utils'
+import { apiResponse, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
@@ -181,6 +181,13 @@ export async function DELETE(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
+
+    const ids = parseIdsParam(searchParams)
+    if (ids) {
+      const result = await db.suggestion.deleteMany({ where: { id: { in: ids } } })
+      return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
+    }
+
     const idFromQuery = searchParams.get('id')
 
     let id = idFromQuery

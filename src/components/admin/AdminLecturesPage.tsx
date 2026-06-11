@@ -65,6 +65,8 @@ import { processContentBlocks } from '@/lib/math-converter'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 import { cn } from '@/lib/utils'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -197,9 +199,14 @@ export default function AdminLecturesPage() {
   const [formPrice, setFormPrice] = useState('')
   const [formIsActive, setFormIsActive] = useState(true)
 
+  const [page, setPage] = useState(1)
+  const perPage = 50
+
   const [classes, setClasses] = useState<ClassItem[]>([])
   const [subjects, setSubjects] = useState<SubjectItem[]>([])
   const [chapters, setChapters] = useState<ChapterItem[]>([])
+
+  const selection = useTableSelection(lectures)
 
   useEffect(() => {
     fetch('/api/admin/classes').then(r => r.json()).then(j => setClasses(Array.isArray(j.data) ? j.data : [])).catch(() => {
@@ -234,6 +241,8 @@ export default function AdminLecturesPage() {
     try {
       const params = new URLSearchParams()
       if (search) params.set('q', search)
+      params.set('page', String(page))
+      params.set('limit', String(perPage))
       const res = await fetch(`/api/admin/lectures?${params}`)
       if (res.ok) {
         const json = await res.json()
@@ -244,7 +253,7 @@ export default function AdminLecturesPage() {
       toast({ title: 'ত্রুটি', description: 'লেকচার লোড করতে সমস্যা হয়েছে', variant: 'destructive' })
     }
     finally { setLoading(false) }
-  }, [search])
+  }, [search, page])
 
   useEffect(() => { fetchLectures() }, [fetchLectures])
 
@@ -259,6 +268,19 @@ export default function AdminLecturesPage() {
     if (formSubjectId) { fetchChapters(formSubjectId); setFormChapterId('') }
     else { setChapters([]) }
   }, [formSubjectId, fetchChapters])
+
+  const handleBulkDelete = useCallback(async (ids: string[]) => {
+    try {
+      const res = await fetch(`/api/admin/lectures?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast({ title: 'মুছে ফেলা হয়েছে' })
+        selection.clearSelection()
+        fetchLectures()
+      }
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'নেটওয়ার্ক সমস্যা', variant: 'destructive' })
+    }
+  }, [selection, fetchLectures, toast])
 
   const resetForm = () => {
     setFormTitle('')
@@ -433,6 +455,123 @@ export default function AdminLecturesPage() {
       )
     }
 
+    const columns: ColumnDef<LectureRecord>[] = [
+      {
+        key: 'title',
+        header: 'শিরোনাম',
+        render: (lec) => <span className="font-medium">{lec.title}</span>,
+        cellClass: 'max-w-[220px] truncate',
+      },
+      {
+        key: 'class',
+        header: 'ক্লাস',
+        render: (lec) => {
+          const cls = lec.chapter?.subject?.class
+          return cls ? (classLevelLabels[cls.slug] || cls.name) : '-'
+        },
+        cellClass: 'hidden sm:table-cell',
+      },
+      {
+        key: 'chapter',
+        header: 'অধ্যায়',
+        render: (lec) => lec.chapter?.name || '-',
+        cellClass: 'hidden md:table-cell',
+      },
+      {
+        key: 'duration',
+        header: 'সময়',
+        render: (lec) => (lec.duration > 0 ? `${lec.duration} মিনিট` : '-'),
+        cellClass: 'hidden lg:table-cell',
+      },
+      {
+        key: 'premium',
+        header: 'প্রিমিয়াম',
+        render: (lec) =>
+          lec.isPremium ? (
+            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 gap-1">
+              <Crown className="h-3 w-3" />প্রিমিয়াম
+            </Badge>
+          ) : (
+            <Badge variant="secondary">ফ্রি</Badge>
+          ),
+      },
+      {
+        key: 'status',
+        header: 'স্ট্যাটাস',
+        render: (lec) =>
+          lec.isActive ? (
+            <Badge variant="outline" className="text-emerald-600 border-emerald-300 dark:text-emerald-400 dark:border-emerald-700">
+              সক্রিয়
+            </Badge>
+          ) : (
+            <Badge variant="outline" className="text-destructive border-destructive/50">
+              লুকানো
+            </Badge>
+          ),
+      },
+      {
+        key: 'actions',
+        header: 'অ্যাকশন',
+        cellClass: 'w-20',
+        render: (lec) => (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => openEdit(lec)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={() => setDeleteId(lec.id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ),
+      },
+    ]
+
+    const bulkActions: BulkAction[] = [
+      { label: 'মুছুন', variant: 'destructive', handler: handleBulkDelete },
+    ]
+
+    const filters = (
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="লেকচার খুঁজুন..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+            className="pl-9 h-10 bg-card border-border/50"
+          />
+        </div>
+        <div className="flex items-center bg-card border border-border/50 rounded-lg p-0.5">
+          <Button
+            variant={viewStyle === 'grid' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setViewStyle('grid')}
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewStyle === 'list' ? 'secondary' : 'ghost'}
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setViewStyle('list')}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    )
+
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -454,237 +593,187 @@ export default function AdminLecturesPage() {
           </Button>
         </div>
 
-        {/* Search + View Toggle */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="লেকচার খুঁজুন..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-10 bg-card border-border/50"
-            />
-          </div>
-          <div className="flex items-center bg-card border border-border/50 rounded-lg p-0.5">
-            <Button
-              variant={viewStyle === 'grid' ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setViewStyle('grid')}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={viewStyle === 'list' ? 'secondary' : 'ghost'}
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setViewStyle('list')}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Lectures Grid/List */}
         {viewStyle === 'grid' ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {lectures.map((lecture, idx) => (
-              <div key={lecture.id} className="group">
-                  <Card className="hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 border-border/50 h-full overflow-hidden">
-                    {/* Thumbnail or gradient header */}
-                    {lecture.thumbnail ? (
-                      <div className="relative h-36 overflow-hidden">
-                        <img src={lecture.thumbnail} alt={lecture.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                        <div className="absolute bottom-2 left-3 right-3">
-                          <h3 className="font-semibold text-white text-sm line-clamp-1 drop-shadow-md">{lecture.title}</h3>
-                        </div>
-                        {lecture.isPremium && (
-                          <Badge className="absolute top-2 right-2 bg-amber-500/90 text-white border-0 gap-1 text-[10px]">
-                            <Crown className="h-2.5 w-2.5" /> প্রিমিয়াম
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <div className={cn(
-                        'h-28 relative flex items-center justify-center',
-                        'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40',
-                      )}>
-                        <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/10 backdrop-blur-sm">
-                          {lecture.videoUrl ? <Video className="h-8 w-8 text-emerald-600/60" /> : <FileText className="h-8 w-8 text-emerald-600/60" />}
-                        </div>
-                        {lecture.isPremium && (
-                          <Badge className="absolute top-2 right-2 bg-amber-500/90 text-white border-0 gap-1 text-[10px]">
-                            <Crown className="h-2.5 w-2.5" /> প্রিমিয়াম
-                          </Badge>
-                        )}
-                      </div>
-                    )}
+          <>
+            {/* Search + View Toggle */}
+            <div className="flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="লেকচার খুঁজুন..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="pl-9 h-10 bg-card border-border/50"
+                />
+              </div>
+              <div className="flex items-center bg-card border border-border/50 rounded-lg p-0.5">
+                <Button
+                  variant={viewStyle === 'grid' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewStyle('grid')}
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant={viewStyle === 'list' ? 'secondary' : 'ghost'}
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setViewStyle('list')}
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
 
-                    <CardContent className="p-4">
-                      {!lecture.thumbnail && (
-                        <h3 className="font-semibold text-sm line-clamp-1 mb-2">{lecture.title}</h3>
+            {/* Lectures Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {lectures.map((lecture, idx) => (
+                <div key={lecture.id} className="group">
+                    <Card className="hover:shadow-lg hover:shadow-emerald-500/5 transition-all duration-300 border-border/50 h-full overflow-hidden">
+                      {/* Thumbnail or gradient header */}
+                      {lecture.thumbnail ? (
+                        <div className="relative h-36 overflow-hidden">
+                          <img src={lecture.thumbnail} alt={lecture.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                          <div className="absolute bottom-2 left-3 right-3">
+                            <h3 className="font-semibold text-white text-sm line-clamp-1 drop-shadow-md">{lecture.title}</h3>
+                          </div>
+                          {lecture.isPremium && (
+                            <Badge className="absolute top-2 right-2 bg-amber-500/90 text-white border-0 gap-1 text-[10px]">
+                              <Crown className="h-2.5 w-2.5" /> প্রিমিয়াম
+                            </Badge>
+                          )}
+                        </div>
+                      ) : (
+                        <div className={cn(
+                          'h-28 relative flex items-center justify-center',
+                          'bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40',
+                        )}>
+                          <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/10 backdrop-blur-sm">
+                            {lecture.videoUrl ? <Video className="h-8 w-8 text-emerald-600/60" /> : <FileText className="h-8 w-8 text-emerald-600/60" />}
+                          </div>
+                          {lecture.isPremium && (
+                            <Badge className="absolute top-2 right-2 bg-amber-500/90 text-white border-0 gap-1 text-[10px]">
+                              <Crown className="h-2.5 w-2.5" /> প্রিমিয়াম
+                            </Badge>
+                          )}
+                        </div>
                       )}
 
-                      <p className="text-xs text-muted-foreground mb-3 line-clamp-2 min-h-[2rem]">
-                        {getContentPreview(lecture.content)}
-                      </p>
-
-                      {/* Block type badges */}
-                      {(() => {
-                        const types = getBlockTypeBadges(lecture.content)
-                        if (types.length > 0) {
-                          return (
-                            <div className="flex flex-wrap gap-1 mb-3">
-                              {types.map(t => {
-                                const BIcon = blockTypeIcons[t]
-                                return (
-                                  <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0 h-5 gap-0.5 bg-muted/80">
-                                    {BIcon && <BIcon className="h-2.5 w-2.5" />}
-                                    {t === 'math' && 'ম্যাথ'}
-                                    {t === 'image' && 'ছবি'}
-                                    {t === 'data' && 'ডাটা'}
-                                    {t === 'code' && 'কোড'}
-                                    {t === 'heading' && 'হেডিং'}
-                                    {t === 'text' && 'টেক্সট'}
-                                    {t === 'divider' && 'বিভাজক'}
-                                  </Badge>
-                                )
-                              })}
-                            </div>
-                          )
-                        }
-                        return null
-                      })()}
-
-                      {/* Meta info */}
-                      <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-3">
-                        {lecture.chapter?.subject?.class && (
-                          <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                            {classLevelLabels[lecture.chapter.subject.class.slug] || lecture.chapter.subject.class.name}
-                          </Badge>
+                      <CardContent className="p-4">
+                        {!lecture.thumbnail && (
+                          <h3 className="font-semibold text-sm line-clamp-1 mb-2">{lecture.title}</h3>
                         )}
-                        {lecture.duration > 0 && <span>{lecture.duration} মিনিট</span>}
-                        <span>{lecture.viewCount} ভিউ</span>
-                      </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant="secondary" className="text-[10px] h-5">
-                            {lecture.videoUrl ? 'ভিডিও' : lecture.content ? 'কন্টেন্ট' : 'ড্রাফট'}
-                          </Badge>
-                          {!lecture.isActive && (
-                            <Badge className="text-[10px] h-5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800">
-                              লুকানো
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-0.5">
-                          <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={() => openEdit(lecture)} title="সম্পাদনা">
-                            <Edit className="h-3.5 w-3.5 text-emerald-600" />
-                          </Button>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7">
-                                <MoreVertical className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => openEdit(lecture)}>
-                                <Edit className="h-4 w-4 mr-2" /> সম্পাদনা
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(lecture.id)}>
-                                <Trash2 className="h-4 w-4 mr-2" /> মুছুন
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
-              {lectures.length === 0 && (
-                <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <BookOpen className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-lg font-medium">কোনো লেকচার পাওয়া যায়নি</p>
-                  <p className="text-sm mt-1">নতুন লেকচার তৈরি করতে উপরের বাটনে ক্লিক করুন</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {lectures.map((lecture, idx) => (
-                <div key={lecture.id}>
+                        <p className="text-xs text-muted-foreground mb-3 line-clamp-2 min-h-[2rem]">
+                          {getContentPreview(lecture.content)}
+                        </p>
 
-                  <Card className="hover:shadow-md transition-all border-border/50 cursor-pointer" onClick={() => openEdit(lecture)}>
-                    <CardContent className="p-3 flex items-center gap-3">
-                      {/* Thumbnail */}
-                      <div className="shrink-0">
-                        {lecture.thumbnail ? (
-                          <img src={lecture.thumbnail} alt={lecture.title} className="w-14 h-14 rounded-lg object-cover" />
-                        ) : (
-                          <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 flex items-center justify-center">
-                            {lecture.videoUrl ? <Video className="h-5 w-5 text-emerald-600/50" /> : <FileText className="h-5 w-5 text-emerald-600/50" />}
-                          </div>
-                        )}
-                      </div>
+                        {/* Block type badges */}
+                        {(() => {
+                          const types = getBlockTypeBadges(lecture.content)
+                          if (types.length > 0) {
+                            return (
+                              <div className="flex flex-wrap gap-1 mb-3">
+                                {types.map(t => {
+                                  const BIcon = blockTypeIcons[t]
+                                  return (
+                                    <Badge key={t} variant="secondary" className="text-[10px] px-1.5 py-0 h-5 gap-0.5 bg-muted/80">
+                                      {BIcon && <BIcon className="h-2.5 w-2.5" />}
+                                      {t === 'math' && 'ম্যাথ'}
+                                      {t === 'image' && 'ছবি'}
+                                      {t === 'data' && 'ডাটা'}
+                                      {t === 'code' && 'কোড'}
+                                      {t === 'heading' && 'হেডিং'}
+                                      {t === 'text' && 'টেক্সট'}
+                                      {t === 'divider' && 'বিভাজক'}
+                                    </Badge>
+                                  )
+                                })}
+                              </div>
+                            )
+                          }
+                          return null
+                        })()}
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h3 className="font-medium text-sm line-clamp-1">{lecture.title}</h3>
-                          {lecture.isPremium && <Crown className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
-                          {!lecture.isActive && (
-                            <Badge className="text-[9px] h-4 px-1 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800 shrink-0">
-                              লুকানো
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                        {/* Meta info */}
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-3">
                           {lecture.chapter?.subject?.class && (
-                            <span>{classLevelLabels[lecture.chapter.subject.class.slug] || lecture.chapter.subject.class.name}</span>
+                            <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                              {classLevelLabels[lecture.chapter.subject.class.slug] || lecture.chapter.subject.class.name}
+                            </Badge>
                           )}
-                          <span>·</span>
-                          <span>{lecture.chapter?.name || '-'}</span>
-                          {lecture.duration > 0 && <><span>·</span><span>{lecture.duration} মিনিট</span></>}
+                          {lecture.duration > 0 && <span>{lecture.duration} মিনিট</span>}
+                          <span>{lecture.viewCount} ভিউ</span>
                         </div>
-                      </div>
 
-                      {/* Block types */}
-                      <div className="hidden sm:flex items-center gap-1">
-                        {getBlockTypeBadges(lecture.content).slice(0, 4).map(t => {
-                          const BIcon = blockTypeIcons[t]
-                          return BIcon ? (
-                            <div key={t} className="p-1 rounded bg-muted/80">
-                              <BIcon className="h-3 w-3 text-muted-foreground" />
-                            </div>
-                          ) : null
-                        })}
-                      </div>
-
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={(e) => { e.stopPropagation(); openEdit(lecture) }}>
-                          <Edit className="h-4 w-4 text-emerald-600" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10" onClick={(e) => { e.stopPropagation(); setDeleteId(lecture.id) }}>
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
-              {lectures.length === 0 && (
-                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                  <BookOpen className="h-12 w-12 mb-3 opacity-30" />
-                  <p className="text-lg font-medium">কোনো লেকচার পাওয়া যায়নি</p>
-                </div>
-              )}
-            </div>
-          )}
+                        {/* Actions */}
+                        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="secondary" className="text-[10px] h-5">
+                              {lecture.videoUrl ? 'ভিডিও' : lecture.content ? 'কন্টেন্ট' : 'ড্রাফট'}
+                            </Badge>
+                            {!lecture.isActive && (
+                              <Badge className="text-[10px] h-5 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border-red-200 dark:border-red-800">
+                                লুকানো
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-0.5">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-emerald-50 dark:hover:bg-emerald-950/30" onClick={() => openEdit(lecture)} title="সম্পাদনা">
+                              <Edit className="h-3.5 w-3.5 text-emerald-600" />
+                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7">
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => openEdit(lecture)}>
+                                  <Edit className="h-4 w-4 mr-2" /> সম্পাদনা
+                                </DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(lecture.id)}>
+                                  <Trash2 className="h-4 w-4 mr-2" /> মুছুন
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                ))}
+                {lectures.length === 0 && (
+                  <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
+                    <BookOpen className="h-12 w-12 mb-3 opacity-30" />
+                    <p className="text-lg font-medium">কোনো লেকচার পাওয়া যায়নি</p>
+                    <p className="text-sm mt-1">নতুন লেকচার তৈরি করতে উপরের বাটনে ক্লিক করুন</p>
+                  </div>
+                )}
+              </div>
+          </>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={lectures}
+            total={total}
+            page={page}
+            pageSize={perPage}
+            onPageChange={setPage}
+            loading={loading}
+            selectable
+            selectedIds={selection.selectedIds}
+            onToggleOne={selection.toggleOne}
+            onToggleAll={selection.toggleAll}
+            allVisibleSelected={selection.allVisibleSelected}
+            someVisibleSelected={selection.someVisibleSelected}
+            bulkActions={bulkActions}
+            emptyMessage="কোনো লেকচার পাওয়া যায়নি"
+            filters={filters}
+          />
+        )}
       </div>
     )
   }

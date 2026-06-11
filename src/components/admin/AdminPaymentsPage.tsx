@@ -18,21 +18,14 @@ import {
   AlertTriangle,
   FileQuestion,
   ClipboardList,
+  Trash2,
 } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -52,6 +45,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { useContentTypes } from '@/hooks/use-content-types'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 
 interface PaymentRecord {
   id: string
@@ -78,13 +73,11 @@ const statusColors: Record<string, string> = {
   rejected: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 }
 const methodLabels: Record<string, string> = { bkash: 'বিকাশ', nagad: 'নগদ', rocket: 'রকেট' }
-// Content type labels and icons are now provided dynamically via useContentTypes() hook
 
 export default function AdminPaymentsPage() {
   const { toast } = useToast()
   const { getLabel, getIcon } = useContentTypes()
 
-  // Render a content type icon as JSX
   const renderContentTypeIcon = (type: string | null) => {
     if (!type) return <CreditCard className="size-4 text-muted-foreground" />
     const Icon = getIcon(type)
@@ -98,6 +91,8 @@ export default function AdminPaymentsPage() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [methodFilter, setMethodFilter] = useState('all')
   const [contentTypeFilter, setContentTypeFilter] = useState('all')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
   const [detailPayment, setDetailPayment] = useState<PaymentRecord | null>(null)
   const [approveDialog, setApproveDialog] = useState<PaymentRecord | null>(null)
   const [rejectDialog, setRejectDialog] = useState<PaymentRecord | null>(null)
@@ -109,11 +104,14 @@ export default function AdminPaymentsPage() {
   const [pendingCount, setPendingCount] = useState(0)
   const [approvedCount, setApprovedCount] = useState(0)
 
+  const selection = useTableSelection(payments)
+
   const fetchPayments = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
-      params.set('limit', '50')
+      params.set('page', String(page))
+      params.set('limit', String(perPage))
       if (statusFilter !== 'all') params.set('status', statusFilter)
       if (methodFilter !== 'all') params.set('method', methodFilter)
       if (contentTypeFilter !== 'all') params.set('contentType', contentTypeFilter)
@@ -132,7 +130,7 @@ export default function AdminPaymentsPage() {
       }
     } catch { /* */ }
     finally { setLoading(false) }
-  }, [statusFilter, methodFilter, contentTypeFilter, search])
+  }, [page, perPage, statusFilter, methodFilter, contentTypeFilter, search])
 
   useEffect(() => { fetchPayments() }, [fetchPayments])
 
@@ -194,6 +192,139 @@ export default function AdminPaymentsPage() {
     finally { setProcessing(false) }
   }
 
+  const handleBulkDelete = async (ids: string[]) => {
+    try {
+      const res = await fetch(`/api/admin/payments?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast({ title: `${ids.length}টি পেমেন্ট মুছে ফেলা হয়েছে` })
+        selection.clearSelection()
+        fetchPayments()
+      } else {
+        const json = await res.json()
+        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
+      }
+    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+  }
+
+  const columns: ColumnDef<PaymentRecord>[] = [
+    {
+      key: 'user',
+      header: 'ব্যবহারকারী',
+      render: (payment) => (
+        <div>
+          <p className="font-medium text-sm">{payment.user?.name || 'N/A'}</p>
+          <p className="text-xs text-muted-foreground">{payment.user?.email || ''}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'content',
+      header: 'কন্টেন্ট',
+      render: (payment) => (
+        <div className="flex items-center gap-2">
+          {renderContentTypeIcon(payment.contentType)}
+          <div>
+            <p className="text-sm font-medium line-clamp-1">
+              {payment.contentTitle || getLabel(payment.contentType || '') || payment.contentType || 'কন্টেন্ট'}
+            </p>
+            <div className="flex items-center gap-1.5">
+              <Badge variant="outline" className="text-[9px] h-4 px-1">
+                {getLabel(payment.contentType || '') || payment.contentType || '-'}
+              </Badge>
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'amount',
+      header: 'পরিমাণ',
+      render: (payment) => <span className="font-semibold">৳{payment.amount}</span>,
+    },
+    {
+      key: 'method',
+      header: 'মেথড',
+      headerClass: 'hidden sm:table-cell',
+      cellClass: 'hidden sm:table-cell',
+      render: (payment) => methodLabels[payment.method] || payment.method,
+    },
+    {
+      key: 'status',
+      header: 'স্ট্যাটাস',
+      render: (payment) => <Badge className={statusColors[payment.status]}>{statusLabels[payment.status]}</Badge>,
+    },
+    {
+      key: 'actions',
+      header: '',
+      cellClass: 'w-28',
+      render: (payment) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailPayment(payment)}><Eye className="h-4 w-4" /></Button>
+          {payment.status === 'pending' && (
+            <>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => { setApproveDialog(payment); setAdminNote('') }}><CheckCircle className="h-4 w-4" /></Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setRejectDialog(payment); setRejectReason('') }}><XCircle className="h-4 w-4" /></Button>
+            </>
+          )}
+        </div>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+  ]
+
+  const filters = (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="ব্যবহারকারী, কন্টেন্ট বা ট্রানজেকশন ID দিয়ে খুঁজুন..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+          </div>
+          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="স্ট্যাটাস" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
+              <SelectItem value="pending">অপেক্ষমাণ</SelectItem>
+              <SelectItem value="approved">অনুমোদিত</SelectItem>
+              <SelectItem value="rejected">প্রত্যাখ্যাত</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={methodFilter} onValueChange={(v) => { setMethodFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="মেথড" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব মেথড</SelectItem>
+              <SelectItem value="bkash">বিকাশ</SelectItem>
+              <SelectItem value="nagad">নগদ</SelectItem>
+              <SelectItem value="rocket">রকেট</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={contentTypeFilter} onValueChange={(v) => { setContentTypeFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="কন্টেন্ট টাইপ" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব কন্টেন্ট</SelectItem>
+              <SelectItem value="mcq">MCQ প্রশ্ন</SelectItem>
+              <SelectItem value="cq">CQ প্রশ্ন</SelectItem>
+              <SelectItem value="lecture">লেকচার</SelectItem>
+              <SelectItem value="exam">পরীক্ষা</SelectItem>
+              <SelectItem value="suggestion">সাজেশন</SelectItem>
+              <SelectItem value="bundle">বান্ডেল</SelectItem>
+              <SelectItem value="board-mcq">বোর্ড MCQ</SelectItem>
+              <SelectItem value="board-cq">বোর্ড CQ</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   if (loading && payments.length === 0) {
     return (
       <div className="space-y-4">
@@ -232,111 +363,26 @@ export default function AdminPaymentsPage() {
         </CardContent></Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="ব্যবহারকারী, কন্টেন্ট বা ট্রানজেকশন ID দিয়ে খুঁজুন..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="স্ট্যাটাস" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
-                <SelectItem value="pending">অপেক্ষমাণ</SelectItem>
-                <SelectItem value="approved">অনুমোদিত</SelectItem>
-                <SelectItem value="rejected">প্রত্যাখ্যাত</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={methodFilter} onValueChange={setMethodFilter}>
-              <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="মেথড" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব মেথড</SelectItem>
-                <SelectItem value="bkash">বিকাশ</SelectItem>
-                <SelectItem value="nagad">নগদ</SelectItem>
-                <SelectItem value="rocket">রকেট</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={contentTypeFilter} onValueChange={setContentTypeFilter}>
-              <SelectTrigger className="w-full sm:w-44"><SelectValue placeholder="কন্টেন্ট টাইপ" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব কন্টেন্ট</SelectItem>
-                <SelectItem value="mcq">MCQ প্রশ্ন</SelectItem>
-                <SelectItem value="cq">CQ প্রশ্ন</SelectItem>
-                <SelectItem value="lecture">লেকচার</SelectItem>
-                <SelectItem value="exam">পরীক্ষা</SelectItem>
-                <SelectItem value="suggestion">সাজেশন</SelectItem>
-                <SelectItem value="bundle">বান্ডেল</SelectItem>
-                <SelectItem value="board-mcq">বোর্ড MCQ</SelectItem>
-                <SelectItem value="board-cq">বোর্ড CQ</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ব্যবহারকারী</TableHead>
-                <TableHead>কন্টেন্ট</TableHead>
-                <TableHead>পরিমাণ</TableHead>
-                <TableHead className="hidden sm:table-cell">মেথড</TableHead>
-                <TableHead>স্ট্যাটাস</TableHead>
-                <TableHead className="w-28">অ্যাকশন</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-sm">{payment.user?.name || 'N/A'}</p>
-                      <p className="text-xs text-muted-foreground">{payment.user?.email || ''}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {renderContentTypeIcon(payment.contentType)}
-                      <div>
-                        <p className="text-sm font-medium line-clamp-1">
-                          {payment.contentTitle || getLabel(payment.contentType || '') || payment.contentType || 'কন্টেন্ট'}
-                        </p>
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant="outline" className="text-[9px] h-4 px-1">
-                            {getLabel(payment.contentType || '') || payment.contentType || '-'}
-                          </Badge>
-                        </div>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-semibold">৳{payment.amount}</TableCell>
-                  <TableCell className="hidden sm:table-cell">{methodLabels[payment.method] || payment.method}</TableCell>
-                  <TableCell><Badge className={statusColors[payment.status]}>{statusLabels[payment.status]}</Badge></TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailPayment(payment)}><Eye className="h-4 w-4" /></Button>
-                      {payment.status === 'pending' && (
-                        <>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-emerald-600" onClick={() => { setApproveDialog(payment); setAdminNote('') }}><CheckCircle className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => { setRejectDialog(payment); setRejectReason('') }}><XCircle className="h-4 w-4" /></Button>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {payments.length === 0 && (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">কোনো পেমেন্ট পাওয়া যায়নি</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* DataTable */}
+      <DataTable
+        columns={columns}
+        data={payments}
+        total={total}
+        page={page}
+        pageSize={perPage}
+        onPageChange={setPage}
+        onPageSizeChange={setPerPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো পেমেন্ট পাওয়া যায়নি"
+        filters={filters}
+      />
 
       {/* Detail Modal */}
       <Dialog open={!!detailPayment} onOpenChange={() => setDetailPayment(null)}>
@@ -344,7 +390,6 @@ export default function AdminPaymentsPage() {
           <DialogHeader><DialogTitle>পেমেন্ট বিস্তারিত</DialogTitle></DialogHeader>
           {detailPayment && (
             <div className="space-y-4">
-              {/* Screenshot */}
               {detailPayment.screenshot ? (
                 <div className="rounded-lg overflow-hidden border border-border/50">
                   <img
@@ -363,7 +408,6 @@ export default function AdminPaymentsPage() {
               )}
               <Separator />
 
-              {/* Content info */}
               <div className="bg-muted/50 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-2">
                   {renderContentTypeIcon(detailPayment.contentType)}
@@ -385,7 +429,6 @@ export default function AdminPaymentsPage() {
                 </div>
               </div>
 
-              {/* Payment details */}
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">ব্যবহারকারী:</span></div>
                 <div className="font-medium">{detailPayment.user?.name || 'N/A'}</div>
@@ -403,7 +446,6 @@ export default function AdminPaymentsPage() {
                 <div><Badge className={statusColors[detailPayment.status]}>{statusLabels[detailPayment.status]}</Badge></div>
               </div>
 
-              {/* Admin note / rejection reason */}
               {detailPayment.adminNote && (
                 <>
                   <Separator />
@@ -427,7 +469,6 @@ export default function AdminPaymentsPage() {
                 </>
               )}
 
-              {/* Reviewed info */}
               {detailPayment.reviewedAt && (
                 <div className="text-xs text-muted-foreground text-center">
                   রিভিউ করা হয়েছে: {new Date(detailPayment.reviewedAt).toLocaleDateString('bn-BD')}
@@ -435,7 +476,6 @@ export default function AdminPaymentsPage() {
                 </div>
               )}
 
-              {/* Action buttons for pending payments */}
               {detailPayment.status === 'pending' && (
                 <>
                   <Separator />

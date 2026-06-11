@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, paginatedApiResponse, apiError, withAdmin } from '@/lib/api-utils'
+import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam, parseBulkActionBody } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
@@ -62,7 +62,20 @@ export async function PATCH(request: Request) {
 
   try {
     const body = await request.json()
-    const { id, name, role, phone, institute, classLevel, board, isVerified, isPremium, premiumExpiry } = body
+    const { id, ids, name, role, phone, institute, classLevel, board, isVerified, isPremium, premiumExpiry } = body
+
+    if (Array.isArray(ids) && ids.length > 0) {
+      const updateData: Record<string, unknown> = {}
+      if (role !== undefined) updateData.role = role
+      if (isPremium !== undefined) updateData.isPremium = isPremium
+      if (isVerified !== undefined) updateData.isVerified = isVerified
+
+      const result = await db.user.updateMany({
+        where: { id: { in: ids } },
+        data: updateData,
+      })
+      return apiResponse({ updated: result.count }, `${result.count} জন ব্যবহারকারী আপডেট হয়েছে`)
+    }
 
     if (!id) {
       return apiError('ব্যবহারকারী ID আবশ্যক', 400)
@@ -106,7 +119,13 @@ export async function DELETE(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
+    const ids = parseIdsParam(searchParams)
     const id = searchParams.get('id')
+
+    if (ids) {
+      const result = await db.user.deleteMany({ where: { id: { in: ids } } })
+      return apiResponse({ deleted: result.count }, `${result.count} জন ব্যবহারকারী মুছে ফেলা হয়েছে`)
+    }
 
     if (!id) {
       return apiError('ব্যবহারকারী ID আবশ্যক', 400)

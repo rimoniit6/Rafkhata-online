@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
@@ -121,6 +121,13 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json()
+    const { ids, isActive } = body
+    if (Array.isArray(ids) && ids.length > 0) {
+      const updateData: Record<string, unknown> = {}
+      if (isActive !== undefined) updateData.isActive = isActive
+      const result = await db.notice.updateMany({ where: { id: { in: ids } }, data: updateData })
+      return apiResponse({ updated: result.count }, `${result.count}টি আপডেট হয়েছে`)
+    }
     const { id, ...updateData } = body
 
     if (!id) {
@@ -175,6 +182,13 @@ export async function DELETE(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
+
+    const ids = parseIdsParam(searchParams)
+    if (ids) {
+      const result = await db.notice.deleteMany({ where: { id: { in: ids } } })
+      return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
+    }
+
     const idFromQuery = searchParams.get('id')
 
     let id = idFromQuery

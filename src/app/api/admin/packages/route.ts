@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, withAdmin } from '@/lib/api-utils'
+import { apiResponse, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
@@ -127,7 +127,14 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json()
-    const { id, title, description, thumbnail, price, originalPrice, duration, durationLabel, classLevel, isActive, order } = body
+    const { id, ids, title, description, thumbnail, price, originalPrice, duration, durationLabel, classLevel, isActive, order } = body
+
+    if (Array.isArray(ids) && ids.length > 0) {
+      const updateData: Record<string, unknown> = {}
+      if (isActive !== undefined) updateData.isActive = isActive
+      const result = await db.contentPackage.updateMany({ where: { id: { in: ids } }, data: updateData })
+      return apiResponse({ updated: result.count }, `${result.count}টি আপডেট হয়েছে`)
+    }
 
     if (!id) {
       return apiResponse(null, 'প্যাকেজ ID প্রদান করুন', 400)
@@ -167,6 +174,12 @@ export async function DELETE(request: Request) {
 
   try {
     const { searchParams } = new URL(request.url)
+    const ids = parseIdsParam(searchParams)
+    if (ids) {
+      await db.userSubscription.deleteMany({ where: { packageId: { in: ids } } })
+      const result = await db.contentPackage.deleteMany({ where: { id: { in: ids } } })
+      return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
+    }
     const id = searchParams.get('id')
 
     if (!id) {

@@ -63,6 +63,8 @@ import { useToast } from '@/hooks/use-toast'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 import { cn } from '@/lib/utils'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
+import { useTableSelection } from '@/hooks/use-table-selection'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -173,6 +175,9 @@ export default function AdminExamsPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(20)
+  const [total, setTotal] = useState(0)
 
   // Step 1: Basic info
   const [formTitle, setFormTitle] = useState('')
@@ -219,14 +224,18 @@ export default function AdminExamsPage() {
   const fetchExams = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
     try {
-      const res = await fetch('/api/admin/exams?limit=50', { signal })
+      const params = new URLSearchParams()
+      params.set('page', page.toString())
+      params.set('limit', perPage.toString())
+      const res = await fetch(`/api/admin/exams?${params}`, { signal })
       if (res.ok) {
         const json = await res.json()
         setExams(Array.isArray(json.data) ? json.data : [])
+        setTotal(json.pagination?.total || 0)
       }
     } catch { /* */ }
     finally { setLoading(false) }
-  }, [])
+  }, [page, perPage])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -462,6 +471,114 @@ export default function AdminExamsPage() {
       }
     } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
   }
+
+  const selection = useTableSelection(exams)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/exams?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchExams() }
+  }
+
+  const columns: ColumnDef<ExamRecord>[] = [
+    {
+      key: 'title',
+      header: 'শিরোনাম',
+      render: (exam) => (
+        <div>
+          <p className="font-medium text-sm line-clamp-1">{exam.title}</p>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <Badge className={typeColors[exam.type] || ''}>{typeLabels[exam.type] || exam.type}</Badge>
+            {exam.isPremium && <Crown className="h-3 w-3 text-amber-500" />}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'classLevel',
+      header: 'ক্লাস',
+      render: (exam) => <span className="text-sm">{classLabelMap[exam.classLevel] || exam.classLevel}</span>,
+    },
+    {
+      key: 'duration',
+      header: 'সময়',
+      render: (exam) => (
+        <span className="text-sm flex items-center gap-1"><Clock className="h-3 w-3" />{exam.duration} মি</span>
+      ),
+    },
+    {
+      key: 'questions',
+      header: 'প্রশ্ন',
+      render: (exam) => {
+        const mcqCount = exam.questions?.filter(q => q.questionType === 'mcq').length || 0
+        return <span className="text-sm">{mcqCount} MCQ</span>
+      },
+    },
+    {
+      key: 'results',
+      header: 'অংশগ্রহণ',
+      render: (exam) => <span className="text-sm">{exam._count?.results || 0}</span>,
+    },
+    {
+      key: 'status',
+      header: 'স্ট্যাটাস',
+      render: (exam) => {
+        const StatusIcon = statusConfig[exam.status]?.icon || Edit
+        return (
+          <Badge className={statusConfig[exam.status]?.color || ''}>
+            <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
+            {statusConfig[exam.status]?.label || exam.status}
+          </Badge>
+        )
+      },
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (exam) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(exam)} title="সম্পাদনা">
+            <Edit className="h-3.5 w-3.5 text-violet-600" />
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <MoreVertical className="h-3.5 w-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {exam.status === 'draft' && (
+                <DropdownMenuItem onClick={() => handleStatusChange(exam.id, 'published')}>
+                  <Send className="h-4 w-4 mr-2" /> প্রকাশ করুন
+                </DropdownMenuItem>
+              )}
+              {exam.status === 'published' && (
+                <DropdownMenuItem onClick={() => handleStatusChange(exam.id, 'archived')}>
+                  <Archive className="h-4 w-4 mr-2" /> সংরক্ষণ করুন
+                </DropdownMenuItem>
+              )}
+              {exam.status === 'archived' && (
+                <DropdownMenuItem onClick={() => handleStatusChange(exam.id, 'draft')}>
+                  <RotateCcw className="h-4 w-4 mr-2" /> খসড়ায় ফেরান
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(exam.id)}>
+                <Trash2 className="h-4 w-4 mr-2" /> মুছুন
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+  ]
 
   // ─── STEP 1: Basic Info ──────────────────────────────────────
 
@@ -968,20 +1085,6 @@ export default function AdminExamsPage() {
   // ─── LIST VIEW ────────────────────────────────────────────────
 
   const ListView = () => {
-    if (loading) {
-      return (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-10 w-44" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-48 rounded-xl" />)}
-          </div>
-        </div>
-      )
-    }
-
     return (
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
         {/* Header */}
@@ -993,7 +1096,7 @@ export default function AdminExamsPage() {
               </div>
               এক্সাম ব্যবস্থাপনা
             </h1>
-            <p className="text-muted-foreground text-sm mt-2 ml-12">মোট {exams.length}টি এক্সাম</p>
+            <p className="text-muted-foreground text-sm mt-2 ml-12">মোট {total}টি এক্সাম</p>
           </div>
           <Button
             className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-600/20"
@@ -1029,109 +1132,25 @@ export default function AdminExamsPage() {
           </CardContent>
         </Card>
 
-        {/* Exam grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {exams.map((exam, idx) => {
-            const statusCfg = statusConfig[exam.status] || statusConfig.draft
-            const StatusIcon = statusCfg.icon
-            const mcqCount = exam.questions?.filter(q => q.questionType === 'mcq').length || 0
-            const cqCount = exam.questions?.filter(q => q.questionType === 'cq').length || 0
-
-            return (
-              <motion.div key={exam.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.05 }}>
-                <Card className="hover:shadow-lg hover:shadow-violet-500/5 transition-all border-border/50 h-full">
-                  <CardContent className="p-4">
-                    {/* Header row */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className={typeColors[exam.type] || ''}>{typeLabels[exam.type] || exam.type}</Badge>
-                        <Badge className={statusCfg.color}>
-                          <StatusIcon className="h-2.5 w-2.5 mr-0.5" />
-                          {statusCfg.label}
-                        </Badge>
-                        {exam.isPremium && <Crown className="h-3.5 w-3.5 text-amber-500" />}
-                      </div>
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="font-semibold text-sm mb-2 line-clamp-1">{exam.title}</h3>
-
-                    {/* Questions info */}
-                    <div className="flex items-center gap-2 mb-3">
-                      {(mcqCount > 0 || cqCount > 0) ? (
-                        <>
-                          {mcqCount > 0 && (
-                            <Badge variant="secondary" className="text-[10px] gap-0.5 h-5">
-                              <FileQuestion className="h-2.5 w-2.5" /> {mcqCount} MCQ
-                            </Badge>
-                          )}
-                        </>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] h-5 text-amber-600 border-amber-300">
-                          কোনো প্রশ্ন নেই
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Meta */}
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{exam.duration} মিনিট</span>
-                      <span>{classLabelMap[exam.classLevel] || exam.classLevel}</span>
-                      <span>{exam.totalMarks} নম্বর</span>
-                    </div>
-
-                    {/* Stats + Actions */}
-                    <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Users className="h-3 w-3" />
-                        {exam._count?.results || 0} জন অংশগ্রহণ
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 hover:bg-violet-50 dark:hover:bg-violet-950/30" onClick={() => openEdit(exam)} title="সম্পাদনা">
-                          <Edit className="h-3.5 w-3.5 text-violet-600" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            {exam.status === 'draft' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(exam.id, 'published')}>
-                                <Send className="h-4 w-4 mr-2" /> প্রকাশ করুন
-                              </DropdownMenuItem>
-                            )}
-                            {exam.status === 'published' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(exam.id, 'archived')}>
-                                <Archive className="h-4 w-4 mr-2" /> সংরক্ষণ করুন
-                              </DropdownMenuItem>
-                            )}
-                            {exam.status === 'archived' && (
-                              <DropdownMenuItem onClick={() => handleStatusChange(exam.id, 'draft')}>
-                                <RotateCcw className="h-4 w-4 mr-2" /> খসড়ায় ফেরান
-                              </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(exam.id)}>
-                              <Trash2 className="h-4 w-4 mr-2" /> মুছুন
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )
-          })}
-          {exams.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <ClipboardCheck className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-lg font-medium">কোনো এক্সাম পাওয়া যায়নি</p>
-              <p className="text-sm mt-1">নতুন এক্সাম তৈরি করতে উপরের বাটনে ক্লিক করুন</p>
-            </div>
-          )}
-        </div>
+        {/* DataTable */}
+        <DataTable
+          columns={columns}
+          data={exams}
+          total={total}
+          page={page}
+          pageSize={perPage}
+          onPageChange={setPage}
+          onPageSizeChange={setPerPage}
+          loading={loading}
+          selectable
+          selectedIds={selection.selectedIds}
+          onToggleOne={selection.toggleOne}
+          onToggleAll={selection.toggleAll}
+          allVisibleSelected={selection.allVisibleSelected}
+          someVisibleSelected={selection.someVisibleSelected}
+          bulkActions={bulkActions}
+          emptyMessage="কোনো এক্সাম পাওয়া যায়নি"
+        />
       </motion.div>
     )
   }

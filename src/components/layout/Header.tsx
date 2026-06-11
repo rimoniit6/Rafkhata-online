@@ -71,7 +71,7 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
-          <button className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => navigate('home')}>
+          <button className="flex items-center gap-2 shrink-0 cursor-pointer" onClick={() => navigate('home')} suppressHydrationWarning>
             {config?.logo ? (
               <Image src={config.logo} alt={siteName} width={36} height={36} className="w-9 h-9 rounded-lg object-contain" />
             ) : (
@@ -197,7 +197,7 @@ export default function Header() {
               </SheetTrigger>
               <SheetContent side="right" className="w-72">
                 <SheetHeader>
-                  <SheetTitle className="flex items-center gap-2">
+                  <SheetTitle className="flex items-center gap-2" suppressHydrationWarning>
                     {config?.logo ? (
                       <Image src={config.logo} alt={siteName} width={32} height={32} className="w-8 h-8 rounded-lg object-contain" />
                     ) : (

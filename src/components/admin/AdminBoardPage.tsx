@@ -9,8 +9,6 @@ import {
   Edit,
   Trash2,
   Crown,
-  ChevronLeft,
-  ChevronRight,
   Upload,
   FileQuestion,
   BookOpen,
@@ -29,14 +27,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 import {
   Select,
   SelectContent,
@@ -50,6 +41,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
+import { useTableSelection } from '@/hooks/use-table-selection'
 import ImageUploader from '@/components/ui/image-uploader'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 import BulkImportDialog from '@/components/admin/BulkImportDialog'
@@ -385,6 +377,13 @@ export default function AdminBoardPage() {
   useEffect(() => {
     fetchQuestions()
   }, [fetchQuestions])
+
+  const selection = useTableSelection(questions)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/board-questions?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchQuestions() }
+  }
 
   // ─── Form cascade: when classId changes ──────────────────────────────────
   useEffect(() => {
@@ -1387,6 +1386,93 @@ export default function AdminBoardPage() {
   // ═══════════════════════════════════════════════════════════════════════════
   // LIST VIEW
   // ═══════════════════════════════════════════════════════════════════════════
+
+  const columns: ColumnDef<BoardQuestion>[] = [
+    { key: 'title', header: 'শিরোনাম', render: (q) => <span className="font-medium max-w-[200px] truncate block">{q.title}</span> },
+    { key: 'type', header: 'ধরন', render: (q) => <Badge className={typeColors[q.type]}>{typeLabels[q.type]}</Badge> },
+    { key: 'board', header: 'বোর্ড', cellClass: 'hidden sm:table-cell', render: (q) => <>{q.board ? boardLabelMap[q.board] || q.board : '-'}</> },
+    { key: 'year', header: 'সাল', cellClass: 'hidden sm:table-cell', render: (q) => <>{q.year || '-'}</> },
+    { key: 'classLevel', header: 'ক্লাস', cellClass: 'hidden md:table-cell', render: (q) => <>{classLabelMap[q.classLevel] || q.classLevel}</> },
+    { key: 'subject', header: 'বিষয়', cellClass: 'hidden lg:table-cell', render: (q) => <>{q.subject?.name || q.chapter?.subject?.name || '-'}</> },
+    { key: 'difficulty', header: 'কঠিনতা', cellClass: 'hidden md:table-cell', render: (q) => <Badge className={difficultyColors[q.difficulty]}>{difficultyLabels[q.difficulty] || q.difficulty}</Badge> },
+    { key: 'isPremium', header: 'প্রিমিয়াম', cellClass: 'hidden lg:table-cell', render: (q) => q.isPremium ? <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 gap-1"><Crown className="h-3 w-3" />প্রিমিয়াম</Badge> : <Badge variant="secondary">ফ্রি</Badge> },
+    { key: 'actions', header: '', render: (q) => (
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(q)}>
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteInfo({ id: q.id, type: q.type })}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    )},
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'মুছে ফেলুন', variant: 'destructive', handler: handleBulkDelete },
+  ]
+
+  const filters = (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="বোর্ড প্রশ্ন খুঁজুন..."
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="pl-9"
+            />
+          </div>
+          <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="ধরন" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব ধরন</SelectItem>
+              <SelectItem value="mcq">MCQ</SelectItem>
+              <SelectItem value="cq">CQ</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={boardFilter} onValueChange={(v) => { setBoardFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="বোর্ড" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব বোর্ড</SelectItem>
+              {boardOptions.map((b) => (
+                <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            placeholder="সাল"
+            value={yearFilter === 'all' ? '' : yearFilter}
+            onChange={(e) => { setYearFilter(e.target.value || 'all'); setPage(1) }}
+            className="w-full sm:w-32"
+          />
+          <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="ক্লাস" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব ক্লাস</SelectItem>
+              {classes.map((c) => (
+                <SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filterSubjects.length > 0 && (
+            <Select value={subjectFilter} onValueChange={(v) => { setSubjectFilter(v); setPage(1) }}>
+              <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="বিষয়" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">সব বিষয়</SelectItem>
+                {filterSubjects.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -1466,245 +1552,24 @@ export default function AdminBoardPage() {
         </Card>
       </div>
 
-      {/* ─── Filters ──────────────────────────────────────────────────────── */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="বোর্ড প্রশ্ন খুঁজুন..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPage(1)
-                }}
-                className="pl-9"
-              />
-            </div>
-            <Select
-              value={typeFilter}
-              onValueChange={(v) => {
-                setTypeFilter(v)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-32">
-                <SelectValue placeholder="ধরন" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব ধরন</SelectItem>
-                <SelectItem value="mcq">MCQ</SelectItem>
-                <SelectItem value="cq">CQ</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={boardFilter}
-              onValueChange={(v) => {
-                setBoardFilter(v)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-36">
-                <SelectValue placeholder="বোর্ড" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব বোর্ড</SelectItem>
-                {boardOptions.map((b) => (
-                  <SelectItem key={b.value} value={b.value}>
-                    {b.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              placeholder="সাল"
-              value={yearFilter === 'all' ? '' : yearFilter}
-              onChange={(e) => {
-                setYearFilter(e.target.value || 'all')
-                setPage(1)
-              }}
-              className="w-full sm:w-32"
-            />
-            <Select
-              value={classFilter}
-              onValueChange={(v) => {
-                setClassFilter(v)
-                setPage(1)
-              }}
-            >
-              <SelectTrigger className="w-full sm:w-36">
-                <SelectValue placeholder="ক্লাস" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব ক্লাস</SelectItem>
-                {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.slug}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {filterSubjects.length > 0 && (
-              <Select
-                value={subjectFilter}
-                onValueChange={(v) => {
-                  setSubjectFilter(v)
-                  setPage(1)
-                }}
-              >
-                <SelectTrigger className="w-full sm:w-36">
-                  <SelectValue placeholder="বিষয়" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">সব বিষয়</SelectItem>
-                  {filterSubjects.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ─── Table ────────────────────────────────────────────────────────── */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>শিরোনাম</TableHead>
-                <TableHead>ধরন</TableHead>
-                <TableHead className="hidden sm:table-cell">বোর্ড</TableHead>
-                <TableHead className="hidden sm:table-cell">সাল</TableHead>
-                <TableHead className="hidden md:table-cell">ক্লাস</TableHead>
-                <TableHead className="hidden lg:table-cell">বিষয়</TableHead>
-                <TableHead className="hidden md:table-cell">কঠিনতা</TableHead>
-                <TableHead className="hidden lg:table-cell">প্রিমিয়াম</TableHead>
-                <TableHead className="w-20">অ্যাকশন</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {questions.map((q) => (
-                <TableRow key={`${q.type}-${q.id}`}>
-                  <TableCell className="font-medium max-w-[200px] truncate">
-                    {q.title}
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={typeColors[q.type] || ''}>
-                      {typeLabels[q.type]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {q.board ? boardLabelMap[q.board] || q.board : '-'}
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {q.year || '-'}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {classLabelMap[q.classLevel] || q.classLevel}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {q.subject?.name || q.chapter?.subject?.name || '-'}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <Badge className={difficultyColors[q.difficulty] || ''}>
-                      {difficultyLabels[q.difficulty] || q.difficulty}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {q.isPremium ? (
-                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 gap-1">
-                        <Crown className="h-3 w-3" />
-                        প্রিমিয়াম
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">ফ্রি</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEdit(q)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => setDeleteInfo({ id: q.id, type: q.type })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {questions.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={9}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    কোনো বোর্ড প্রশ্ন পাওয়া যায়নি
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* ─── Pagination ───────────────────────────────────────────────────── */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            {(page - 1) * perPage + 1}-{Math.min(page * perPage, total)} / {total}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-              const p = page <= 3 ? i + 1 : page + i - 2
-              if (p < 1 || p > totalPages) return null
-              return (
-                <Button
-                  key={p}
-                  variant={page === p ? 'default' : 'outline'}
-                  size="icon"
-                  className={`h-8 w-8 ${page === p ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`}
-                  onClick={() => setPage(p)}
-                >
-                  {p}
-                </Button>
-              )
-            })}
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={questions}
+        total={total}
+        page={page}
+        pageSize={perPage}
+        onPageChange={setPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো বোর্ড প্রশ্ন পাওয়া যায়নি"
+        filters={filters}
+      />
 
       {/* ─── Delete Confirmation Dialog ───────────────────────────────────── */}
       {deleteInfo && (

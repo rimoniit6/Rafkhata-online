@@ -13,7 +13,7 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
-  XCircle,
+  Power,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react'
@@ -40,15 +40,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { useToast } from '@/hooks/use-toast'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 import { cn } from '@/lib/utils'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 
@@ -224,6 +218,24 @@ export default function AdminFAQsPage() {
     }
   }
 
+  const selection = useTableSelection(filteredFaqs)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/faqs?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchFaqs() }
+    else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+  }
+
+  const handleBulkToggle = async (ids: string[], isActive: boolean) => {
+    const res = await fetch('/api/admin/faqs', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, isActive }),
+    })
+    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchFaqs() }
+    else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+  }
+
   const moveFaq = async (faq: FAQRecord, direction: 'up' | 'down') => {
     const sorted = [...faqs].sort((a, b) => a.order - b.order)
     const idx = sorted.findIndex((f) => f.id === faq.id)
@@ -250,6 +262,127 @@ export default function AdminFAQsPage() {
       /* */
     }
   }
+
+  const columns: ColumnDef<FAQRecord>[] = [
+    {
+      key: 'order',
+      header: 'ক্রম',
+      headerClass: 'w-16',
+      render: (faq, _idx) => {
+        const sorted = [...filteredFaqs].sort((a, b) => a.order - b.order)
+        const idx = sorted.findIndex((f) => f.id === faq.id)
+        return (
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium">{faq.order}</span>
+            <div className="flex flex-col">
+              <button onClick={() => moveFaq(faq, 'up')} className="p-0.5 rounded hover:bg-muted transition-colors disabled:opacity-30" disabled={idx === 0}>
+                <ArrowUp className="h-3 w-3" />
+              </button>
+              <button onClick={() => moveFaq(faq, 'down')} className="p-0.5 rounded hover:bg-muted transition-colors disabled:opacity-30" disabled={idx === filteredFaqs.length - 1}>
+                <ArrowDown className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'question',
+      header: 'প্রশ্ন',
+      render: (faq) => (
+        <div>
+          <button
+            className="text-sm font-medium text-left hover:text-emerald-600 transition-colors flex items-center gap-1"
+            onClick={() => setExpandedId(expandedId === faq.id ? null : faq.id)}
+          >
+            <RichContentRenderer content={faq.question} />
+            {expandedId === faq.id ? <ChevronUp className="h-3.5 w-3.5 shrink-0" /> : <ChevronDown className="h-3.5 w-3.5 shrink-0" />}
+          </button>
+          <AnimatePresence>
+            {expandedId === faq.id && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+                  <RichContentRenderer content={faq.answer} />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'ক্যাটাগরি',
+      headerClass: 'w-32',
+      render: (faq) => faq.category ? <Badge variant="outline" className="text-xs">{faq.category}</Badge> : <span className="text-xs text-muted-foreground">—</span>,
+    },
+    {
+      key: 'isActive',
+      header: 'স্ট্যাটাস',
+      headerClass: 'w-24',
+      render: (faq) => (
+        <button onClick={() => toggleActive(faq)} className="focus:outline-none">
+          <Badge className={cn('cursor-pointer text-xs', faq.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400')}>
+            {faq.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+          </Badge>
+        </button>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      headerClass: 'w-32',
+      render: (faq) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(faq)} title="সম্পাদনা">
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(faq.id)} title="মুছুন">
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+    {
+      label: 'সক্রিয় করুন',
+      icon: <CheckCircle className="size-4" />,
+      handler: (ids) => handleBulkToggle(ids, true),
+    },
+    {
+      label: 'নিষ্ক্রিয় করুন',
+      icon: <Power className="size-4" />,
+      handler: (ids) => handleBulkToggle(ids, false),
+    },
+  ]
+
+  const filters = (
+    <div className="flex flex-col sm:flex-row gap-3">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="FAQ খুঁজুন…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+      </div>
+      <Select value={filterCategory} onValueChange={setFilterCategory}>
+        <SelectTrigger className="w-full sm:w-48">
+          <SelectValue placeholder="ক্যাটাগরি ফিল্টার" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">সকল ক্যাটাগরি</SelectItem>
+          {categories.map((cat) => (
+            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
 
   // ── Loading skeleton ──
   if (loading) {
@@ -340,161 +473,25 @@ export default function AdminFAQsPage() {
         </Card>
       </div>
 
-      {/* Search / Filter bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="FAQ খুঁজুন…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="ক্যাটাগরি ফিল্টার" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">সকল ক্যাটাগরি</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* FAQ Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-16">ক্রম</TableHead>
-                <TableHead>প্রশ্ন</TableHead>
-                <TableHead className="w-32">ক্যাটাগরি</TableHead>
-                <TableHead className="w-24">স্ট্যাটাস</TableHead>
-                <TableHead className="w-32">অ্যাকশন</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFaqs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                    <HelpCircle className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>কোনো FAQ পাওয়া যায়নি</p>
-                  </TableCell>
-                </TableRow>
-              )}
-              {filteredFaqs.map((faq, idx) => (
-                <TableRow key={faq.id} className={cn(!faq.isActive && 'opacity-60')}>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium">{faq.order}</span>
-                      <div className="flex flex-col">
-                        <button
-                          onClick={() => moveFaq(faq, 'up')}
-                          className="p-0.5 rounded hover:bg-muted transition-colors disabled:opacity-30"
-                          disabled={idx === 0}
-                        >
-                          <ArrowUp className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => moveFaq(faq, 'down')}
-                          className="p-0.5 rounded hover:bg-muted transition-colors disabled:opacity-30"
-                          disabled={idx === filteredFaqs.length - 1}
-                        >
-                          <ArrowDown className="h-3 w-3" />
-                        </button>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <button
-                        className="text-sm font-medium text-left hover:text-emerald-600 transition-colors flex items-center gap-1"
-                        onClick={() => setExpandedId(expandedId === faq.id ? null : faq.id)}
-                      >
-                        <RichContentRenderer content={faq.question} />
-                        {expandedId === faq.id ? (
-                          <ChevronUp className="h-3.5 w-3.5 shrink-0" />
-                        ) : (
-                          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-                        )}
-                      </button>
-                      <AnimatePresence>
-                        {expandedId === faq.id && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
-                              <RichContentRenderer content={faq.answer} />
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {faq.category ? (
-                      <Badge variant="outline" className="text-xs">
-                        {faq.category}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <button
-                      onClick={() => toggleActive(faq)}
-                      className="focus:outline-none"
-                    >
-                      <Badge
-                        className={cn(
-                          'cursor-pointer text-xs',
-                          faq.isActive
-                            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                        )}
-                      >
-                        {faq.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                      </Badge>
-                    </button>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => openEdit(faq)}
-                        title="সম্পাদনা"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => setDeleteId(faq.id)}
-                        title="মুছুন"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      {/* DataTable */}
+      <DataTable
+        columns={columns}
+        data={filteredFaqs}
+        total={filteredFaqs.length}
+        page={1}
+        pageSize={filteredFaqs.length || 1}
+        onPageChange={() => {}}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো FAQ পাওয়া যায়নি"
+        filters={filters}
+      />
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

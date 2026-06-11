@@ -26,14 +26,6 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -62,6 +54,8 @@ import ImageUploader from '@/components/ui/image-uploader'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 import BulkImportDialog from '@/components/admin/BulkImportDialog'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -117,8 +111,6 @@ const difficultyColors: Record<string, string> = {
   medium: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
   hard: 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300',
 }
-
-// boardOptions and classLevelLabels are now loaded from the database via useHierarchyMetadata()
 
 const steps: { num: StepNumber; label: string; icon: React.ElementType }[] = [
   { num: 1, label: 'উদ্দীপক ও প্রশ্ন', icon: AlignLeft },
@@ -337,6 +329,9 @@ export default function AdminCQPage() {
   /* Derived classSlug from classes array */
   const classSlug = classes.find((c) => c.id === form.classId)?.slug || ''
 
+  /* Table selection */
+  const selection = useTableSelection(cqs)
+
   /* ---- Data fetching ---- */
 
   useEffect(() => {
@@ -413,9 +408,20 @@ export default function AdminCQPage() {
     } else { setChapters([]) }
   }, [form.subjectId, fetchChapters])
 
-  const totalPages = Math.ceil(total / perPage)
-
   /* ---- Handlers ---- */
+
+  const handleBulkDelete = useCallback(async (ids: string[]) => {
+    try {
+      const res = await fetch(`/api/admin/cq?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) {
+        toast({ title: 'মুছে ফেলা হয়েছে' })
+        selection.clearSelection()
+        fetchCqs()
+      }
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'নেটওয়ার্ক সমস্যা', variant: 'destructive' })
+    }
+  }, [selection, fetchCqs, toast])
 
   const openCreate = () => {
     setEditId(null)
@@ -1074,122 +1080,144 @@ export default function AdminCQPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="উদ্দীপক দিয়ে খুঁজুন..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
-            </div>
-            <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="ক্লাস" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব ক্লাস</SelectItem>
-                {classes.map((c) => (<SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>))}
-              </SelectContent>
-            </Select>
-            <Select value={boardFilter} onValueChange={(v) => { setBoardFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="বোর্ড" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব বোর্ড</SelectItem>
-                {boardOptions.map((b) => (
-                  <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              placeholder="সাল"
-              value={yearFilter === 'all' ? '' : yearFilter}
-              onChange={(e) => {
-                setYearFilter(e.target.value || 'all')
-                setPage(1)
-              }}
-              className="w-full sm:w-32"
-            />
-            <Select value={difficultyFilter} onValueChange={(v) => { setDifficultyFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="কঠিনতা" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব</SelectItem>
-                <SelectItem value="easy">সহজ</SelectItem>
-                <SelectItem value="medium">মাঝারি</SelectItem>
-                <SelectItem value="hard">কঠিন</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={premiumFilter} onValueChange={(v) => { setPremiumFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="প্রিমিয়াম" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব</SelectItem>
-                <SelectItem value="premium">প্রিমিয়াম</SelectItem>
-                <SelectItem value="free">ফ্রি</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>উদ্দীপক</TableHead>
-                <TableHead className="hidden sm:table-cell">ক্লাস</TableHead>
-                <TableHead className="hidden md:table-cell">অধ্যায়</TableHead>
-                <TableHead className="hidden lg:table-cell">বোর্ড</TableHead>
-                <TableHead className="hidden lg:table-cell">সাল</TableHead>
-                <TableHead>কঠিনতা</TableHead>
-                <TableHead>প্রিমিয়াম</TableHead>
-                <TableHead className="w-20">অ্যাকশন</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cqs.map((cq) => (
-                <TableRow key={cq.id}>
-                  <TableCell className="font-medium max-w-[200px] truncate"><RichContentRenderer content={cq.uddeepok} inline /></TableCell>
-                  <TableCell className="hidden sm:table-cell">{classLabelMap[cq.classLevel] || cq.classLevel}</TableCell>
-                  <TableCell className="hidden md:table-cell">{cq.chapter?.name || '-'}</TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {cq.board ? (boardLabelMap[cq.board] || cq.board) : '-'}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {cq.year || '-'}
-                  </TableCell>
-                  <TableCell><Badge className={difficultyColors[cq.difficulty] || ''}>{difficultyLabels[cq.difficulty] || cq.difficulty}</Badge></TableCell>
-                  <TableCell>
-                    {cq.isPremium ? (
-                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 gap-1"><Crown className="h-3 w-3" />প্রিমিয়াম</Badge>
-                    ) : (
-                      <Badge variant="secondary">ফ্রি</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(cq)}><Edit className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(cq.id)}><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {cqs.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">কোনো CQ পাওয়া যায়নি</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{(page - 1) * perPage + 1}-{Math.min(page * perPage, total)} / {total}</p>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={page <= 1} onClick={() => setPage(page - 1)}><ChevronLeft className="h-4 w-4" /></Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled={page >= totalPages} onClick={() => setPage(page + 1)}><ChevronRight className="h-4 w-4" /></Button>
-          </div>
-        </div>
-      )}
+      <DataTable<CQRecord>
+        columns={[
+          {
+            key: 'uddeepok',
+            header: 'উদ্দীপক',
+            render: (cq) => <RichContentRenderer content={cq.uddeepok} inline />,
+            cellClass: 'font-medium max-w-[200px] truncate',
+          },
+          {
+            key: 'classLevel',
+            header: 'ক্লাস',
+            render: (cq) => classLabelMap[cq.classLevel] || cq.classLevel,
+            cellClass: 'hidden sm:table-cell',
+          },
+          {
+            key: 'chapter',
+            header: 'অধ্যায়',
+            render: (cq) => cq.chapter?.name || '-',
+            cellClass: 'hidden md:table-cell',
+          },
+          {
+            key: 'board',
+            header: 'বোর্ড',
+            render: (cq) => (cq.board ? boardLabelMap[cq.board] || cq.board : '-'),
+            cellClass: 'hidden lg:table-cell',
+          },
+          {
+            key: 'year',
+            header: 'সাল',
+            render: (cq) => cq.year || '-',
+            cellClass: 'hidden lg:table-cell',
+          },
+          {
+            key: 'difficulty',
+            header: 'কঠিনতা',
+            render: (cq) => (
+              <Badge className={difficultyColors[cq.difficulty] || ''}>
+                {difficultyLabels[cq.difficulty] || cq.difficulty}
+              </Badge>
+            ),
+          },
+          {
+            key: 'premium',
+            header: 'প্রিমিয়াম',
+            render: (cq) =>
+              cq.isPremium ? (
+                <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 gap-1">
+                  <Crown className="h-3 w-3" />প্রিমিয়াম
+                </Badge>
+              ) : (
+                <Badge variant="secondary">ফ্রি</Badge>
+              ),
+          },
+          {
+            key: 'actions',
+            header: 'অ্যাকশন',
+            cellClass: 'w-20',
+            render: (cq) => (
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(cq)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(cq.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ),
+          },
+        ]}
+        data={cqs}
+        total={total}
+        page={page}
+        pageSize={perPage}
+        onPageChange={setPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={[{ label: 'মুছুন', variant: 'destructive', handler: handleBulkDelete }]}
+        emptyMessage="কোনো CQ পাওয়া যায়নি"
+        filters={
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="উদ্দীপক দিয়ে খুঁজুন..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(1) }} className="pl-9" />
+                </div>
+                <Select value={classFilter} onValueChange={(v) => { setClassFilter(v); setPage(1) }}>
+                  <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="ক্লাস" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">সব ক্লাস</SelectItem>
+                    {classes.map((c) => (<SelectItem key={c.id} value={c.slug}>{c.name}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <Select value={boardFilter} onValueChange={(v) => { setBoardFilter(v); setPage(1) }}>
+                  <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="বোর্ড" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">সব বোর্ড</SelectItem>
+                    {boardOptions.map((b) => (
+                      <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="সাল"
+                  value={yearFilter === 'all' ? '' : yearFilter}
+                  onChange={(e) => {
+                    setYearFilter(e.target.value || 'all')
+                    setPage(1)
+                  }}
+                  className="w-full sm:w-32"
+                />
+                <Select value={difficultyFilter} onValueChange={(v) => { setDifficultyFilter(v); setPage(1) }}>
+                  <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="কঠিনতা" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">সব</SelectItem>
+                    <SelectItem value="easy">সহজ</SelectItem>
+                    <SelectItem value="medium">মাঝারি</SelectItem>
+                    <SelectItem value="hard">কঠিন</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={premiumFilter} onValueChange={(v) => { setPremiumFilter(v); setPage(1) }}>
+                  <SelectTrigger className="w-full sm:w-32"><SelectValue placeholder="প্রিমিয়াম" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">সব</SelectItem>
+                    <SelectItem value="premium">প্রিমিয়াম</SelectItem>
+                    <SelectItem value="free">ফ্রি</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </CardContent>
+          </Card>
+        }
+      />
 
       {/* Delete Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

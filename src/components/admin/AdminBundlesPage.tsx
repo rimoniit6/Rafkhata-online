@@ -67,6 +67,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { useToast } from '@/hooks/use-toast'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 import ImageUploader from '@/components/ui/image-uploader'
 import { cn } from '@/lib/utils'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
@@ -230,6 +232,26 @@ export default function AdminBundlesPage() {
     return () => { if (contentSearchTimerRef.current) clearTimeout(contentSearchTimerRef.current) }
   }, [contentSearch])
 
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+
+  const selection = useTableSelection(bundles)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/bundles?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchBundles() }
+  }
+
+  const handleBulkToggle = async (ids: string[], isActive: boolean) => {
+    const res = await fetch(`/api/admin/bundles`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, isActive }),
+    })
+    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchBundles() }
+  }
+
   // ─── Fetch Bundles ────────────────────────────────────────────
 
   const fetchBundles = useCallback(async () => {
@@ -239,8 +261,8 @@ export default function AdminBundlesPage() {
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (filterClassLevel.length > 0) params.set('classLevel', filterClassLevel.join(','))
       if (filterType.length > 0) params.set('type', filterType.join(','))
-      params.set('page', '1')
-      params.set('limit', '50')
+      params.set('page', String(page))
+      params.set('limit', String(perPage))
       const res = await fetch(`/api/admin/bundles?${params}`)
       if (res.ok) {
         const json = await res.json()
@@ -249,7 +271,7 @@ export default function AdminBundlesPage() {
       }
     } catch { /* */ }
     finally { setLoading(false) }
-  }, [debouncedSearch, filterClassLevel, filterType])
+  }, [debouncedSearch, filterClassLevel, filterType, page, perPage])
 
   useEffect(() => { fetchBundles() }, [fetchBundles])
 
@@ -1255,6 +1277,74 @@ export default function AdminBundlesPage() {
 
   // ─── LIST VIEW ────────────────────────────────────────────────
 
+  const columns: ColumnDef<BundleRecord>[] = [
+    { key: 'title', header: 'শিরোনাম', render: (b) => <span className="font-medium truncate block max-w-[250px]">{b.title}</span> },
+    { key: 'type', header: 'ধরন', render: (b) => <Badge className={typeColors[b.type] || typeColors.mixed}>{typeLabels[b.type] || b.type}</Badge> },
+    { key: 'classLevel', header: 'শ্রেণি', cellClass: 'hidden md:table-cell', render: (b) => <>{b.classLevel ? (classLevelLabels[b.classLevel] || b.classLevel) : '-'}</> },
+    { key: 'price', header: 'মূল্য', render: (b) => <>৳{b.price}</> },
+    { key: 'items', header: 'আইটেম', cellClass: 'hidden sm:table-cell', render: (b) => <>{(b.items || []).length}</> },
+    { key: 'isActive', header: 'স্ট্যাটাস', cellClass: 'hidden sm:table-cell', render: (b) => (
+      <Badge className={b.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' : 'bg-muted text-muted-foreground'}>
+        {b.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+      </Badge>
+    )},
+    { key: 'actions', header: '', render: (b) => (
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleActive(b)} title={b.isActive ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}>
+          <Power className={cn('h-3.5 w-3.5', b.isActive ? 'text-emerald-600' : 'text-muted-foreground')} />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(b)} title="সম্পাদনা">
+          <Edit className="h-3.5 w-3.5 text-amber-600" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(b.id)}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    )},
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'সক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, true) },
+    { label: 'নিষ্ক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, false) },
+    { label: 'মুছে ফেলুন', variant: 'destructive', handler: handleBulkDelete },
+  ]
+
+  const filters = (
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="বান্ডেল খুঁজুন..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="pl-9 h-10 bg-card border-border/50"
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <MultiSelect
+          options={classOptions.map(c => ({ label: c.label, value: c.value }))}
+          selectedValues={filterClassLevel}
+          onChange={setFilterClassLevel}
+          placeholder="শ্রেণি"
+          className="w-[160px]"
+        />
+        <MultiSelect
+          options={[
+            { label: 'MCQ', value: 'mcq' },
+            { label: 'CQ', value: 'cq' },
+            { label: 'লেকচার', value: 'lecture' },
+            { label: 'বোর্ড', value: 'board' },
+            { label: 'মিশ্র', value: 'mixed' },
+          ]}
+          selectedValues={filterType}
+          onChange={setFilterType}
+          placeholder="ধরন"
+          className="w-[150px]"
+        />
+      </div>
+    </div>
+  )
+
   const ListView = () => {
     if (loading && bundles.length === 0) {
       return (
@@ -1293,203 +1383,25 @@ export default function AdminBundlesPage() {
           </Button>
         </div>
 
-        {/* Search + Filters */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="বান্ডেল খুঁজুন..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-10 bg-card border-border/50"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <MultiSelect
-              options={classOptions.map(c => ({ label: c.label, value: c.value }))}
-              selectedValues={filterClassLevel}
-              onChange={setFilterClassLevel}
-              placeholder="শ্রেণি"
-              className="w-[160px]"
-            />
-            <MultiSelect
-              options={[
-                { label: 'MCQ', value: 'mcq' },
-                { label: 'CQ', value: 'cq' },
-                { label: 'লেকচার', value: 'lecture' },
-                { label: 'বোর্ড', value: 'board' },
-                { label: 'মিশ্র', value: 'mixed' },
-              ]}
-              selectedValues={filterType}
-              onChange={setFilterType}
-              placeholder="ধরন"
-              className="w-[150px]"
-            />
-          </div>
-        </div>
-
-        {/* Bundles Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {bundles.map((bundle, idx) => {
-            const discount = bundle.originalPrice > 0
-              ? Math.round(((bundle.originalPrice - bundle.price) / bundle.originalPrice) * 100)
-              : 0
-            return (
-              <motion.div
-                key={bundle.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-                whileHover={{ y: -2 }}
-                className="group"
-              >
-                <Card className={cn(
-                  'hover:shadow-lg transition-all duration-300 border-border/50 h-full overflow-hidden',
-                  'border-l-4',
-                  bundle.isActive
-                    ? 'border-l-amber-400 hover:shadow-amber-500/5'
-                    : 'border-l-gray-300 hover:shadow-gray-500/5 opacity-75',
-                )}>
-                  {/* Thumbnail or gradient header */}
-                  {bundle.thumbnail ? (
-                    <div className="relative h-36 overflow-hidden">
-                      <img src={bundle.thumbnail} alt={bundle.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                      <div className="absolute bottom-2 left-3 right-3">
-                        <h3 className="font-semibold text-white text-sm line-clamp-1 drop-shadow-md">{bundle.title}</h3>
-                      </div>
-                      {discount > 0 && (
-                        <Badge className="absolute top-2 right-2 bg-rose-500/90 text-white border-0 gap-1 text-[10px]">
-                          <Percent className="h-2.5 w-2.5" /> {discount}% ছাড়
-                        </Badge>
-                      )}
-                      {!bundle.isActive && (
-                        <Badge className="absolute top-2 left-2 bg-gray-500/90 text-white border-0 text-[10px]">
-                          নিষ্ক্রিয়
-                        </Badge>
-                      )}
-                    </div>
-                  ) : (
-                    <div className={cn(
-                      'h-28 relative flex items-center justify-center',
-                      bundle.isActive
-                        ? 'bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40'
-                        : 'bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950/40 dark:to-gray-900/40',
-                    )}>
-                      <div className="p-4 rounded-2xl bg-white/60 dark:bg-white/10 backdrop-blur-sm">
-                        <Package className="h-8 w-8 text-amber-600/60" />
-                      </div>
-                      {discount > 0 && (
-                        <Badge className="absolute top-2 right-2 bg-rose-500/90 text-white border-0 gap-1 text-[10px]">
-                          <Percent className="h-2.5 w-2.5" /> {discount}% ছাড়
-                        </Badge>
-                      )}
-                      {!bundle.isActive && (
-                        <Badge className="absolute top-2 left-2 bg-gray-500/90 text-white border-0 text-[10px]">
-                          নিষ্ক্রিয়
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-
-                  <CardContent className="p-4">
-                    {!bundle.thumbnail && (
-                      <h3 className="font-semibold text-sm line-clamp-1 mb-2">{bundle.title}</h3>
-                    )}
-
-                    {/* Description */}
-                    {bundle.description && (
-                      <div className="text-xs text-muted-foreground mb-3 line-clamp-2 min-h-[2rem]">
-                        <RichContentRenderer content={bundle.description} />
-                      </div>
-                    )}
-
-                    {/* Meta badges */}
-                    <div className="flex items-center flex-wrap gap-1.5 mb-3">
-                      <Badge className={cn("text-[10px] h-5 px-1.5", typeColors[bundle.type] || typeColors.mixed)}>
-                        {typeLabels[bundle.type] || bundle.type}
-                      </Badge>
-                      {bundle.classLevel && (
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                          {classLevelLabels[bundle.classLevel] || bundle.classLevel}
-                        </Badge>
-                      )}
-                      {bundle.board && (
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5 capitalize">
-                          {bundle.board}
-                        </Badge>
-                      )}
-                      {bundle.year && (
-                        <Badge variant="outline" className="text-[10px] h-5 px-1.5">
-                          {bundle.year}
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* Price & Items */}
-                    <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300 text-[10px] gap-0.5">
-                            ৳{bundle.price}
-                          </Badge>
-                          {bundle.originalPrice > bundle.price && (
-                            <span className="text-[10px] text-muted-foreground line-through">৳{bundle.originalPrice}</span>
-                          )}
-                        </div>
-                        <Badge variant="secondary" className="text-[10px] gap-0.5">
-                          <Package className="h-2.5 w-2.5" /> {bundle.items.length}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-0.5">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                          onClick={() => toggleActive(bundle)}
-                          title={bundle.isActive ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
-                        >
-                          <Power className={cn("h-3.5 w-3.5", bundle.isActive ? "text-emerald-600" : "text-muted-foreground")} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                          onClick={() => openEdit(bundle)}
-                          title="সম্পাদনা"
-                        >
-                          <Edit className="h-3.5 w-3.5 text-amber-600" />
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEdit(bundle)}>
-                              <Edit className="h-4 w-4 mr-2" /> সম্পাদনা
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(bundle.id)}>
-                              <Trash2 className="h-4 w-4 mr-2" /> মুছুন
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            )
-          })}
-          {bundles.length === 0 && (
-            <div className="col-span-full flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Package className="h-12 w-12 mb-3 opacity-30" />
-              <p className="text-lg font-medium">কোনো বান্ডেল পাওয়া যায়নি</p>
-              <p className="text-sm mt-1">নতুন বান্ডেল তৈরি করতে উপরের বাটনে ক্লিক করুন</p>
-            </div>
-          )}
-        </div>
+        <DataTable
+          columns={columns}
+          data={bundles}
+          total={total}
+          page={page}
+          pageSize={perPage}
+          onPageChange={setPage}
+          onPageSizeChange={setPerPage}
+          loading={loading}
+          selectable
+          selectedIds={selection.selectedIds}
+          onToggleOne={selection.toggleOne}
+          onToggleAll={selection.toggleAll}
+          allVisibleSelected={selection.allVisibleSelected}
+          someVisibleSelected={selection.someVisibleSelected}
+          bulkActions={bulkActions}
+          emptyMessage="কোনো বান্ডেল পাওয়া যায়নি"
+          filters={filters}
+        />
       </motion.div>
     )
   }

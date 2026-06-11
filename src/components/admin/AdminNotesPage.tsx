@@ -6,11 +6,8 @@ import {
   StickyNote,
   Trash2,
   Search,
-  Loader2,
   AlertTriangle,
   User,
-  ChevronLeft,
-  ChevronRight,
   FileText,
   Filter,
 } from 'lucide-react'
@@ -34,16 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useToast } from '@/hooks/use-toast'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 import { cn } from '@/lib/utils'
 
 // ─── Data Model ───────────────────────────────────────────────
@@ -187,6 +178,14 @@ export default function AdminNotesPage() {
     }
   }
 
+  const selection = useTableSelection(notes)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/notes?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchNotes(pagination.page) }
+    else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+  }
+
   // ── Stats ──
   const stats = {
     total: pagination.total,
@@ -199,6 +198,101 @@ export default function AdminNotesPage() {
     if (page < 1 || page > pagination.totalPages) return
     fetchNotes(page)
   }
+
+  const columns: ColumnDef<NoteRecord>[] = [
+    {
+      key: 'user',
+      header: 'ব্যবহারকারী',
+      render: (note) => (
+        <div className="flex items-center gap-2">
+          <Avatar className="h-7 w-7">
+            <AvatarImage src={note.user?.avatar || undefined} />
+            <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-[10px]">
+              {note.user?.name ? getInitials(note.user.name) : 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="text-sm font-medium truncate max-w-[120px]">{note.user?.name || 'N/A'}</p>
+            <p className="text-xs text-muted-foreground truncate max-w-[120px]">{note.user?.email || ''}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'contentType',
+      header: 'কন্টেন্ট টাইপ',
+      headerClass: 'w-32',
+      render: (note) => (
+        <Badge className={cn('text-[10px] px-1.5 py-0', CONTENT_TYPE_COLORS[note.contentType] || 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300')}>
+          {CONTENT_TYPE_LABELS[note.contentType] || note.contentType}
+        </Badge>
+      ),
+    },
+    {
+      key: 'contentId',
+      header: 'কন্টেন্ট ID',
+      headerClass: 'w-28',
+      render: (note) => <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{truncate(note.contentId, 12)}</code>,
+    },
+    {
+      key: 'content',
+      header: 'নোট প্রিভিউ',
+      render: (note) => <p className="text-sm text-muted-foreground line-clamp-2 max-w-[300px]">{truncate(note.content.replace(/<[^>]*>/g, ''), 120)}</p>,
+    },
+    {
+      key: 'createdAt',
+      header: 'তারিখ',
+      headerClass: 'w-36',
+      render: (note) => <p className="text-xs text-muted-foreground">{formatDateBn(note.createdAt)}</p>,
+    },
+    {
+      key: 'actions',
+      header: '',
+      headerClass: 'w-20',
+      render: (note) => (
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeleteId(note.id)} title="মুছুন">
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+  ]
+
+  const filters = (
+    <div className="flex flex-col sm:flex-row gap-3">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="নোট খুঁজুন…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+      </div>
+      <Select value={filterContentType} onValueChange={setFilterContentType}>
+        <SelectTrigger className="w-full sm:w-48">
+          <SelectValue placeholder="কন্টেন্ট টাইপ" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">সকল টাইপ</SelectItem>
+          <SelectItem value="lecture">লেকচার</SelectItem>
+          <SelectItem value="mcq">MCQ</SelectItem>
+          <SelectItem value="cq">CQ</SelectItem>
+          <SelectItem value="exam">এক্সাম</SelectItem>
+          <SelectItem value="suggestion">সাজেশন</SelectItem>
+          <SelectItem value="board-mcq">বোর্ড MCQ</SelectItem>
+          <SelectItem value="board-cq">বোর্ড CQ</SelectItem>
+        </SelectContent>
+      </Select>
+      <div className="relative">
+        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="ইউজার ID" value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className="pl-9 w-full sm:w-40" />
+      </div>
+    </div>
+  )
 
   // ── Loading skeleton ──
   if (loading) {
@@ -273,174 +367,25 @@ export default function AdminNotesPage() {
         </Card>
       </div>
 
-      {/* Search / Filter bar */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="নোট খুঁজুন…"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={filterContentType} onValueChange={setFilterContentType}>
-          <SelectTrigger className="w-full sm:w-48">
-            <SelectValue placeholder="কন্টেন্ট টাইপ" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">সকল টাইপ</SelectItem>
-            <SelectItem value="lecture">লেকচার</SelectItem>
-            <SelectItem value="mcq">MCQ</SelectItem>
-            <SelectItem value="cq">CQ</SelectItem>
-            <SelectItem value="exam">এক্সাম</SelectItem>
-            <SelectItem value="suggestion">সাজেশন</SelectItem>
-            <SelectItem value="board-mcq">বোর্ড MCQ</SelectItem>
-            <SelectItem value="board-cq">বোর্ড CQ</SelectItem>
-          </SelectContent>
-        </Select>
-        <div className="relative">
-          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="ইউজার ID"
-            value={filterUserId}
-            onChange={(e) => setFilterUserId(e.target.value)}
-            className="pl-9 w-full sm:w-40"
-          />
-        </div>
-      </div>
-
-      {/* Notes Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ব্যবহারকারী</TableHead>
-                <TableHead className="w-32">কন্টেন্ট টাইপ</TableHead>
-                <TableHead className="w-28">কন্টেন্ট ID</TableHead>
-                <TableHead>নোট প্রিভিউ</TableHead>
-                <TableHead className="w-36">তারিখ</TableHead>
-                <TableHead className="w-20">অ্যাকশন</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {notes.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                    <StickyNote className="h-12 w-12 mx-auto mb-3 opacity-30" />
-                    <p>কোনো নোট পাওয়া যায়নি</p>
-                  </TableCell>
-                </TableRow>
-              )}
-              {notes.map((note) => (
-                <TableRow key={note.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-7 w-7">
-                        <AvatarImage src={note.user?.avatar || undefined} />
-                        <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-[10px]">
-                          {note.user?.name ? getInitials(note.user.name) : 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate max-w-[120px]">
-                          {note.user?.name || 'N/A'}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate max-w-[120px]">
-                          {note.user?.email || ''}
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      className={cn(
-                        'text-[10px] px-1.5 py-0',
-                        CONTENT_TYPE_COLORS[note.contentType] ||
-                          'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                      )}
-                    >
-                      {CONTENT_TYPE_LABELS[note.contentType] || note.contentType}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                      {truncate(note.contentId, 12)}
-                    </code>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-muted-foreground line-clamp-2 max-w-[300px]">
-                      {truncate(note.content.replace(/<[^>]*>/g, ''), 120)}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDateBn(note.createdAt)}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive"
-                      onClick={() => setDeleteId(note.id)}
-                      title="মুছুন"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            পৃষ্ঠা {pagination.page} / {pagination.totalPages} · মোট {pagination.total}টি
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(pagination.page - 1)}
-              disabled={pagination.page <= 1}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            {Array.from({ length: Math.min(pagination.totalPages, 5) }, (_, i) => {
-              const pageNum = Math.max(1, pagination.page - 2) + i
-              if (pageNum > pagination.totalPages) return null
-              return (
-                <Button
-                  key={pageNum}
-                  variant={pageNum === pagination.page ? 'default' : 'outline'}
-                  size="sm"
-                  className={cn(
-                    'w-8 h-8 p-0',
-                    pageNum === pagination.page && 'bg-emerald-600 hover:bg-emerald-700'
-                  )}
-                  onClick={() => goToPage(pageNum)}
-                >
-                  {pageNum}
-                </Button>
-              )
-            })}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(pagination.page + 1)}
-              disabled={pagination.page >= pagination.totalPages}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      {/* DataTable */}
+      <DataTable
+        columns={columns}
+        data={notes}
+        total={pagination.total}
+        page={pagination.page}
+        pageSize={pagination.limit}
+        onPageChange={(p) => goToPage(p)}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো নোট পাওয়া যায়নি"
+        filters={filters}
+      />
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

@@ -24,6 +24,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useToast } from '@/hooks/use-toast'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
 import ImageUploader from '@/components/ui/image-uploader'
 import { cn } from '@/lib/utils'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
@@ -109,6 +111,26 @@ export default function AdminPackagesPage() {
   const [formIsActive, setFormIsActive] = useState(true)
   const [formOrder, setFormOrder] = useState('')
 
+  // Pagination
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+
+  const selection = useTableSelection(packages)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/packages?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPackages() }
+  }
+
+  const handleBulkToggle = async (ids: string[], isActive: boolean) => {
+    const res = await fetch(`/api/admin/packages`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, isActive }),
+    })
+    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchPackages() }
+  }
+
   // ─── Fetch Packages ────────────────────────────────────────────
 
   const fetchPackages = useCallback(async () => {
@@ -117,8 +139,8 @@ export default function AdminPackagesPage() {
       const params = new URLSearchParams()
       if (debouncedSearch) params.set('search', debouncedSearch)
       if (filterClassLevel) params.set('classLevel', filterClassLevel)
-      params.set('page', '1')
-      params.set('limit', '50')
+      params.set('page', String(page))
+      params.set('limit', String(perPage))
       const res = await fetch(`/api/admin/packages?${params}`)
       if (res.ok) {
         const json = await res.json()
@@ -127,7 +149,7 @@ export default function AdminPackagesPage() {
       }
     } catch { /* */ }
     finally { setLoading(false) }
-  }, [debouncedSearch, filterClassLevel])
+  }, [debouncedSearch, filterClassLevel, page, perPage])
 
   useEffect(() => { fetchPackages() }, [fetchPackages])
 
@@ -247,6 +269,78 @@ export default function AdminPackagesPage() {
 
   // ─── List View ────────────────────────────────────────────────
 
+  const columns: ColumnDef<PackageRecord>[] = [
+    { key: 'title', header: 'শিরোনাম', render: (p) => <span className="font-medium truncate block max-w-[250px]">{p.title}</span> },
+    { key: 'classLevel', header: 'শ্রেণি', cellClass: 'hidden sm:table-cell', render: (p) => (
+      <Badge variant="outline" className={cn('text-xs gap-1', p.classLevel ? classLevelColors[p.classLevel] : '')}>
+        <GraduationCap className="h-3 w-3" />
+        {p.classLevel ? (classLevelLabels[p.classLevel] || p.classLevel) : 'সকল শ্রেণি'}
+      </Badge>
+    )},
+    { key: 'duration', header: 'মেয়াদ', render: (p) => (
+      <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs gap-1">
+        <Clock className="h-3 w-3" />{p.durationLabel}
+      </Badge>
+    )},
+    { key: 'price', header: 'মূল্য', render: (p) => <>৳{p.price}</> },
+    { key: 'subscribers', header: 'সাবস্ক্রাইবার', cellClass: 'hidden md:table-cell', render: (p) => (
+      <Badge variant="secondary" className="text-xs gap-1">
+        <Users className="h-3 w-3" />{p._count?.subscriptions ?? 0}
+      </Badge>
+    )},
+    { key: 'isActive', header: 'স্ট্যাটাস', cellClass: 'hidden sm:table-cell', render: (p) => (
+      <Badge className={cn('text-xs', p.isActive ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300' : 'bg-muted text-muted-foreground')}>
+        {p.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+      </Badge>
+    )},
+    { key: 'actions', header: '', render: (p) => (
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleActive(p)} title={p.isActive ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}>
+          <Power className={cn('h-4 w-4', p.isActive ? 'text-emerald-600' : 'text-muted-foreground')} />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
+          <Edit className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600" onClick={() => setDeleteId(p.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    )},
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'সক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, true) },
+    { label: 'নিষ্ক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, false) },
+    { label: 'মুছে ফেলুন', variant: 'destructive', handler: handleBulkDelete },
+  ]
+
+  const filters = (
+    <Card className="border-border/50">
+      <CardContent className="p-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="প্যাকেজ খুঁজুন..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={filterClassLevel || '_all'} onValueChange={(v) => setFilterClassLevel(v === '_all' ? '' : v)}>
+            <SelectTrigger><SelectValue placeholder="শ্রেণি" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">সকল শ্রেণি</SelectItem>
+              {classLevelOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
   const ListView = () => (
     <div className="space-y-4">
       {/* Header */}
@@ -262,153 +356,25 @@ export default function AdminPackagesPage() {
         </Button>
       </div>
 
-      {/* Filters */}
-      <Card className="border-border/50">
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="প্যাকেজ খুঁজুন..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={filterClassLevel || '_all'} onValueChange={(v) => setFilterClassLevel(v === '_all' ? '' : v)}>
-              <SelectTrigger><SelectValue placeholder="শ্রেণি" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="_all">সকল শ্রেণি</SelectItem>
-                {classLevelOptions.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Package List */}
-      {loading ? (
-        <div className="space-y-3">
-          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
-        </div>
-      ) : packages.length === 0 ? (
-        <div className="text-center py-12">
-          <Box className="size-12 text-muted-foreground mx-auto mb-4 opacity-30" />
-          <p className="text-lg font-medium">কোনো প্যাকেজ পাওয়া যায়নি</p>
-          <p className="text-sm text-muted-foreground mt-1">নতুন প্যাকেজ তৈরি করুন বা ফিল্টার পরিবর্তন করুন</p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {packages.map((pkg) => {
-            const discount = pkg.originalPrice > 0 ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100) : 0
-            const subscriberCount = pkg._count?.subscriptions ?? 0
-
-            return (
-              <Card key={pkg.id} className={cn(
-                "border-border/50 hover:shadow-md transition-all overflow-hidden",
-                !pkg.isActive && 'opacity-60'
-              )}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-4">
-                    {/* Thumbnail */}
-                    <div className="w-16 h-16 rounded-lg bg-muted/30 flex items-center justify-center shrink-0 overflow-hidden">
-                      {pkg.thumbnail ? (
-                        <img src={pkg.thumbnail} alt={pkg.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <Box className="size-8 text-muted-foreground/40" />
-                      )}
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-sm truncate">{pkg.title}</h3>
-                          {pkg.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{pkg.description.replace(/<[^>]*>/g, '')}</p>
-                          )}
-                        </div>
-                        {/* Duration badge - prominent */}
-                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs shrink-0 gap-1">
-                          <Clock className="h-3 w-3" />
-                          {pkg.durationLabel}
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {/* Class level with GraduationCap */}
-                        <Badge variant="outline" className={cn('text-xs gap-1', pkg.classLevel ? classLevelColors[pkg.classLevel] : '')}>
-                          <GraduationCap className="h-3 w-3" />
-                          {pkg.classLevel ? (classLevelLabels[pkg.classLevel] || pkg.classLevel) : 'সকল শ্রেণি'}
-                        </Badge>
-                        {/* Subscriber count */}
-                        <Badge variant="secondary" className="text-xs gap-1">
-                          <Users className="h-3 w-3" />
-                          {subscriberCount} সাবস্ক্রাইবার
-                        </Badge>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-lg font-bold text-emerald-600">৳{pkg.price}</span>
-                            {pkg.originalPrice > pkg.price && (
-                              <>
-                                <span className="text-xs text-muted-foreground line-through">৳{pkg.originalPrice}</span>
-                                <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-900 dark:text-rose-300 text-[10px] px-1">
-                                  {discount}% ছাড়
-                                </Badge>
-                              </>
-                            )}
-                          </div>
-                          <Badge className={cn(
-                            'text-xs',
-                            pkg.isActive
-                              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
-                              : 'bg-muted text-muted-foreground'
-                          )}>
-                            {pkg.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center gap-1.5">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => toggleActive(pkg)}
-                            title={pkg.isActive ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
-                          >
-                            <Power className={cn('h-4 w-4', pkg.isActive ? 'text-emerald-600' : 'text-muted-foreground')} />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEdit(pkg)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-500 hover:text-red-600"
-                            onClick={() => setDeleteId(pkg.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={packages}
+        total={total}
+        page={page}
+        pageSize={perPage}
+        onPageChange={setPage}
+        onPageSizeChange={setPerPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো প্যাকেজ পাওয়া যায়নি"
+        filters={filters}
+      />
     </div>
   )
 

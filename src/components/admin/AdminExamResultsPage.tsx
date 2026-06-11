@@ -10,21 +10,12 @@ import {
   Clock,
   Trophy,
   BarChart3,
-  ChevronLeft,
-  ChevronRight,
+  Trash2,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -41,6 +32,8 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
+import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
+import { useTableSelection } from '@/hooks/use-table-selection'
 
 interface ExamResultRecord {
   id: string
@@ -122,8 +115,6 @@ export default function AdminExamResultsPage() {
   useEffect(() => { fetchExams() }, [fetchExams])
   useEffect(() => { fetchResults() }, [fetchResults])
 
-  const totalPages = Math.ceil(total / limit)
-
   // Parse answers JSON for detail view
   const parseAnswers = (answersStr: string) => {
     try {
@@ -132,6 +123,113 @@ export default function AdminExamResultsPage() {
       return answersStr
     }
   }
+
+  const selection = useTableSelection(results)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/exam-results?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchResults() }
+  }
+
+  const columns: ColumnDef<ExamResultRecord>[] = [
+    {
+      key: 'student',
+      header: 'শিক্ষার্থী',
+      render: (result) => (
+        <div>
+          <p className="font-medium text-sm">{result.user?.name || 'N/A'}</p>
+          <p className="text-xs text-muted-foreground">{result.user?.email || ''}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'exam',
+      header: 'পরীক্ষা',
+      render: (result) => (
+        <div>
+          <p className="text-sm font-medium line-clamp-1">{result.exam?.title || 'N/A'}</p>
+          <Badge variant="outline" className="text-[9px] h-4 px-1 mt-0.5">{result.exam?.type || '-'}</Badge>
+        </div>
+      ),
+    },
+    {
+      key: 'score',
+      header: 'স্কোর',
+      render: (result) => {
+        const pct = result.totalMarks > 0 ? Math.round((result.score / result.totalMarks) * 100) : 0
+        return (
+          <div className="flex items-center gap-2">
+            <Badge className={getScoreColor(result.score, result.totalMarks)}>
+              {result.score}/{result.totalMarks}
+            </Badge>
+            <span className="text-xs text-muted-foreground">({pct}%)</span>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'time',
+      header: 'সময়',
+      headerClass: 'hidden sm:table-cell',
+      cellClass: 'hidden sm:table-cell',
+      render: (result) => <span className="text-sm">{formatTime(result.timeTaken)}</span>,
+    },
+    {
+      key: 'date',
+      header: 'তারিখ',
+      headerClass: 'hidden md:table-cell',
+      cellClass: 'hidden md:table-cell',
+      render: (result) => <span className="text-sm">{new Date(result.completedAt).toLocaleDateString('bn-BD')}</span>,
+    },
+    {
+      key: 'actions',
+      header: '',
+      cellClass: 'w-20',
+      render: (result) => (
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailResult(result)}>
+          <Eye className="h-4 w-4" />
+        </Button>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+  ]
+
+  const filters = (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ব্যবহারকারী ID দিয়ে খুঁজুন..."
+              value={userSearch}
+              onChange={(e) => { setUserSearch(e.target.value); setPage(1) }}
+              className="pl-9"
+            />
+          </div>
+          <Select value={examFilter} onValueChange={(v) => { setExamFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-56">
+              <SelectValue placeholder="পরীক্ষা নির্বাচন" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব পরীক্ষা</SelectItem>
+              {exams.map((exam) => (
+                <SelectItem key={exam.id} value={exam.id}>{exam.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  )
 
   if (loading && results.length === 0) {
     return (
@@ -205,137 +303,24 @@ export default function AdminExamResultsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="ব্যবহারকারী ID দিয়ে খুঁজুন..."
-                value={userSearch}
-                onChange={(e) => { setUserSearch(e.target.value); setPage(1) }}
-                className="pl-9"
-              />
-            </div>
-            <Select value={examFilter} onValueChange={(v) => { setExamFilter(v); setPage(1) }}>
-              <SelectTrigger className="w-full sm:w-56">
-                <SelectValue placeholder="পরীক্ষা নির্বাচন" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">সব পরীক্ষা</SelectItem>
-                {exams.map((exam) => (
-                  <SelectItem key={exam.id} value={exam.id}>{exam.title}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>শিক্ষার্থী</TableHead>
-                  <TableHead>পরীক্ষা</TableHead>
-                  <TableHead>স্কোর</TableHead>
-                  <TableHead className="hidden sm:table-cell">সময়</TableHead>
-                  <TableHead className="hidden md:table-cell">তারিখ</TableHead>
-                  <TableHead className="w-20">অ্যাকশন</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {results.map((result) => {
-                  const pct = result.totalMarks > 0 ? Math.round((result.score / result.totalMarks) * 100) : 0
-                  return (
-                    <TableRow key={result.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-sm">{result.user?.name || 'N/A'}</p>
-                          <p className="text-xs text-muted-foreground">{result.user?.email || ''}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="text-sm font-medium line-clamp-1">{result.exam?.title || 'N/A'}</p>
-                          <Badge variant="outline" className="text-[9px] h-4 px-1 mt-0.5">
-                            {result.exam?.type || '-'}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge className={getScoreColor(result.score, result.totalMarks)}>
-                            {result.score}/{result.totalMarks}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">({pct}%)</span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="hidden sm:table-cell text-sm">
-                        {formatTime(result.timeTaken)}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-sm">
-                        {new Date(result.completedAt).toLocaleDateString('bn-BD')}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setDetailResult(result)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-                {results.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      কোনো ফলাফল পাওয়া যায়নি
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            মোট {total.toLocaleString('bn-BD')}টি ফলাফল
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page <= 1}
-              onClick={() => setPage(page - 1)}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm px-2">
-              {page} / {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={page >= totalPages}
-              onClick={() => setPage(page + 1)}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={results}
+        total={total}
+        page={page}
+        pageSize={limit}
+        onPageChange={setPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো ফলাফল পাওয়া যায়নি"
+        filters={filters}
+      />
 
       {/* Detail Dialog */}
       <Dialog open={!!detailResult} onOpenChange={() => setDetailResult(null)}>
