@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useContentTypes } from '@/hooks/use-content-types'
 import { useUploadThing } from '@/lib/uploadthing/client'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
+import { useCsrf } from '@/hooks/use-csrf'
 
 type PaymentStep = 'method' | 'pay' | 'verify'
 type PaymentMethod = 'bkash' | 'nagad' | 'rocket'
@@ -62,6 +63,7 @@ export default function PaymentPage() {
   const { config } = useSiteConfig()
   const metadata = useHierarchyMetadata()
   const { getLabel, getIcon } = useContentTypes()
+  const { token: csrfToken } = useCsrf()
 
   // Render a content type icon as JSX
   const renderTypeIcon = (type: string, className: string = 'size-5') => {
@@ -289,9 +291,12 @@ export default function PaymentPage() {
       // userId is now derived from the JWT session on the server side
       // No need to send it in the request body
 
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (csrfToken) headers['x-csrf-token'] = csrfToken
+
       const res = await fetch('/api/payment', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body),
       })
 

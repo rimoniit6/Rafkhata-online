@@ -193,26 +193,38 @@ export async function GET(request: Request) {
         })
       }
 
-      // Bulk grading by question — all submissions with answer for a specific question
+      // Bulk grading by question — all submissions with answer for a specific question (with pagination)
       case 'bulk-grade-by-question': {
         const bgSetId = searchParams.get('setId')
         const questionId = searchParams.get('questionId')
+        const page = parseInt(searchParams.get('page') || '1')
+        const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
         if (!bgSetId || !questionId) return apiError('Set ID and Question ID are required', 400)
 
-        const bulkSubs = await db.cQExamSubmission.findMany({
-          where: { setId: bgSetId, status: { in: ['submitted', 'graded', 'published'] } },
-          include: {
-            user: { select: { id: true, name: true, email: true, avatar: true, classLevel: true } },
-            answers: {
-              where: { questionId },
-              include: { images: { orderBy: { order: 'asc' } } },
-              orderBy: { subIndex: 'asc' },
-            },
-          },
-          orderBy: { createdAt: 'asc' },
-        })
+        const where = { setId: bgSetId, status: { in: ['submitted', 'graded', 'published'] } }
 
-        return apiResponse({ submissions: bulkSubs })
+        const [bulkSubs, total] = await Promise.all([
+          db.cQExamSubmission.findMany({
+            where,
+            include: {
+              user: { select: { id: true, name: true, email: true, avatar: true, classLevel: true } },
+              answers: {
+                where: { questionId },
+                include: { images: { orderBy: { order: 'asc' } } },
+                orderBy: { subIndex: 'asc' },
+              },
+            },
+            orderBy: { createdAt: 'asc' },
+            skip: (page - 1) * limit,
+            take: limit,
+          }),
+          db.cQExamSubmission.count({ where }),
+        ])
+
+        return apiResponse({
+          submissions: bulkSubs,
+          pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+        })
       }
 
       // Get single submission for grading
@@ -631,7 +643,7 @@ export async function PUT(request: Request) {
         return apiResponse({ gradedCount: pendingSubmissions.length, defaultMarks: marks })
       }
 
-      // Save bulk grades by question — saves marks for all submissions' answers for one question (batched)
+      // Save bulk grades by question — saves marks for all submissions' answers for one question (batched, transactional)
       case 'save-bulk-grades-by-question': {
         const { submissions: gradeUpdates } = body
         if (!gradeUpdates?.length) return apiError('Submissions data required', 400)
@@ -657,32 +669,35 @@ export async function PUT(request: Request) {
           submissionTotals.set(submissionId, existingTotal + totalForSubmission)
         }
 
-        // Batch update all answers
-        if (answerUpdates.length > 0) {
+        // Execute all updates in a single transaction for atomicity
+        await db.$transaction(async (tx) => {
+          // Batch update all answers
+          if (answerUpdates.length > 0) {
+            await Promise.all(
+              answerUpdates.map(({ id, obtainedMarks }) =>
+                tx.cQExamAnswer.update({
+                  where: { id },
+                  data: { obtainedMarks, gradedAt: new Date() },
+                })
+              )
+            )
+          }
+
+          // Batch update all submissions
           await Promise.all(
-            answerUpdates.map(({ id, obtainedMarks }) =>
-              db.cQExamAnswer.update({
-                where: { id },
-                data: { obtainedMarks, gradedAt: new Date() },
+            Array.from(submissionTotals.entries()).map(([submissionId, obtainedMarks]) =>
+              tx.cQExamSubmission.update({
+                where: { id: submissionId },
+                data: {
+                  obtainedMarks,
+                  status: 'graded',
+                  gradedAt: new Date(),
+                  gradedBy: auth?.user?.id || null,
+                },
               })
             )
           )
-        }
-
-        // Batch update all submissions
-        await Promise.all(
-          Array.from(submissionTotals.entries()).map(([submissionId, obtainedMarks]) =>
-            db.cQExamSubmission.update({
-              where: { id: submissionId },
-              data: {
-                obtainedMarks,
-                status: 'graded',
-                gradedAt: new Date(),
-                gradedBy: auth?.user?.id || null,
-              },
-            })
-          )
-        )
+        })
 
         const updatedCount = submissionTotals.size
 

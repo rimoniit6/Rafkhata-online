@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { db } from '@/lib/db'
 
 export interface AuthUser {
   id: string
@@ -20,7 +21,6 @@ export async function verifyAuth(request?: Request): Promise<AuthResult | null> 
 
     if (!user) return null
 
-    const { db } = await import('@/lib/db')
     const dbUser = await db.user.findUnique({
       where: { supabaseUserId: user.id },
       select: { id: true, email: true, role: true, isPremium: true },

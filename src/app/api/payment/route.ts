@@ -14,7 +14,7 @@ export async function GET(request: Request) {
     if (!auth) return apiError('প্রমাণীকরণ প্রয়োজন।', 401, 'UNAUTHORIZED')
 
     // Rate limiting
-    const rateCheck = applyRateLimit(apiLimiter, request)
+    const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error
 
     const { searchParams } = new URL(request.url)
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
     if (!auth) return apiError('প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', 401, 'UNAUTHORIZED')
 
     // Rate limiting
-    const rateCheck = applyRateLimit(apiLimiter, request)
+    const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error
 
     const body = await request.json()
@@ -302,7 +302,11 @@ export async function POST(request: Request) {
       { success: true, data: { message: 'পেমেন্ট সফলভাবে জমা হয়েছে। অ্যাডমিন যাচাইয়ের পর আপনার কন্টেন্ট অ্যাক্সেস সক্রিয় হবে।', payment } },
       { status: 201 }
     )
-  } catch (error) {
+  } catch (error: any) {
+    // Handle unique constraint violation (race condition: duplicate payment)
+    if (error?.code === 'P2002' && error?.meta?.target?.includes('userId')) {
+      return apiError('এই কন্টেন্টের জন্য পেমেন্ট ইতিমধ্যে আছে। অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।', 400, 'DUPLICATE_PAYMENT')
+    }
     return handleApiError(error, 'Create payment error')
   }
 }

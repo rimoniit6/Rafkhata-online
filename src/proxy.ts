@@ -43,7 +43,17 @@ const PUBLIC_API_ROUTES = [
   '/api/uploadthing',
 ]
 
-const ADMIN_ROUTES = ['/api/admin/']
+const PUBLIC_PAGE_ROUTES = [
+  '/',
+  '/login',
+  '/register',
+  '/privacy',
+  '/terms',
+  '/sitemap.xml',
+  '/robots.txt',
+]
+
+const ADMIN_ROUTES = ['/admin', '/api/admin/']
 
 const SUPER_ADMIN_ROUTES = [
   '/api/admin/database/reset',
@@ -51,9 +61,15 @@ const SUPER_ADMIN_ROUTES = [
   '/api/admin/database/import',
 ]
 
-function isPublicRoute(pathname: string): boolean {
+function isPublicApiRoute(pathname: string): boolean {
   return PUBLIC_API_ROUTES.some((route) =>
     pathname === route || pathname.startsWith(route + '/') || pathname.startsWith(route + '?')
+  )
+}
+
+function isPublicPageRoute(pathname: string): boolean {
+  return PUBLIC_PAGE_ROUTES.some((route) =>
+    pathname === route || pathname.startsWith(route + '/')
   )
 }
 
@@ -65,55 +81,124 @@ function isSuperAdminRoute(pathname: string): boolean {
   return SUPER_ADMIN_ROUTES.some((route) => pathname.startsWith(route))
 }
 
+function addSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('X-XSS-Protection', '1; mode=block')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set(
+    'Content-Security-Policy',
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://eylbmvqyrtkfcnfsienv.supabase.co; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data: https: blob:; " +
+    "connect-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co https://utfs.io https://api.uploadthing.com; " +
+    "frame-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co; " +
+    "base-uri 'self'; " +
+    "form-action 'self';"
+  )
+  return response
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  if (!pathname.startsWith('/api/')) {
-    return NextResponse.next()
+  // Skip static files and Next.js internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.includes('.') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js'
+  ) {
+    return addSecurityHeaders(NextResponse.next())
   }
 
-  if (isPublicRoute(pathname)) {
-    return NextResponse.next()
+  // Allow public page routes
+  if (isPublicPageRoute(pathname)) {
+    return addSecurityHeaders(NextResponse.next())
   }
 
+  // Handle API routes
+  if (pathname.startsWith('/api/')) {
+    if (isPublicApiRoute(pathname)) {
+      return addSecurityHeaders(NextResponse.next())
+    }
+
+    const { supabaseResponse, user } = await updateSession(request)
+
+    if (!user) {
+      const errorResponse = NextResponse.json(
+        { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      )
+      return addSecurityHeaders(errorResponse)
+    }
+
+    const role = user.user_metadata?.role || 'student'
+
+    if (isSuperAdminRoute(pathname)) {
+      if (role !== 'super_admin') {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'এই কাজের জন্য সুপার অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
+          { status: 403 }
+        )
+        return addSecurityHeaders(errorResponse)
+      }
+    }
+
+    if (isAdminRoute(pathname)) {
+      if (role !== 'admin' && role !== 'super_admin') {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'এই কাজের জন্য অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
+          { status: 403 }
+        )
+        return addSecurityHeaders(errorResponse)
+      }
+    }
+
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', user.id)
+    requestHeaders.set('x-user-role', role)
+
+    const response = NextResponse.next({
+      request: { headers: requestHeaders },
+    })
+    return addSecurityHeaders(response)
+  }
+
+  // For all other routes (protected pages), verify session
   const { supabaseResponse, user } = await updateSession(request)
 
   if (!user) {
-    return NextResponse.json(
-      { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    const loginUrl = new URL('/login', request.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
-  const role = user.user_metadata?.role || 'student'
-
-  if (isSuperAdminRoute(pathname)) {
-    if (role !== 'super_admin') {
-      return NextResponse.json(
-        { success: false, error: 'এই কাজের জন্য সুপার অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
-        { status: 403 }
-      )
-    }
-  }
-
+  // Admin page protection
   if (isAdminRoute(pathname)) {
+    const role = user.user_metadata?.role || 'student'
     if (role !== 'admin' && role !== 'super_admin') {
-      return NextResponse.json(
-        { success: false, error: 'এই কাজের জন্য অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
-        { status: 403 }
-      )
+      return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-user-id', user.id)
-  requestHeaders.set('x-user-role', role)
-
-  return NextResponse.next({
-    request: { headers: requestHeaders },
-  })
+  const response = NextResponse.next()
+  return addSecurityHeaders(response)
 }
 
 export const config = {
-  matcher: ['/api/:path*'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$|.*\\.jpg$|.*\\.svg$|.*\\.ico$|.*\\.webp$|public).*)',
+  ],
 }

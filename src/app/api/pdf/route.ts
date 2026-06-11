@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
 
     // Rate limiting
     const identifier = getClientIdentifier(request)
-    const rateResult = apiLimiter.limit(identifier)
+    const rateResult = await apiLimiter.limit(identifier)
     if (!rateResult.success) {
       return NextResponse.json(
         { success: false, error: 'অনেক বেশি অনুরোধ।', code: 'RATE_LIMIT_EXCEEDED' },

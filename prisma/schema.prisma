@@ -408,7 +408,8 @@ model Payment {
 
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, contentType, contentId, status])
+  @@unique([userId, contentType, contentId, status])
+  @@index([userId, contentType, contentId])
 }
 
 // ============ NOTIFICATION ============

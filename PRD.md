@@ -1,7 +1,7 @@
 # শিক্ষা বাংলা (Shiksha Bangla) — প্রোডাক্ট রিকোয়ারমেন্টস ডকুমেন্ট (PRD)
 
-> **সংস্করণ**: 1.0  
-> **তারিখ**: 2025-07-18  
+> **সংস্করণ**: 2.0  
+> **তারিখ**: 2025-07-18 (আপডেট: 2025-06-11)  
 > **প্ল্যাটফর্ম**: বাংলাদেশি শিক্ষার্থীদের জন্য অনলাইন শিক্ষা প্ল্যাটফর্ম  
 > **ভাষা**: বাংলা (প্রাথমিক), English (কোড/ডেভেলপার)
 
@@ -75,6 +75,9 @@
 | **jsonwebtoken** | 9.0.3 | ✅ সক্রিয় | JWT টোকেন তৈরি/ভেরিফাই |
 | **bcryptjs** | 3.0.3 | ✅ সক্রিয় | পাসওয়ার্ড হ্যাশিং |
 | **NextAuth.js** | 4.24.11 | ❌ ব্যবহৃত নয় | ইনস্টলড কিন্তু কোথাও ব্যবহার হয়নি, কাস্টম JWT ব্যবহার |
+| **jose** | 6.x | ✅ সক্রিয় | CSRF টোকেন (JWT HS256) |
+| **@upstash/ratelimit** | 2.x | ✅ সক্রিয় | ডিস্ট্রিবিউটেড রেট লিমিটিং |
+| **@upstash/redis** | 1.x | ✅ সক্রিয় | Upstash Redis ক্লায়েন্ট |
 
 ### ২.৬ কন্টেন্ট রেন্ডারিং
 
@@ -577,6 +580,34 @@ accordion, alert, alert-dialog, aspect-ratio, avatar, badge, breadcrumb, button,
 3. ইউজার ইনফো `x-user-id` ও `x-user-role` হেডারে ইনজেক্ট
 4. ডাউনস্ট্রিম API রাউটে এই হেডার থেকে ইউজার তথ্য পড়া
 
+### ১০.৩ প্রক্সি/মিডলওয়্যার আর্কিটেকচার (`src/proxy.ts`)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    src/proxy.ts (Middleware)                 │
+├─────────────────────────────────────────────────────────────┤
+│  ১. Static/Next.js internals → Pass through                 │
+│  ২. Public pages (/, /login, /register, /privacy, /terms)  │
+│     → Pass through + Security Headers                       │
+│  ৩. Public API routes → Pass through + Security Headers     │
+│  ৪. Protected API routes → updateSession() → Verify JWT    │
+│     ├─ No session → 401 UNAUTHORIZED                        │
+│     ├─ Admin route + non-admin → 403 FORBIDDEN              │
+│     └─ Super-admin route + non-super → 403 FORBIDDEN        │
+│  ৫. Protected pages (non-API) → updateSession()            │
+│     ├─ No session → Redirect /login?redirect=...           │
+│     └─ Admin page + non-admin → Redirect /                  │
+│  ৬. All responses → Security Headers (CSP, X-Frame, etc.)  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Security Headers যোগ করা হয়েছে:**
+- `X-Content-Type-Options: nosniff`
+- `X-Frame-Options: DENY`
+- `X-XSS-Protection: 1; mode=block`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Content-Security-Policy` (স্ট্রিক্ট পলিসি Supabase, UploadThing, CDN এর জন্য)
+
 ---
 
 ## ১১. এনভায়রনমেন্ট ভেরিয়েবল
@@ -587,6 +618,15 @@ accordion, alert, alert-dialog, aspect-ratio, avatar, badge, breadcrumb, button,
 | `JWT_SECRET` | `shiksha-bangla-jwt-secret-2024-prod-change-me` | ✅ সক্রিয় |
 | `SUPER_ADMIN_EMAIL` | `rimon@admin.com` | ✅ সক্রিয় |
 | `SUPER_ADMIN_PASSWORD` | `123456` | ✅ সক্রিয় |
+| `UPSTASH_REDIS_REST_URL` | `https://your-db.upstash.io` | ✅ সক্রিয় (রেট লিমিট) |
+| `UPSTASH_REDIS_REST_TOKEN` | `your-token` | ✅ সক্রিয় (রেট লিমিট) |
+| `CSRF_SECRET` | `your-32-char-secret-key` | ✅ সক্রিয় (CSRF প্রোটেকশন) |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxx.supabase.co` | ✅ সক্রিয় |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `your-anon-key` | ✅ সক্রিয় |
+| `SUPABASE_SERVICE_ROLE_KEY` | `your-service-role-key` | ✅ সক্রিয় |
+| `UPLOADTHING_SECRET` | `sk_...` | ✅ সক্রিয় |
+| `UPLOADTHING_APP_ID` | `your-app-id` | ✅ সক্রিয় |
+| `NEXT_PUBLIC_SITE_URL` | `https://your-domain.com` | ✅ সক্রিয় |
 
 ---
 
@@ -660,7 +700,7 @@ Lecture, MCQ, CQ, Exam, Suggestion, Bundle, Package
 | `uploadLimiter` | ১ মি | ১০ | ফাইল আপলোড |
 | `passwordResetLimiter` | ১ ঘণ্টা | ৩ | পাসওয়ার্ড রিসেট |
 
-**স্টোরেজ**: ইন-মেমোরি (Redis নয়) — সার্ভার রিস্টার্টে রিসেট
+**স্টোরেজ**: **Upstash Redis (ডিস্ট্রিবিউটেড, প Runden)** — সার্ভারলেস-ফ্রেন্ডলি, পërsিস্টেন্স, মাল্টি-ইনস্ট্যান্স सपোর্ট
 
 ---
 
@@ -692,6 +732,14 @@ Lecture, MCQ, CQ, Exam, Suggestion, Bundle, Package
 ### ১৫.৩ ডাটাবেস ট্রানজেকশন র‍্যাপার
 
 `safeTransaction()` — সর্বোচ্চ ২ বার রিট্রাই, ৫ সেকেন্ড maxWait, ১০ সেকেন্ড timeout
+
+### ১৫.৪ CSRF প্রোটেকশন (`src/lib/csrf.ts`)
+
+- **তথ্য**: JWT (HS256) ভিত্তিক CSRF টোকেন
+- **স্টোরেজ**: HttpOnly কুকি (`csrf_token`, ১ ঘণ্টা মেয়াদ, SameSite=Strict)
+- **হেডার**: `x-csrf-token` (ফেচ/অ্যাক্সোস-এ)
+- **ব্যবহার**: পেমেন্ট পেজ, সব ফর্ম যেখানে স্টেট-চেঞ্জিং অপারেশন
+- **এন্ডপয়েন্ট**: `GET /api/csrf-token` — নতুন টোকেন জেনারেট করে কুকিতে সেট করে
 
 ---
 

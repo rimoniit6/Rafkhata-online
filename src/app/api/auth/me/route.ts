@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function GET(request: Request) {
   try {
-    const rateCheck = applyRateLimit(apiLimiter, request)
+    const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error
 
     const supabase = await createClient()

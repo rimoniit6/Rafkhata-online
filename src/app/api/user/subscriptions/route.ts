@@ -9,7 +9,7 @@ export async function GET(request: Request) {
   const auth = await withAuth(request)
   if (auth instanceof NextResponse) return auth
 
-  const rateLimit = applyRateLimit(apiLimiter, request)
+  const rateLimit = await applyRateLimit(apiLimiter, request)
   if ('error' in rateLimit) return rateLimit.error
 
   try {

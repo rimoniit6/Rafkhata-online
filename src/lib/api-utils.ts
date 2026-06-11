@@ -121,9 +121,9 @@ export function validateBody<T>(schema: ZodSchema<T>, body: unknown): { data: T 
 /**
  * Apply rate limiting to a request
  */
-export function applyRateLimit(limiter: RateLimiter, request: Request): { result: RateLimitResult } | { error: NextResponse } {
+export async function applyRateLimit(limiter: RateLimiter, request: Request): Promise<{ result: RateLimitResult } | { error: NextResponse }> {
   const identifier = getClientIdentifier(request)
-  const result = limiter.limit(identifier)
+  const result = await limiter.limit(identifier)
   if (!result.success) {
     return { error: rateLimitExceeded(result) }
   }

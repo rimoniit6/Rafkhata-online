@@ -16,6 +16,9 @@ An online education platform for Bangladeshi students from Class 6 to HSC, built
 - **Content**: KaTeX (math rendering), DOMPurify (HTML sanitization)
 - **Animation**: Framer Motion
 - **Runtime**: Bun
+- **Rate Limiting**: Upstash Redis (distributed)
+- **CSRF Protection**: JWT-based (jose)
+- **Security**: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
 
 ## Features
 
@@ -50,12 +53,15 @@ An online education platform for Bangladeshi students from Class 6 to HSC, built
 ### Security
 - JWT-based authentication with HttpOnly cookies
 - Supabase Auth with Google OAuth
-- Rate limiting (auth, login, general API, upload, password reset)
+- **Distributed rate limiting** via Upstash Redis (auth, login, general API, upload, password reset)
+- **CSRF protection** on all state-changing forms (JWT-based tokens)
 - Role-based access control (student, admin, super_admin)
 - Input validation via Zod schemas
 - Error handling with custom error classes
 - SSRF protection on PDF proxy
 - Premium content stripping at API level
+- **Security headers**: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+- **Payment race condition prevention**: DB unique constraint + P2002 handling
 
 ## Project Structure
 
@@ -129,6 +135,9 @@ The app runs on `http://localhost:3000`.
 | `SUPER_ADMIN_EMAIL` | Super admin login email |
 | `SUPER_ADMIN_PASSWORD` | Super admin login password |
 | `NEXT_PUBLIC_SITE_URL` | Public site URL |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (rate limiting) |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (rate limiting) |
+| `CSRF_SECRET` | 32+ char secret for CSRF JWT signing |
 
 ## Scripts
 
@@ -164,8 +173,11 @@ Per-content pricing (no subscriptions). Students pay for individual lectures, MC
 
 - **SPA Router**: Custom Zustand-based client-side router (35+ routes)
 - **No SSR pages**: Single `page.tsx` entry point with dynamic imports
-- **Middleware**: JWT verification, route-based access control
+- **Middleware/Proxy** (`src/proxy.ts`): JWT verification, route-based access control, security headers injection
 - **Premium Gating**: Content stripping at API level + frontend lock UI
 - **Database**: PostgreSQL on Supabase via Prisma with 24+ models
 - **File Storage**: UploadThing for image/file uploads
 - **Auth Providers**: Custom JWT + Supabase Auth (Google OAuth)
+- **Rate Limiting**: Upstash Redis (distributed, persistent across serverless instances)
+- **CSRF Protection**: JWT-based tokens (HttpOnly cookie + `x-csrf-token` header)
+- **Security Headers**: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via middleware
