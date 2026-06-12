@@ -76,7 +76,7 @@ export default function Footer() {
               )}
               <h3 className="text-lg font-bold text-foreground">{siteName}</h3>
             </motion.div>
-            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-xs" suppressHydrationWarning>
               {config?.footerDescription || config?.siteDescription || 'শিক্ষার্থীদের জন্য অনলাইন শিক্ষা প্ল্যাটফর্ম।'}
             </p>
             {/* Social Links */}
