@@ -4,20 +4,20 @@ An online education platform for Bangladeshi students from Class 6 to HSC, built
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 (App Router, API Routes, SPA)
+- **Framework**: Next.js 16 (App Router, Proxy/Middleware, SPA)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4 + shadcn/ui (50+ Radix components)
 - **State Management**: Zustand (auth, router, exam) + TanStack React Query
 - **Database**: PostgreSQL on Supabase via Prisma ORM
-- **Auth**: Supabase Auth (Google OAuth) + custom JWT with bcryptjs
+- **Auth**: Supabase Auth (email/Google OAuth)
 - **File Upload**: UploadThing
 - **Validation**: Zod + React Hook Form
 - **Charts**: Recharts + TanStack React Table
-- **Content**: KaTeX (math rendering), DOMPurify (HTML sanitization)
+- **Content**: KaTeX (math rendering), MathJax (MathML fallback), DOMPurify (HTML sanitization)
 - **Animation**: Framer Motion
 - **Runtime**: Bun
 - **Rate Limiting**: Upstash Redis (distributed)
-- **CSRF Protection**: JWT-based (jose)
+- **CSRF Protection**: JWT-based (jose) via proxy.ts
 - **Security**: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
 
 ## Features
@@ -51,10 +51,10 @@ An online education platform for Bangladeshi students from Class 6 to HSC, built
 - **Database Tools**: Export/import database (super admin)
 
 ### Security
-- JWT-based authentication with HttpOnly cookies
-- Supabase Auth with Google OAuth
+- Session-based auth via Supabase Auth with HttpOnly cookies
+- Supabase Auth with email/password and Google OAuth
 - **Distributed rate limiting** via Upstash Redis (auth, login, general API, upload, password reset)
-- **CSRF protection** on all state-changing forms (JWT-based tokens)
+- **CSRF protection** on all state-changing forms (JWT-based tokens via proxy.ts)
 - Role-based access control (student, admin, super_admin)
 - Input validation via Zod schemas
 - Error handling with custom error classes
@@ -68,8 +68,7 @@ An online education platform for Bangladeshi students from Class 6 to HSC, built
 ```
 src/
 ├── app/            # Next.js App Router (SPA entry, API routes)
-│   ├── api/        # 80+ API endpoints
-│   └── page.tsx    # SPA entry point
+│   └── api/        # 80+ API endpoints
 ├── components/     # React components
 │   ├── admin/      # Admin panel components
 │   ├── auth/       # Login, register, password reset
@@ -97,26 +96,40 @@ src/
 └── types/          # TypeScript type definitions
 ```
 
+## Prerequisites
+
+- **Bun** v1.3+ (runtime)
+- **PostgreSQL** database (Supabase recommended)
+- **Upstash Redis** account (for rate limiting)
+- **UploadThing** account (for file uploads)
+- **Supabase** project (for auth + database)
+
 ## Getting Started
 
 ```bash
-# Install dependencies
+# 1. Clone and install dependencies
+git clone https://github.com/rimoniit6/sikkha.git
+cd sikkha
 bun install
 
-# Generate Prisma client
+# 2. Set up environment variables
+cp .env.example .env
+# Edit .env with your credentials (see Environment Variables table below)
+
+# 3. Generate Prisma client
 bun run db:generate
 
-# Push database schema
+# 4. Push database schema
 bun run db:push
 
-# Seed the database
+# 5. Seed the database
 bunx prisma db seed
 
-# Start development server
-bun run dev
+# 6. Create a super admin user (CLI only — API endpoint disabled for safety)
+bun run create-super-admin
 
-# Build for production
-bun run build
+# 7. Start development server
+bun run dev
 ```
 
 The app runs on `http://localhost:3000`.
@@ -132,8 +145,6 @@ The app runs on `http://localhost:3000`.
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key |
 | `UPLOADTHING_SECRET` | UploadThing secret key |
 | `UPLOADTHING_APP_ID` | UploadThing app ID |
-| `SUPER_ADMIN_EMAIL` | Super admin login email |
-| `SUPER_ADMIN_PASSWORD` | Super admin login password |
 | `NEXT_PUBLIC_SITE_URL` | Public site URL |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis REST URL (rate limiting) |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis REST token (rate limiting) |
@@ -144,14 +155,17 @@ The app runs on `http://localhost:3000`.
 | Script | Description |
 |--------|-------------|
 | `bun run dev` | Start dev server on port 3000 (Turbopack) |
-| `bun run build` | Production build |
+| `bun run build` | Production build + standalone output |
 | `bun run start` | Start production server |
-| `bun run test` | Run tests |
+| `bun run test` | Run tests (Bun test runner) |
 | `bun run lint` | Run ESLint |
 | `bun run db:push` | Push Prisma schema to database |
 | `bun run db:generate` | Generate Prisma client |
 | `bun run db:migrate` | Run Prisma migrations |
-| `bun run db:reset` | Reset database migrations |
+| `bun run create-super-admin` | Create a super admin user (CLI) |
+| `bun run list-super-admins` | List all super admin users |
+| `bun run revoke-super-admin` | Revoke super admin role |
+| `bun run sync-supabase-roles` | Sync roles from DB to Supabase metadata |
 
 ## API Overview
 
@@ -173,11 +187,12 @@ Per-content pricing (no subscriptions). Students pay for individual lectures, MC
 
 - **SPA Router**: Custom Zustand-based client-side router (35+ routes)
 - **No SSR pages**: Single `page.tsx` entry point with dynamic imports
-- **Middleware/Proxy** (`src/proxy.ts`): JWT verification, route-based access control, security headers injection
+- **Proxy/Middleware** (`src/proxy.ts`): JWT verification, route-based access control (admin/public/authenticated), CSRF protection for non-admin mutations, security headers injection
+- **Admin Route Protection**: Handled by proxy.ts (session auth + role query from DB) + `withAdmin()` guard in each route handler
 - **Premium Gating**: Content stripping at API level + frontend lock UI
 - **Database**: PostgreSQL on Supabase via Prisma with 24+ models
 - **File Storage**: UploadThing for image/file uploads
-- **Auth Providers**: Custom JWT + Supabase Auth (Google OAuth)
+- **Auth**: Supabase Auth with email/password and Google OAuth
 - **Rate Limiting**: Upstash Redis (distributed, persistent across serverless instances)
-- **CSRF Protection**: JWT-based tokens (HttpOnly cookie + `x-csrf-token` header)
-- **Security Headers**: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via middleware
+- **CSRF Protection**: JWT-based tokens (HttpOnly cookie + `x-csrf-token` header) enforced by proxy.ts on all non-admin mutation routes
+- **Security Headers**: CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy via proxy.ts
