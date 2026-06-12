@@ -101,13 +101,42 @@ const BLOCKED_ATTR_PATTERNS: RegExp[] = [
   /^formaction/i,  // formaction
 ]
 
-// ─── Simple regex-based sanitizer (always available, no deps) ────
+// ─── Server-side sanitizer (always available, no deps) ────
 
-function regexSanitize(html: string): string {
-  return html
+function serverSanitize(html: string): string {
+  const allowedTags = new Set([
+    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+    'p', 'br', 'hr', 'div', 'span', 'section',
+    'b', 'i', 'em', 'strong', 'u', 's', 'del', 'ins',
+    'small', 'sub', 'sup', 'mark', 'kbd', 'code', 'pre', 'blockquote',
+    'ul', 'ol', 'li', 'dl', 'dt', 'dd',
+    'table', 'thead', 'tbody', 'tfoot', 'tr', 'th', 'td', 'caption',
+    'a', 'img', 'figure', 'figcaption',
+    'video', 'audio', 'source',
+  ])
+
+  html = html
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+    .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+    .replace(/\s*javascript\s*:/gi, ' ')
     .replace(/\s*on\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/\s*data-\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]*)/gi, '')
+    .replace(/<a\s+[^>]*href\s*=\s*["']javascript:/gi, '<a ')
+    .replace(/<a\s+[^>]*href\s*=\s*["']data:/gi, '<a ')
+    .replace(/<form\b[^>]*>/gi, '')
+    .replace(/<\/form>/gi, '')
+    .replace(/<input\b[^>]*>/gi, '')
+    .replace(/<button\b[^>]*>.*?<\/button>/gi, '')
+    .replace(/<textarea\b[^>]*>.*?<\/textarea>/gi, '')
+    .replace(/<select\b[^>]*>.*?<\/select>/gi, '')
+
+  return html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>/gi, (match, tag) => {
+    if (allowedTags.has(tag.toLowerCase())) return match
+    return ''
+  })
 }
 
 // ─── DOMPurify Instance (lazy, client-side only) ────────────────
@@ -275,8 +304,22 @@ export function sanitizeHtml(html: string): string {
     }
   }
 
-  // SSR or DOMPurify unavailable — use regex-based sanitizer
-  return regexSanitize(html)
+  // SSR or DOMPurify unavailable — use server-side sanitizer
+  return serverSanitize(html)
+}
+
+/**
+ * Sanitize HTML content for safe storage (server-side).
+ * This MUST be called before storing any user/admin content in the database.
+ * Unlike sanitizeHtml() which is client-optimized, this always runs the
+ * server-side sanitizer that strips dangerous tags and attributes.
+ *
+ * @param html - Raw HTML content from admin/user input
+ * @returns Sanitized HTML safe for database storage
+ */
+export function sanitizeForStorage(html: string): string {
+  if (!html) return ''
+  return serverSanitize(html)
 }
 
 /**

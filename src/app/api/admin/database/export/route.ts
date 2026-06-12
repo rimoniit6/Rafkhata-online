@@ -1,10 +1,13 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth'
+import { applyRateLimit } from '@/lib/api-utils'
+import { apiLimiter } from '@/lib/rate-limit'
+import { handleApiError } from '@/lib/errors'
+import { auditFromRequest } from '@/lib/audit'
 
 export async function GET(request: Request) {
   try {
-    // Require super admin
     const auth = await requireSuperAdmin(request)
     if (!auth) {
       return NextResponse.json(
@@ -13,7 +16,10 @@ export async function GET(request: Request) {
       )
     }
 
-    const [
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
+    const {
       users,
       classCategories,
       subjects,
@@ -30,7 +36,6 @@ export async function GET(request: Request) {
       notes,
       recentlyViewed,
       payments,
-      passwordResets,
       notifications,
       banners,
       faqs,
@@ -43,37 +48,38 @@ export async function GET(request: Request) {
       contentBundles,
       bundleItems,
       contentPackages,
-    ] = await Promise.all([
-      db.user.findMany({ select: { id: true, email: true, name: true, role: true, avatar: true, phone: true, institute: true, classLevel: true, board: true, isVerified: true, isPremium: true, premiumExpiry: true, createdAt: true, updatedAt: true } }),
-      db.classCategory.findMany(),
-      db.subject.findMany(),
-      db.chapter.findMany(),
-      db.lecture.findMany(),
-      db.resource.findMany(),
-      db.mCQ.findMany(),
-      db.cQ.findMany(),
-      db.exam.findMany(),
-      db.examQuestion.findMany(),
-      db.examResult.findMany(),
-      db.progress.findMany(),
-      db.bookmark.findMany(),
-      db.note.findMany(),
-      db.recentlyViewed.findMany(),
-      db.payment.findMany(),
-      db.passwordReset.findMany({ select: { id: true, userId: true, used: true, expiresAt: true, createdAt: true } }), // Exclude token
-      db.notification.findMany(),
-      db.banner.findMany(),
-      db.fAQ.findMany(),
-      db.testimonial.findMany(),
-      db.notice.findMany(),
-      db.suggestion.findMany(),
-      db.board.findMany(),
-      db.examYear.findMany(),
-      db.siteSetting.findMany(),
-      db.contentBundle.findMany(),
-      db.bundleItem.findMany(),
-      db.contentPackage.findMany(),
-    ])
+    } = await db.$transaction(async (tx) => {
+      return {
+        users: await tx.user.findMany({ select: { id: true, email: true, name: true, role: true, avatar: true, phone: true, institute: true, classLevel: true, board: true, isVerified: true, isPremium: true, premiumExpiry: true, createdAt: true, updatedAt: true } }),
+        classCategories: await tx.classCategory.findMany(),
+        subjects: await tx.subject.findMany(),
+        chapters: await tx.chapter.findMany(),
+        lectures: await tx.lecture.findMany(),
+        resources: await tx.resource.findMany(),
+        mcqs: await tx.mCQ.findMany(),
+        cqs: await tx.cQ.findMany(),
+        exams: await tx.exam.findMany(),
+        examQuestions: await tx.examQuestion.findMany(),
+        examResults: await tx.examResult.findMany(),
+        progress: await tx.progress.findMany(),
+        bookmarks: await tx.bookmark.findMany(),
+        notes: await tx.note.findMany(),
+        recentlyViewed: await tx.recentlyViewed.findMany(),
+        payments: await tx.payment.findMany(),
+        notifications: await tx.notification.findMany(),
+        banners: await tx.banner.findMany(),
+        faqs: await tx.fAQ.findMany(),
+        testimonials: await tx.testimonial.findMany(),
+        notices: await tx.notice.findMany(),
+        suggestions: await tx.suggestion.findMany(),
+        boards: await tx.board.findMany(),
+        examYears: await tx.examYear.findMany(),
+        siteSettings: await tx.siteSetting.findMany(),
+        contentBundles: await tx.contentBundle.findMany(),
+        bundleItems: await tx.bundleItem.findMany(),
+        contentPackages: await tx.contentPackage.findMany(),
+      }
+    })
 
     const data = {
       users,
@@ -92,7 +98,6 @@ export async function GET(request: Request) {
       notes,
       recentlyViewed,
       payments,
-      passwordResets,
       notifications,
       banners,
       faqs,
@@ -107,11 +112,12 @@ export async function GET(request: Request) {
       contentPackages,
     }
 
-    const models = Object.keys(data)
     const counts: Record<string, number> = {}
-    for (const key of models) {
-      counts[key] = (data as Record<string, unknown[]>)[key].length
+    for (const [key, value] of Object.entries(data)) {
+      counts[key] = (value as unknown[]).length
     }
+
+    await auditFromRequest(request, auth.user.id, 'database_export', 'database', 'full_export', undefined, { counts })
 
     return NextResponse.json({
       success: true,
@@ -119,14 +125,13 @@ export async function GET(request: Request) {
         _meta: {
           version: '1.0',
           timestamp: new Date().toISOString(),
-          models,
+          models: Object.keys(data),
           counts,
         },
         data,
       },
     })
   } catch (error) {
-    console.error('Database export error:', error)
-    return NextResponse.json({ success: false, error: 'ডাটাবেজ এক্সপোর্ট করতে সমস্যা হয়েছে' }, { status: 500 })
+    return handleApiError(error, 'Database export error')
   }
 }

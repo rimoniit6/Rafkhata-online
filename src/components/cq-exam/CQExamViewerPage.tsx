@@ -164,7 +164,7 @@ function NonCQQuestionBlock({
             </span>
             <div>
               <span className="font-semibold text-emerald-700 dark:text-emerald-400 text-sm">
-                {getTypeLabel()}
+                {getTypeLabel(question.type ?? 'mcq-single')}
               </span>
               <p className="text-xs text-muted-foreground">
                 {answeredCount}/{subQuestionCount} উত্তর দেওয়া হয়েছে | {question.marks} নম্বর
@@ -864,7 +864,7 @@ export default function CQExamViewerPage() {
             ...prev,
             [key]: {
               ...current,
-              images: [...current.images, { id: imgData.image.id, imageUrl, order: current.images.length }],
+              images: [...current.images, { id: imgData.image.id, imageUrl: imageUrl!, order: current.images.length }],
             },
           }
         })

@@ -161,6 +161,9 @@ model Lecture {
 
   chapter     Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   resources   Resource[]
+
+  @@index([chapterId, isActive])
+  @@index([isPremium, isActive])
 }
 
 model Resource {
@@ -211,6 +214,8 @@ model MCQ {
   examSetQuestions MCQExamSetQuestion[]
 
   @@index([isActive, classLevel, subjectId, chapterId])
+  @@index([classLevel, subjectId, chapterId, isActive])
+  @@index([chapterId, isActive])
 }
 
 // ============ CQ SYSTEM ============
@@ -254,6 +259,8 @@ model CQ {
   examSetQuestions CQExamSetQuestion[]
 
   @@index([isActive, classLevel, subjectId, chapterId])
+  @@index([classLevel, subjectId, chapterId, isActive])
+  @@index([chapterId, isActive])
 }
 
 // ============ EXAM SYSTEM ============
@@ -416,10 +423,12 @@ model Payment {
   updatedAt       DateTime  @updatedAt
   idempotencyKey  String?   @unique // Client-generated key for idempotent payment creation
 
-  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user            User      @relation(fields: [userId], references: [id])
 
   @@unique([userId, contentType, contentId, status])
   @@index([userId, contentType, contentId])
+  @@index([status, createdAt])
+  @@index([contentType, contentId, status])
 }
 
 // ============ NOTIFICATION ============
@@ -436,8 +445,8 @@ model Notification {
 
   user        User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([isRead])
+  @@index([userId, isRead, createdAt])
+  @@index([isRead, createdAt])
 }
 
 // ============ AUDIT LOG ============
@@ -997,6 +1006,7 @@ model CQExamAnswer {
   @@unique([submissionId, questionId, subIndex])
   @@index([submissionId, questionId])
   @@index([questionId, obtainedMarks])
+  @@index([submissionId, obtainedMarks])
 }
 
 model CQExamAnswerImage {

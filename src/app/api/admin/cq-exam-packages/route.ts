@@ -340,7 +340,7 @@ export async function POST(request: Request) {
         const existingCqIds = new Set(existingQuestions.map(q => q.cqId))
 
         // Filter to only new CQ IDs
-        const newCqIds = cqIds.filter(id => !existingCqIds.has(id))
+        const newCqIds = (cqIds as string[]).filter((id: string) => !existingCqIds.has(id))
         const defaultSubMarks = [1, 2, 3, 4]
         const totalMarks = defaultSubMarks.reduce((a, b) => a + b, 0)
 
@@ -715,12 +715,14 @@ export async function PUT(request: Request) {
         const updatedCount = submissionTotals.size
 
         // Check auto-publish for the set of the first submission (all items are for the same set)
+        let firstSubSetId: string | null = null
         if (gradeUpdates.length > 0 && gradeUpdates[0].submissionId) {
           const firstSub = await db.cQExamSubmission.findUnique({
             where: { id: gradeUpdates[0].submissionId },
             select: { setId: true },
           })
           if (firstSub) {
+            firstSubSetId = firstSub.setId
             const bulkQExamSet = await db.cQExamSet.findUnique({
               where: { id: firstSub.setId },
               select: { autoPublishResults: true },
@@ -744,7 +746,7 @@ export async function PUT(request: Request) {
           adminId: auth.user.id,
           action: AuditActions.GRADE_BULK,
           entityType: EntityTypes.SUBMISSION,
-          entityId: firstSub?.setId || 'bulk',
+          entityId: firstSubSetId || 'bulk',
           oldData: { count: gradeUpdates.length },
           newData: { updatedCount },
           ipAddress: getClientIP(request),

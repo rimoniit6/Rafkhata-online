@@ -328,22 +328,28 @@ async function checkBundleItemsAccess(
 
   if (!bundle || bundle.items.length === 0) return result
 
-  const itemChecks = await Promise.all(
-    bundle.items.map(async (item) => {
-      const payment = await db.payment.findFirst({
-        where: {
-          userId,
-          contentType: item.contentType,
-          contentId: item.contentId,
-          status: 'approved',
-          isActive: true,
-        },
-      })
-      return !!payment
-    })
+  // Batch query all payments for this user's bundle items in a single query
+  const contentIds = bundle.items.map(item => item.contentId)
+  const contentTypes = [...new Set(bundle.items.map(item => item.contentType))]
+
+  const approvedPayments = await db.payment.findMany({
+    where: {
+      userId,
+      contentType: { in: contentTypes },
+      contentId: { in: contentIds },
+      status: 'approved',
+      isActive: true,
+    },
+    select: { contentType: true, contentId: true },
+  })
+
+  const paidKeys = new Set(approvedPayments.map(p => `${p.contentType}:${p.contentId}`))
+
+  const allPurchased = bundle.items.every(item =>
+    paidKeys.has(`${item.contentType}:${item.contentId}`)
   )
 
-  if (itemChecks.every(Boolean)) {
+  if (allPurchased) {
     result.hasAccess = true
     result.reason = 'all_bundle_items_purchased'
   }

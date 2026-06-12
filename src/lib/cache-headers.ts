@@ -10,6 +10,7 @@
 
 type CacheConfig = {
   'Cache-Control': string
+  'Pragma'?: string
   'CDN-Cache-Control'?: string
   'Surrogate-Control'?: string
   'X-Cache-TTL'?: string

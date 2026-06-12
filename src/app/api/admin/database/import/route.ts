@@ -2,6 +2,10 @@ import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
+import { applyRateLimit, apiError } from '@/lib/api-utils'
+import { apiLimiter } from '@/lib/rate-limit'
+import { handleApiError } from '@/lib/errors'
+import { auditFromRequest, AuditActions, EntityTypes } from '@/lib/audit'
 
 const DELETE_ORDER = [
   'bundleItem', 'contentBundle', 'contentPackage',
@@ -50,7 +54,6 @@ const modelMap: Record<string, any> = {
   note: db.note,
   recentlyViewed: db.recentlyViewed,
   notification: db.notification,
-  // passwordReset model removed
   contentPackage: db.contentPackage,
   contentBundle: db.contentBundle,
   bundleItem: db.bundleItem,
@@ -58,7 +61,6 @@ const modelMap: Record<string, any> = {
 
 export async function POST(request: NextRequest) {
   try {
-    // Require super admin
     const auth = await requireSuperAdmin(request)
     if (!auth) {
       return NextResponse.json(
@@ -67,12 +69,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
     const body = await request.json()
     const { data } = body
 
     if (!data) {
-      return NextResponse.json({ success: false, error: 'ইমপোর্ট ডাটা পাওয়া যায়নি' }, { status: 400 })
+      return apiError('ইমপোর্ট ডাটা পাওয়া যায়নি', 400)
     }
+
+    await auditFromRequest(request, auth.user.id, 'database_import', 'database', 'full_import', undefined, { timestamp: new Date().toISOString() })
 
     // Delete all existing data in reverse dependency order
     for (const modelName of DELETE_ORDER) {
@@ -116,7 +123,6 @@ export async function POST(request: NextRequest) {
     if (supabaseUser?.email) {
       const existingSuperAdmin = await db.user.findUnique({ where: { email: supabaseUser.email } })
       if (!existingSuperAdmin || existingSuperAdmin.role !== 'SUPER_ADMIN') {
-        // The import data may not have restored this user as SUPER_ADMIN — ensure access
         const target = existingSuperAdmin || await db.user.findFirst({ where: { supabaseUserId: supabaseUser.id } })
         if (target) {
           await db.user.update({
@@ -129,7 +135,6 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: { message: 'ডাটাবেজ ইমপোর্ট সম্পন্ন হয়েছে', results } })
   } catch (error) {
-    console.error('Database import error:', error)
-    return NextResponse.json({ success: false, error: 'ডাটাবেজ ইমপোর্ট করতে সমস্যা হয়েছে' }, { status: 500 })
+    return handleApiError(error, 'Database import error')
   }
 }

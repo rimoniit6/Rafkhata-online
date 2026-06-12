@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertTriangle,
   CheckCircle,
+  XCircle,
   Power,
   ChevronDown,
   ChevronUp,
@@ -268,7 +269,7 @@ export default function AdminFAQsPage() {
       key: 'order',
       header: 'ক্রম',
       headerClass: 'w-16',
-      render: (faq, _idx) => {
+      render: (faq) => {
         const sorted = [...filteredFaqs].sort((a, b) => a.order - b.order)
         const idx = sorted.findIndex((f) => f.id === faq.id)
         return (

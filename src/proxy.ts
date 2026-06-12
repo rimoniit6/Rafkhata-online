@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
-import { createHash } from 'crypto'
+
+// CSRF is handled by the app's existing csrf.ts library (JWT-based via x-csrf-token header)
+// The proxy should NOT manage CSRF — it conflicts with the useCsrf hook's flow
 
 // Generate a CSP nonce
 function generateNonce(): string {
@@ -49,6 +51,7 @@ const PUBLIC_API_ROUTES = [
   '/api/content-types',
   '/api/content-types/seed',
   '/api/uploadthing',
+  '/api/csrf-token',
 ]
 
 const PUBLIC_PAGE_ROUTES = [

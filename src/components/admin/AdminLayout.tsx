@@ -56,12 +56,13 @@ const AdminPages = {
   'admin-users': lazy(() => import('./AdminUsersPage')),
   'admin-content': lazy(() => import('./AdminContentPage')),
   'admin-hierarchy': lazy(() => import('./AdminHierarchyPage')),
-  'admin-bulk-import': lazy(() => import('./AdminBulkImportPage')),
-  
-  // Questions
+  'admin-bulk-import': lazy(() => import('./AdminBulkImportPage')),  // Questions
   'admin-mcq': lazy(() => import('./AdminMCQPage')),
   'admin-cq': lazy(() => import('./AdminCQPage')),
-  
+
+  // Exams
+  'admin-exams': lazy(() => import('./AdminExamsPage')),
+
   // Content
   'admin-lectures': lazy(() => import('./AdminLecturesPage')),
   'admin-board': lazy(() => import('./AdminBoardPage')),
@@ -354,7 +355,7 @@ function SidebarContent({
 
 function AdminContent() {
   const { currentRoute } = useRouterStore()
-  const Page = AdminPages[currentRoute] || AdminPages['admin-dashboard']
+  const Page = AdminPages[currentRoute as keyof typeof AdminPages] || AdminPages['admin-dashboard']
 
   return (
     <AdminAuthGuard>

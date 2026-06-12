@@ -1,9 +1,12 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth'
-import { validateBody } from '@/lib/api-utils'
+import { validateBody, applyRateLimit, apiError } from '@/lib/api-utils'
 import { databaseResetSchema } from '@/lib/validations'
 import { createClient } from '@/lib/supabase/server'
+import { handleApiError } from '@/lib/errors'
+import { apiLimiter } from '@/lib/rate-limit'
+import { auditFromRequest, AuditActions, EntityTypes } from '@/lib/audit'
 
 const DELETE_ORDER = [
   'bundleItem', 'contentBundle', 'contentPackage',
@@ -40,7 +43,6 @@ const modelMap: Record<string, any> = {
   mCQExamPackagePurchase: db.mCQExamPackagePurchase,
   mCQExamPackage: db.mCQExamPackage,
   userSubscription: db.userSubscription,
-  // passwordReset model removed
   notification: db.notification,
   recentlyViewed: db.recentlyViewed,
   note: db.note,
@@ -73,9 +75,11 @@ const modelMap: Record<string, any> = {
   user: db.user,
 }
 
+const RESET_COOLDOWN_SECONDS = 60 // 1 minute cooldown between resets
+const resetTimestamps = new Map<string, number>()
+
 export async function POST(request: NextRequest) {
   try {
-    // Require super admin
     const auth = await requireSuperAdmin(request)
     if (!auth) {
       return NextResponse.json(
@@ -84,7 +88,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Save current Supabase session user ID before deleting anything
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
+    // Cooldown check
+    const lastReset = resetTimestamps.get(auth.user.id) || 0
+    const timeSinceLastReset = (Date.now() - lastReset) / 1000
+    if (timeSinceLastReset < RESET_COOLDOWN_SECONDS) {
+      return apiError(`অনুগ্রহ করে ${Math.ceil(RESET_COOLDOWN_SECONDS - timeSinceLastReset)} সেকেন্ড অপেক্ষা করুন`, 429, 'COOLDOWN')
+    }
+
     const supabase = await createClient()
     const { data: { user: supabaseUser } } = await supabase.auth.getUser()
     const currentSupabaseUserId = supabaseUser?.id || undefined
@@ -92,6 +105,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const validation = validateBody(databaseResetSchema, body)
     if ('error' in validation) return validation.error
+
+    // Audit log before reset
+    await auditFromRequest(request, auth.user.id, 'database_reset', 'database', 'full_reset', undefined, { timestamp: new Date().toISOString() })
 
     const deletionCounts: Record<string, number> = {}
 
@@ -102,6 +118,8 @@ export async function POST(request: NextRequest) {
         deletionCounts[modelName] = result.count
       }
     }
+
+    resetTimestamps.set(auth.user.id, Date.now())
 
     // Preserve the current super admin user
     const adminEmail = await db.user.findUnique({
@@ -150,7 +168,6 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Database reset error:', error)
-    return NextResponse.json({ success: false, error: 'ডাটাবেজ রিসেট করতে সমস্যা হয়েছে' }, { status: 500 })
+    return handleApiError(error, 'Database reset error')
   }
 }

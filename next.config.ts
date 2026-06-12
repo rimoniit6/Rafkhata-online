@@ -8,9 +8,9 @@ const withBundleAnalyzer = bundleAnalyzer({
 const nextConfig: NextConfig = {
   // output: "standalone", // Disabled for dev server compatibility
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
-  reactStrictMode: false,
+  reactStrictMode: true,
   compress: true,
   poweredByHeader: false,
   generateEtags: true,

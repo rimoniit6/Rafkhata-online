@@ -24,8 +24,8 @@ function withErrorLog<T extends (...args: any[]) => any>(name: string, fn: T): T
 export const uploadRouter = {
   imageUploader: f({ image: { maxFileSize: '4MB', maxFileCount: 10 } })
     .middleware(
-      withErrorLog('imageUploader.middleware', async () => {
-        const auth = await verifyAuth()
+      withErrorLog('imageUploader.middleware', async ({ req }) => {
+        const auth = await verifyAuth(req)
         if (!auth?.user) throw new Error('Unauthorized')
         return { userId: auth.user.id }
       })
@@ -38,8 +38,8 @@ export const uploadRouter = {
 
   pdfUploader: f({ pdf: { maxFileSize: '16MB', maxFileCount: 5 } })
     .middleware(
-      withErrorLog('pdfUploader.middleware', async () => {
-        const auth = await verifyAuth()
+      withErrorLog('pdfUploader.middleware', async ({ req }) => {
+        const auth = await verifyAuth(req)
         if (!auth?.user) throw new Error('Unauthorized')
         return { userId: auth.user.id }
       })
@@ -57,8 +57,8 @@ export const uploadRouter = {
     audio: { maxFileSize: '64MB', maxFileCount: 1 },
   })
     .middleware(
-      withErrorLog('mediaUploader.middleware', async () => {
-        const auth = await verifyAuth()
+      withErrorLog('mediaUploader.middleware', async ({ req }) => {
+        const auth = await verifyAuth(req)
         if (!auth?.user) throw new Error('Unauthorized')
         return { userId: auth.user.id }
       })
@@ -71,8 +71,8 @@ export const uploadRouter = {
 
   screenshotUploader: f({ image: { maxFileSize: '4MB', maxFileCount: 1 } })
     .middleware(
-      withErrorLog('screenshotUploader.middleware', async () => {
-        const auth = await verifyAuth()
+      withErrorLog('screenshotUploader.middleware', async ({ req }) => {
+        const auth = await verifyAuth(req)
         if (!auth?.user) throw new Error('Unauthorized')
         return { userId: auth.user.id }
       })

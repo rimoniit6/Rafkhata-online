@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, memo } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Save, Loader2, CheckCircle2, User, Image as ImageIcon, Edit3 } from 'lucide-react'
+import { ArrowLeft, Save, Loader2, CheckCircle2, User, Image as ImageIcon, Edit3, Clock } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -49,9 +49,8 @@ const SubmissionCard = memo(function SubmissionCard({
   lightboxImages,
   lightboxIndex,
   handleQuickMark,
-  handleSaveAnswer,
   syncedAnswerIds,
-  triggerAutoSave,
+  handleAnnotationSave,
   quickMarkButtons,
   cn,
   ImageAnnotator,
@@ -67,7 +66,10 @@ const SubmissionCard = memo(function SubmissionCard({
   Clock,
   Edit3,
   ImageIcon,
-}: any) {
+}: {
+  sub: BulkSubmissionItem
+  [key: string]: any
+}) {
   const userName = sub.user.name || sub.user.email || 'অজানা'
   const classLevel = sub.user.classLevel || ''
 
@@ -86,7 +88,7 @@ const SubmissionCard = memo(function SubmissionCard({
           {sub.answers.length === 0 ? (
             <p className="text-xs text-muted-foreground">উত্তর দেওয়া হয়নি</p>
           ) : (
-            sub.answers.map(ans => {
+            sub.answers.map((ans) => {
               const maxM = ans.maxMarks ?? (selectedQuestion?.marks ?? 5) / 4
               const currentGrade = grades[ans.id]?.obtainedMarks ?? ans.obtainedMarks ?? 0
 
@@ -144,7 +146,7 @@ const SubmissionCard = memo(function SubmissionCard({
                                 <ImageAnnotator
                                   imageUrl={img.imageUrl}
                                   annotations={img.annotations || undefined}
-                                  onSave={(ann) => handleAnnotationSave(img.id, ann)}
+                                  onSave={(ann: string) => handleAnnotationSave(img.id, ann)}
                                 />
                               </div>
                             )}
@@ -155,7 +157,7 @@ const SubmissionCard = memo(function SubmissionCard({
                   )}
 
                   <div className="flex flex-wrap gap-1 pt-1">
-                    {quickMarkButtons(maxM).map(m => (
+                    {quickMarkButtons(maxM).map((m: number) => (
                       <button
                         key={m}
                         type="button"
@@ -362,7 +364,6 @@ export function CQBulkGradingView({ saving, set: setData, bulkSubmissions, onBul
             selectedQuestion={selectedQuestion}
             grades={grades}
             bengaliLabels={bengaliLabels}
-            selectedQuestion={selectedQuestion}
             saving={saving}
             annotatingImage={annotatingImage}
             setAnnotatingImage={setAnnotatingImage}
@@ -372,9 +373,8 @@ export function CQBulkGradingView({ saving, set: setData, bulkSubmissions, onBul
             lightboxImages={lightboxImages}
             lightboxIndex={lightboxIndex}
             handleQuickMark={handleQuickMark}
-            handleSaveAnswer={handleSaveAnswer}
             syncedAnswerIds={syncedAnswerIds}
-            triggerAutoSave={triggerAutoSave}
+            handleAnnotationSave={handleAnnotationSave}
             quickMarkButtons={quickMarkButtons}
             cn={cn}
             ImageAnnotator={ImageAnnotator}
