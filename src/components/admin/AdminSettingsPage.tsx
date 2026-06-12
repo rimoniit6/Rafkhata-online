@@ -242,20 +242,14 @@ export default function AdminSettingsPage() {
         })),
       ]
 
-      // Try PUT first, if 404 then POST
-      for (const setting of settings) {
-        let res = await fetch('/api/admin/settings', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(setting),
-        })
-        if (res.status === 404) {
-          res = await fetch('/api/admin/settings', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(setting),
-          })
-        }
+      const res = await fetch('/api/admin/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ settings }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        throw new Error(err.error || 'সংরক্ষণ ব্যর্থ')
       }
 
       toast({ title: 'সেটিংস সংরক্ষিত হয়েছে' })

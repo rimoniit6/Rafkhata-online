@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { z } from 'zod'
+import { apiError, withCsrf } from '@/lib/api-utils'
 
 const batchCheckSchema = z.object({
   items: z.array(z.object({
@@ -12,6 +13,8 @@ const batchCheckSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
       // For non-logged-in users: return all items as unpurchased (same as logged-in free user)

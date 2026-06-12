@@ -2,11 +2,14 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyPassword } from '@/lib/password'
 import { createClient, createServiceClient } from '@/lib/supabase/server'
-import { apiError } from '@/lib/api-utils'
+import { apiError, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
+
     const body = await request.json()
     const { email, password } = body
 

@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { withCsrf } from '@/lib/api-utils'
 
 // Excel column mapping (Bengali + English headers → DB fields)
 const COLUMN_MAP: Record<string, string> = {
@@ -58,6 +59,8 @@ async function recalculateSetTotals(setId: string) {
 // POST: Bulk upload MCQs from Excel and add them to an exam set
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     // Auth check
     const auth = await requireAdmin(request)
     if (!auth) {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { toast } from 'sonner'
+import { toast } from '@/hooks/use-toast'
 import { onApiError } from '@/lib/api-client'
 import { captureError } from '@/lib/error-history'
 
@@ -22,9 +22,11 @@ export default function ApiErrorHandler() {
 
       // Show toast (only for non-silent requests — filtered upstream)
       const label = getErrorLabel(event.error.status)
-      toast.error(label, {
+      toast({
+        title: label,
         description: event.error.message,
         duration: 5000,
+        variant: 'destructive',
       })
     })
 

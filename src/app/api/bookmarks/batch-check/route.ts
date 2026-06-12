@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { z } from 'zod'
+import { apiError, withCsrf } from '@/lib/api-utils'
 
 const VALID_CONTENT_TYPES = ['mcq', 'cq', 'lecture']
 
@@ -15,6 +16,8 @@ const batchCheckSchema = z.object({
 // POST: Batch check if multiple content items are bookmarked
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
       return NextResponse.json(

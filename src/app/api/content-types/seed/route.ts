@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { NextRequest, NextResponse } from 'next/server'
+import { apiError, withCsrf } from '@/lib/api-utils'
 
 const DEFAULT_CONTENT_TYPES = [
   {
@@ -217,6 +218,8 @@ const DEFAULT_CONTENT_TYPES = [
 
 export async function POST(request: NextRequest) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     // Require super_admin auth for seeding content types
     const auth = await verifyAuth(request)
     if (!auth || !auth.user || auth.user.role !== 'SUPER_ADMIN') {

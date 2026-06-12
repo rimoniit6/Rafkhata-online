@@ -1,9 +1,12 @@
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
+import { apiError, withCsrf } from '@/lib/api-utils'
 
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     // Verify user authentication
     const auth = await verifyAuth(request)
     if (!auth?.user?.id) {

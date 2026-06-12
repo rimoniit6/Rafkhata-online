@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
-import { apiResponse, apiError } from '@/lib/api-utils'
+import { apiResponse, apiError, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 
 const VALID_CONTENT_TYPES = ['mcq', 'cq', 'lecture']
@@ -68,6 +68,8 @@ export async function GET(request: Request) {
 // POST: Add a bookmark
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) return apiError('প্রমাণীকরণ প্রয়োজন', 401, 'UNAUTHORIZED')
 
@@ -93,6 +95,8 @@ export async function POST(request: Request) {
 // DELETE: Remove a bookmark
 export async function DELETE(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) return apiError('প্রমাণীকরণ প্রয়োজন', 401, 'UNAUTHORIZED')
 

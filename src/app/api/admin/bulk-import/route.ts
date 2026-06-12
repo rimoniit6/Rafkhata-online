@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
-import { withAdmin, applyRateLimit, apiError } from '@/lib/api-utils'
+import { withAdmin, applyRateLimit, apiError, withCsrf } from '@/lib/api-utils'
 import { uploadLimiter } from '@/lib/rate-limit'
 import { handleApiError } from '@/lib/errors'
 
@@ -18,6 +18,8 @@ export async function POST(request: Request) {
   if ('error' in rateCheck) return rateCheck.error
 
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const formData = await request.formData()
     const file = formData.get('file') as File | null
     const type = formData.get('type') as string | null

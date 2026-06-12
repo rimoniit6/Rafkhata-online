@@ -1,11 +1,12 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
-import { apiResponse, apiError, validateBody, applyRateLimit } from '@/lib/api-utils'
+import { apiResponse, apiError, validateBody, applyRateLimit, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { apiLimiter } from '@/lib/rate-limit'
 import { createPaymentSchema, paginationSchema } from '@/lib/validations'
 import { getContentTypeLabels, getValidContentTypes } from '@/lib/content-type-labels'
+import { resolveContentTitle } from '@/services/server/content.service'
 
 export async function GET(request: Request) {
   try {
@@ -64,6 +65,10 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    // CSRF validation for mutation
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
+
     // Require authentication
     const auth = await verifyAuth(request)
     if (!auth) return apiError('প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', 401, 'UNAUTHORIZED')
@@ -234,59 +239,8 @@ export async function POST(request: Request) {
     const contentTypeLabels = await getContentTypeLabels()
     let resolvedTitle = contentTitle || ''
     if (!resolvedTitle && contentType && contentId) {
-      try {
-        switch (contentType) {
-          case 'mcq':
-          case 'board-mcq': {
-            const mcq = await db.mCQ.findUnique({ where: { id: contentId }, select: { question: true } })
-            resolvedTitle = mcq?.question?.slice(0, 80) || contentTypeLabels['mcq'] || 'MCQ প্রশ্ন'
-            break
-          }
-          case 'cq':
-          case 'board-cq': {
-            const cq = await db.cQ.findUnique({ where: { id: contentId }, select: { uddeepok: true } })
-            resolvedTitle = cq?.uddeepok?.slice(0, 80) || contentTypeLabels['cq'] || 'সৃজনশীল প্রশ্ন'
-            break
-          }
-          case 'lecture': {
-            const lecture = await db.lecture.findUnique({ where: { id: contentId }, select: { title: true } })
-            resolvedTitle = lecture?.title || contentTypeLabels['lecture'] || 'লেকচার'
-            break
-          }
-          case 'suggestion': {
-            const suggestion = await db.suggestion.findUnique({ where: { id: contentId }, select: { title: true } })
-            resolvedTitle = suggestion?.title || contentTypeLabels['suggestion'] || 'সাজেশন'
-            break
-          }
-          case 'exam': {
-            const exam = await db.exam.findUnique({ where: { id: contentId }, select: { title: true } })
-            resolvedTitle = exam?.title || contentTypeLabels['exam'] || 'পরীক্ষা'
-            break
-          }
-          case 'bundle': {
-            const bundle = await db.contentBundle.findUnique({ where: { id: contentId }, select: { title: true } })
-            resolvedTitle = bundle?.title || contentTypeLabels['bundle'] || 'বান্ডেল'
-            break
-          }
-          case 'package': {
-            const pkg = await db.contentPackage.findUnique({ where: { id: contentId }, select: { title: true } })
-            resolvedTitle = pkg?.title || contentTypeLabels['package'] || 'প্যাকেজ'
-            break
-          }
-          case 'mcq-exam-package': {
-            const mcqPkg = await db.mCQExamPackage.findUnique({ where: { id: contentId }, select: { title: true } })
-            resolvedTitle = mcqPkg?.title || 'MCQ এক্সাম প্যাকেজ'
-            break
-          }
-          case 'cq-exam-package': {
-            const cqPkg = await db.cQExamPackage.findUnique({ where: { id: contentId }, select: { title: true } })
-            resolvedTitle = cqPkg?.title || 'CQ এক্সাম প্যাকেজ'
-            break
-          }
-        }
-      } catch {
-        resolvedTitle = contentType
-      }
+      const title = await resolveContentTitle(contentType, contentId)
+      resolvedTitle = title || contentTypeLabels[contentType as keyof typeof contentTypeLabels] || contentType
     }
 
     const payment = await db.payment.create({

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin, validateBody, applyRateLimit } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, validateBody, applyRateLimit, withCsrf, parsePaginationParams } from '@/lib/api-utils'
 import { handleApiError, safeTransaction } from '@/lib/errors'
 import { reviewPaymentSchema } from '@/lib/validations'
 import { NextResponse } from 'next/server'
@@ -16,8 +16,7 @@ export async function GET(request: Request) {
     const method = searchParams.get('method')
     const contentType = searchParams.get('contentType')
     const q = searchParams.get('q')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 100)
+    const { page, limit } = parsePaginationParams(searchParams)
 
     const where: Record<string, unknown> = {}
 
@@ -130,6 +129,10 @@ export async function PATCH(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    // CSRF validation for mutation
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
+
     const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error
 
@@ -150,6 +153,10 @@ export async function PATCH(request: Request) {
 
       if (!existing) throw Object.assign(new Error('NOT_FOUND'), { statusCode: 404 })
       if (existing.status !== 'pending') throw Object.assign(new Error('ALREADY_REVIEWED'), { statusCode: 400 })
+      // Prevent self-approval: admin cannot approve their own payment
+      if (existing.userId === auth.user.id) {
+        throw Object.assign(new Error('SELF_APPROVAL'), { statusCode: 403 })
+      }
 
       const updated = await tx.payment.update({
         where: { id },
@@ -207,6 +214,9 @@ export async function PATCH(request: Request) {
     }
     if (error instanceof Error && error.message === 'ALREADY_REVIEWED') {
       return apiError('এই পেমেন্ট ইতিমধ্যে রিভিউ করা হয়েছে', 400)
+    }
+    if (error instanceof Error && error.message === 'SELF_APPROVAL') {
+      return apiError('আপনি নিজের পেমেন্ট অনুমোদন করতে পারবেন না। অন্য অ্যাডমিনকে অনুরোধ করুন।', 403)
     }
     return handleApiError(error, 'Admin Update Payment')
   }

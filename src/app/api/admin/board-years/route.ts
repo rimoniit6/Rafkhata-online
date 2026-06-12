@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { withCsrf } from '@/lib/api-utils'
 
 export async function GET(request: Request) {
   try {
@@ -28,6 +29,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { board, year, isActive } = body
 
@@ -58,6 +61,8 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { id, ...updateData } = body
 
@@ -102,6 +107,8 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(request.url)
     const idFromQuery = searchParams.get('id')
 

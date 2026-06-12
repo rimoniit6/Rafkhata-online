@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { withCsrf } from '@/lib/api-utils'
 
 // GET /api/admin/bundles/[id] — Get bundle by ID with all items
 export async function GET(
@@ -41,6 +42,8 @@ export async function PUT(
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const { id } = await props.params
     const body = await request.json()
     const { items, ...updateData } = body
@@ -123,10 +126,12 @@ export async function PUT(
 
 // DELETE /api/admin/bundles/[id] — Delete bundle by ID (cascade deletes items)
 export async function DELETE(
-  _request: Request,
+  request: Request,
   props: { params: Promise<{ id: string }> }
 ) {
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const { id } = await props.params
 
     const existing = await db.contentBundle.findUnique({ where: { id } })

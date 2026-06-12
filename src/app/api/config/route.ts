@@ -90,9 +90,9 @@ export async function GET() {
       facebook: config.facebook || '',
       youtube: config.youtube || '',
       telegram: config.telegram || '',
-      bkash: config.bkash || '',
-      nagad: config.nagad || '',
-      rocket: config.rocket || '',
+      bkash: config.bkash || config.default_bkash_number || '',
+      nagad: config.nagad || config.default_nagad_number || '',
+      rocket: config.rocket || config.default_rocket_number || '',
       logo: config.logo || '',
       favicon: config.favicon || '',
       // DB-driven UI content fields

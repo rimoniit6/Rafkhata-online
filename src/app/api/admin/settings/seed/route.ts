@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, withAdmin } from '@/lib/api-utils'
+import { apiResponse, withAdmin, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
@@ -15,6 +15,8 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const results: Array<Record<string, unknown>> = []
 
     for (const seed of SEO_SEEDS) {

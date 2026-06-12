@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 
 export async function GET(request: Request) {
@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(req)
+if ('error' in csrfCheck) return csrfCheck.error
     const body = await req.json()
     const { name, slug, isActive, order } = body
 
@@ -58,6 +60,8 @@ export async function PUT(req: NextRequest) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(req)
+if ('error' in csrfCheck) return csrfCheck.error
     const body = await req.json()
     const { id, name, slug, isActive, order } = body
 
@@ -99,6 +103,8 @@ export async function DELETE(req: NextRequest) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(req)
+if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
 

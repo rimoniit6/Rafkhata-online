@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
@@ -30,6 +30,8 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { key, value, group, label } = body
 
@@ -58,6 +60,8 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { key, value, group, label } = body
 
@@ -83,5 +87,45 @@ export async function PUT(request: Request) {
     return apiResponse({ data })
   } catch (error) {
     return handleApiError(error, 'Admin Update Setting')
+  }
+}
+
+export async function PATCH(request: Request) {
+  const auth = await withAdmin(request)
+  if (auth instanceof NextResponse) return auth
+
+  try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
+    const body = await request.json()
+    const { settings } = body
+
+    if (!Array.isArray(settings) || settings.length === 0) {
+      return apiError('সেটিংস অ্যারে আবশ্যক', 400)
+    }
+
+    await Promise.all(
+      settings.map((s) =>
+        db.siteSetting.upsert({
+          where: { key: s.key },
+          create: {
+            key: s.key,
+            value: s.value,
+            group: s.group || null,
+            label: s.label || null,
+          },
+          update: {
+            value: s.value,
+            ...(s.group !== undefined ? { group: s.group } : {}),
+            ...(s.label !== undefined ? { label: s.label } : {}),
+          },
+        })
+      )
+    )
+
+    invalidateContentCache('settings')
+    return apiResponse({ data: { updated: settings.length } })
+  } catch (error) {
+    return handleApiError(error, 'Admin Batch Update Settings')
   }
 }

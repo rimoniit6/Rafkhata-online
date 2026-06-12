@@ -1,7 +1,9 @@
 import { db } from '@/lib/db'
-import { apiResponse, paginatedApiResponse, apiError, withAdmin, withSuperAdmin, parseIdsParam } from '@/lib/api-utils'
+import { apiResponse, paginatedApiResponse, apiError, withAdmin, withSuperAdmin, parseIdsParam, withCsrf, validateBody, parsePaginationParams } from '@/lib/api-utils'
 import { handleApiError, AuthorizationError } from '@/lib/errors'
 import { createAuditLog, AuditActions, EntityTypes, auditFromRequest } from '@/lib/audit'
+import { adminUpdateUserSchema } from '@/lib/validations'
+import { createServiceClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import type { Role } from '@prisma/client'
 
@@ -16,8 +18,7 @@ export async function GET(request: Request) {
     const role = searchParams.get('role')
     const isPremium = searchParams.get('isPremium')
     const search = searchParams.get('search')
-    const page = parseInt(searchParams.get('page') || '1')
-    const limit = parseInt(searchParams.get('limit') || '20')
+    const { page, limit } = parsePaginationParams(searchParams)
 
     const where: Record<string, unknown> = {}
     if (role) where.role = role
@@ -64,15 +65,20 @@ export async function PATCH(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
+
     const body = await request.json()
-    const { id, ids, name, role, phone, institute, classLevel, board, isVerified, isPremium, premiumExpiry } = body
+    const validation = validateBody(adminUpdateUserSchema, body)
+    if ('error' in validation) return validation.error
+    const { id, ids, name, role, phone, institute, classLevel, board, isVerified, isPremium, premiumExpiry } = validation.data
 
     // NEVER allow setting role to SUPER_ADMIN through API
-    if (role === SUPER_ADMIN_ROLE) {
+    if (role === SUPER_ADMIN_ROLE || role === ('SUPER_ADMIN' as any)) {
       return apiError('এই API দিয়ে সুপার অ্যাডমিন তৈরি করা যাবে না। শুধুমাত্র CLI স্ক্রিপ্ট ব্যবহার করুন।', 403, 'FORBIDDEN')
     }
 
-    if (Array.isArray(ids) && ids.length > 0) {
+    if (ids && ids.length > 0) {
       // Block bulk role change to SUPER_ADMIN
       if (role === SUPER_ADMIN_ROLE) {
         return apiError('বাল্ক আপডেটে সুপার অ্যাডমিন রোল সেট করা যাবে না।', 403, 'FORBIDDEN')
@@ -149,6 +155,9 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
+
     const { searchParams } = new URL(request.url)
     const ids = parseIdsParam(searchParams)
     const id = searchParams.get('id')
@@ -168,6 +177,10 @@ export async function DELETE(request: Request) {
     }
 
     if (ids) {
+      const usersToDelete = await db.user.findMany({
+        where: { id: { in: ids }, role: { not: SUPER_ADMIN_ROLE } },
+        select: { id: true, supabaseUserId: true },
+      })
       await Promise.all([
         db.payment.deleteMany({ where: { userId: { in: ids } } }),
         db.bookmark.deleteMany({ where: { userId: { in: ids } } }),
@@ -175,6 +188,15 @@ export async function DELETE(request: Request) {
         db.notification.deleteMany({ where: { userId: { in: ids } } }),
       ])
       const result = await db.user.deleteMany({ where: { id: { in: ids }, role: { not: SUPER_ADMIN_ROLE } } })
+      // Clean up Supabase auth users
+      try {
+        const serviceSupabase = await createServiceClient()
+        for (const u of usersToDelete) {
+          if (u.supabaseUserId) {
+            await serviceSupabase.auth.admin.deleteUser(u.supabaseUserId).catch(() => {})
+          }
+        }
+      } catch { /* best-effort cleanup */ }
       await auditFromRequest(request, auth.user.id, AuditActions.USER_DELETE, EntityTypes.USER, ids.join(','))
       return apiResponse({ deleted: result.count }, `${result.count} জন ব্যবহারকারী মুছে ফেলা হয়েছে`)
     }
@@ -187,6 +209,14 @@ export async function DELETE(request: Request) {
     if (!existingUser) {
       return apiError('ব্যবহারকারী খুঁজে পাওয়া যায়নি', 404)
     }
+
+    // Clean up Supabase auth user first
+    try {
+      if (existingUser.supabaseUserId) {
+        const serviceSupabase = await createServiceClient()
+        await serviceSupabase.auth.admin.deleteUser(existingUser.supabaseUserId)
+      }
+    } catch { /* best-effort cleanup */ }
 
     // Clean up orphaned records before deleting user
     await Promise.all([

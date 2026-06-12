@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { apiError, withCsrf } from '@/lib/api-utils'
 
 // Transform raw MCQ Prisma object to frontend-expected format
 function transformMCQ(mcq: {
@@ -29,6 +30,8 @@ function transformMCQ(mcq: {
 
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { classLevel, subjectId, chapterId, count, duration } = body
 

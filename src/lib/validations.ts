@@ -73,6 +73,38 @@ export const updateUserSchema = z.object({
   avatar: z.string().optional(),
 })
 
+// ============ ADMIN SCHEMAS ============
+
+export const adminUpdateUserSchema = z.object({
+  id: z.string().min(1, 'ব্যবহারকারী ID আবশ্যক').optional(),
+  ids: z.array(z.string()).optional(),
+  name: z.string().min(1).max(100).optional(),
+  role: z.enum(['ADMIN', 'STUDENT'] as const, {
+    message: 'রোল অবশ্যই ADMIN বা STUDENT হতে হবে',
+  }).optional(),
+  phone: z.string().max(20).optional(),
+  institute: z.string().max(200).optional(),
+  classLevel: z.string().max(50).optional(),
+  board: z.string().max(50).optional(),
+  isVerified: z.boolean().optional(),
+  isPremium: z.boolean().optional(),
+  premiumExpiry: z.string().optional(),
+})
+
+export const adminBulkActionSchema = z.object({
+  ids: z.array(z.string()).min(1, 'কমপক্ষে একটি ID প্রয়োজন'),
+  action: z.string().optional(),
+})
+
+export const adminContentSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, 'শিরোনাম প্রয়োজন').max(500).optional(),
+  isActive: z.boolean().optional(),
+  isPremium: z.boolean().optional(),
+  price: z.number().min(0).optional(),
+  order: z.number().int().min(0).optional(),
+})
+
 // ============ DATABASE SCHEMAS ============
 
 export const databaseResetSchema = z.object({

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
+import { withCsrf } from '@/lib/api-utils'
 
 export async function GET(request: Request) {
   try {
@@ -57,6 +58,8 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth || !auth.isAdmin) {
       return NextResponse.json({ error: 'অননুমোদিত' }, { status: 403 })

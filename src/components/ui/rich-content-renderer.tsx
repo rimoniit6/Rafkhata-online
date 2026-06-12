@@ -34,18 +34,16 @@ export default function RichContentRenderer({
   maxLength,
 }: RichContentRendererProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
-  const [mathReady, setMathReady] = useState(false)
+  const [mathReady, setMathReady] = useState(true)
 
   const { html, hasSurvivingMathML } = useMemo(() => {
     return processContent(content)
   }, [content])
 
+  const needsMathJax = html && hasSurvivingMathML
+
   useEffect(() => {
-    if (!html || !hasSurvivingMathML) {
-      setMathReady(true)
-      return
-    }
-    setMathReady(false)
+    if (!needsMathJax) return
 
     const el = wrapperRef.current
     if (!el) return
@@ -61,7 +59,9 @@ export default function RichContentRenderer({
       }
     }
     tryTypeset(5)
-  }, [html, hasSurvivingMathML])
+  }, [needsMathJax])
+
+  const showMathLoader = needsMathJax && !mathReady
 
   if (!content) return null
 
@@ -76,7 +76,7 @@ export default function RichContentRenderer({
       ref={wrapperRef as never}
       className={cn(
         'transition-opacity duration-300',
-        hasSurvivingMathML && !mathReady && 'opacity-0',
+        showMathLoader && 'opacity-0',
         className
       )}
       dangerouslySetInnerHTML={{ __html: trimmed }}

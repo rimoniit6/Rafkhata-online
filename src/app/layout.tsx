@@ -5,7 +5,7 @@ import { ThemeProvider } from "next-themes";
 import QueryProvider from "@/providers/QueryProvider";
 import AuthProvider from "@/providers/AuthProvider";
 import "./globals.css";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/toaster";
 import DynamicFavicon from "@/components/shared/DynamicFavicon";
 import ApiErrorHandler from "@/components/shared/ApiErrorHandler";
 import GlobalStructuredData from "@/components/shared/JsonLd";
@@ -159,7 +159,7 @@ export default function RootLayout({
               <GlobalStructuredData />
               {children}
             </AuthProvider>
-            <Toaster position="top-center" richColors />
+            <Toaster />
           </QueryProvider>
         </ThemeProvider>
       </body>

@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
+import { apiError, withCsrf } from '@/lib/api-utils'
 
 // Transform raw CQ Prisma object to frontend-expected format
 function transformCQ(cq: {
@@ -331,6 +332,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     // Require admin auth for creating CQs
     const auth = await verifyAuth(request)
     if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {

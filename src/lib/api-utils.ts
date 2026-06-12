@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { ZodError, ZodSchema } from 'zod'
 import { RateLimiter, getClientIdentifier, rateLimitHeaders, type RateLimitResult } from './rate-limit'
 import { verifyAuth, requireAuth, requireRole, requireAdmin, requireSuperAdmin, type AuthResult } from './auth'
+import { verifyCsrfFromRequest } from './csrf'
 import type { Role } from '@prisma/client'
 
 export interface PaginationInput {
@@ -149,4 +150,21 @@ export function parseBulkActionBody(body: Record<string, unknown>): {
     return { error: apiError('কমপক্ষে একটি ID প্রয়োজন', 400) }
   }
   return { ids, action: typeof body.action === 'string' ? body.action : undefined }
+}
+
+export function parsePaginationParams(searchParams: URLSearchParams): { page: number; limit: number } {
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20', 10) || 20))
+  return { page, limit }
+}
+
+export async function withCsrf(request: Request): Promise<{ valid: true } | { error: NextResponse }> {
+  if (request.method === 'GET' || request.method === 'HEAD') {
+    return { valid: true as const }
+  }
+  const isValid = await verifyCsrfFromRequest(request)
+  if (!isValid) {
+    return { error: apiError('CSRF টোকেন বৈধ নয়। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।', 403, 'CSRF_INVALID') }
+  }
+  return { valid: true as const }
 }

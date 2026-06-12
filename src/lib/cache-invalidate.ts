@@ -26,11 +26,9 @@ const VALID_CONTENT_TYPES = new Set<string>([
  */
 export async function invalidateContentCache(contentType: CacheableContent): Promise<void> {
   if (!VALID_CONTENT_TYPES.has(contentType)) return
-  try {
-    await redis.incr(`${CONTENT_VERSION_PREFIX}${contentType}`)
-  } catch {
+  redis.incr(`${CONTENT_VERSION_PREFIX}${contentType}`).catch(() => {
     // Redis unavailable — cache invalidation is best-effort
-  }
+  })
 }
 
 /**
@@ -39,7 +37,10 @@ export async function invalidateContentCache(contentType: CacheableContent): Pro
  */
 export async function getContentVersion(contentType: CacheableContent): Promise<number> {
   try {
-    const val = await redis.get<number>(`${CONTENT_VERSION_PREFIX}${contentType}`)
+    const val = await Promise.race([
+      redis.get<number>(`${CONTENT_VERSION_PREFIX}${contentType}`),
+      new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000)),
+    ])
     return val ?? 0
   } catch {
     return 0

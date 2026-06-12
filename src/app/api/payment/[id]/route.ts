@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth, requireAdmin } from '@/lib/auth'
 import { apiLimiter } from '@/lib/rate-limit'
-import { applyRateLimit, apiError } from '@/lib/api-utils'
+import { applyRateLimit, apiError, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 
 export async function GET(
@@ -51,15 +51,19 @@ export async function GET(
 // Payment review/approval consolidated to /api/admin/payments (PATCH)
 // Using this endpoint directly is forbidden — use admin/payments endpoint
 export async function PATCH(
-  _request: Request,
+  request: Request,
   _props: { params: Promise<{ id: string }> }
 ) {
+  const csrfCheck = await withCsrf(request)
+  if ('error' in csrfCheck) return csrfCheck.error
   return apiError('পেমেন্ট অনুমোদন/প্রত্যাখ্যানের জন্য /api/admin/payments এন্ডপয়েন্ট ব্যবহার করুন।', 400, 'USE_ADMIN_ENDPOINT')
 }
 
 export async function PUT(
-  _request: Request,
+  request: Request,
   _props: { params: Promise<{ id: string }> }
 ) {
+  const csrfCheck = await withCsrf(request)
+  if ('error' in csrfCheck) return csrfCheck.error
   return apiError('পেমেন্ট অনুমোদন/প্রত্যাখ্যানের জন্য /api/admin/payments এন্ডপয়েন্ট ব্যবহার করুন।', 400, 'USE_ADMIN_ENDPOINT')
 }

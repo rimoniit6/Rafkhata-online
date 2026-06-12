@@ -209,3 +209,55 @@ export function buildWhereFromSearchParams(
   }
   return where
 }
+
+export async function resolveContentTitle(
+  contentType: string,
+  contentId: string
+): Promise<string | null> {
+  try {
+    switch (contentType) {
+      case 'mcq':
+      case 'board-mcq': {
+        const mcq = await db.mCQ.findUnique({ where: { id: contentId }, select: { question: true } })
+        return mcq?.question?.slice(0, 80) || null
+      }
+      case 'cq':
+      case 'board-cq': {
+        const cq = await db.cQ.findUnique({ where: { id: contentId }, select: { uddeepok: true } })
+        return cq?.uddeepok?.slice(0, 80) || null
+      }
+      case 'lecture': {
+        const lecture = await db.lecture.findUnique({ where: { id: contentId }, select: { title: true } })
+        return lecture?.title || null
+      }
+      case 'suggestion': {
+        const suggestion = await db.suggestion.findUnique({ where: { id: contentId }, select: { title: true } })
+        return suggestion?.title || null
+      }
+      case 'exam': {
+        const exam = await db.exam.findUnique({ where: { id: contentId }, select: { title: true } })
+        return exam?.title || null
+      }
+      case 'bundle': {
+        const bundle = await db.contentBundle.findUnique({ where: { id: contentId }, select: { title: true } })
+        return bundle?.title || null
+      }
+      case 'package': {
+        const pkg = await db.contentPackage.findUnique({ where: { id: contentId }, select: { title: true } })
+        return pkg?.title || null
+      }
+      case 'mcq-exam-package': {
+        const mcqPkg = await db.mCQExamPackage.findUnique({ where: { id: contentId }, select: { title: true } })
+        return mcqPkg?.title || null
+      }
+      case 'cq-exam-package': {
+        const cqPkg = await db.cQExamPackage.findUnique({ where: { id: contentId }, select: { title: true } })
+        return cqPkg?.title || null
+      }
+      default:
+        return null
+    }
+  } catch {
+    return null
+  }
+}

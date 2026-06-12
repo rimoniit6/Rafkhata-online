@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiError } from '@/lib/api-utils'
+import { apiError, withCsrf } from '@/lib/api-utils'
 import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
@@ -277,6 +277,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
       return NextResponse.json({ error: 'লগইন প্রয়োজন', code: 'UNAUTHORIZED' }, { status: 401 })

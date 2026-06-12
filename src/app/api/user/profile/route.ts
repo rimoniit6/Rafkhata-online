@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, withAuth } from '@/lib/api-utils'
+import { apiResponse, withAuth, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
@@ -33,6 +33,8 @@ export async function GET(request: Request) {
 }
 
 export async function PUT(request: Request) {
+  const csrfCheck = await withCsrf(request)
+  if ('error' in csrfCheck) return csrfCheck.error
   const auth = await withAuth(request)
   if (auth instanceof NextResponse) return auth
 

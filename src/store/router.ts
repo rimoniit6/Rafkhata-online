@@ -145,6 +145,8 @@ interface RouterState {
   updateParams: (params: Partial<RouteParams>) => void
 }
 
+const MAX_HISTORY = 50
+
 export const useRouterStore = create<RouterState>((set, get) => ({
   currentRoute: 'home',
   params: {},
@@ -154,7 +156,7 @@ export const useRouterStore = create<RouterState>((set, get) => ({
     set({
       currentRoute: route,
       params,
-      history: [...history, { route: currentRoute, params: currentParams }],
+      history: [...history.slice(-(MAX_HISTORY - 1)), { route: currentRoute, params: currentParams }],
     })
     if (params.scrollTarget) {
       // Delay to allow component to render before scrolling

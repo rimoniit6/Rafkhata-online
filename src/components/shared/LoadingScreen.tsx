@@ -71,7 +71,7 @@ export default function LoadingScreen() {
               key={i}
               className="h-2 rounded-full bg-muted"
               initial={{ width: '0%' }}
-              animate={{ width: `${60 + Math.random() * 40}%` }}
+              animate={{ width: `${70 + (i * 10)}%` }}
               transition={{
                 duration: 1.2,
                 repeat: Infinity,

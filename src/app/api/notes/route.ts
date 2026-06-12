@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
-import { apiError } from '@/lib/api-utils'
+import { apiError, withCsrf } from '@/lib/api-utils'
 
 // GET /api/notes — List notes for authenticated user
 export async function GET(request: Request) {
@@ -55,6 +55,8 @@ export async function GET(request: Request) {
 // POST /api/notes — Create a note
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
       return NextResponse.json(
