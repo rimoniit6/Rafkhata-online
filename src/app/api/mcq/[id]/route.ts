@@ -112,7 +112,7 @@ export async function PUT(
 ) {
   try {
     const auth = await verifyAuth(request)
-    if (!auth || !auth.user || (auth.user.role !== 'admin' && auth.user.role !== 'super_admin')) {
+    if (!auth || !auth.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
       return NextResponse.json({ error: 'MCQ আপডেট করার অনুমতি নেই' }, { status: 403 })
     }
 
@@ -170,7 +170,7 @@ export async function DELETE(
 ) {
   try {
     const auth = await verifyAuth(request)
-    if (!auth || !auth.user || (auth.user.role !== 'admin' && auth.user.role !== 'super_admin')) {
+    if (!auth || !auth.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
       return NextResponse.json({ error: 'MCQ মুছে ফেলার অনুমতি নেই' }, { status: 403 })
     }
 

@@ -4,7 +4,7 @@ export interface AuthUser {
   id: string
   email: string
   name: string
-  role: 'super_admin' | 'admin' | 'student'
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'STUDENT'
   avatar?: string | null
   phone?: string | null
   institute?: string | null

@@ -53,7 +53,7 @@ interface UserRecord {
   createdAt: string
 }
 
-const roleLabels: Record<string, string> = { student: 'শিক্ষার্থী', admin: 'অ্যাডমিন', super_admin: 'সুপার অ্যাডমিন' }
+const roleLabels: Record<string, string> = { STUDENT: 'শিক্ষার্থী', ADMIN: 'অ্যাডমিন', SUPER_ADMIN: 'সুপার অ্যাডমিন' }
 
 export default function AdminUsersPage() {
   const { toast } = useToast()
@@ -89,6 +89,8 @@ export default function AdminUsersPage() {
         const json = await res.json()
         setUsers(Array.isArray(json.data) ? json.data : [])
         setTotal(json.pagination?.total || 0)
+      } else {
+        console.error('[AdminUsers] Fetch failed:', res.status, await res.text().catch(() => ''))
       }
     } catch { /* */ }
     finally { setLoading(false) }
@@ -207,8 +209,8 @@ export default function AdminUsersPage() {
       sortable: true,
       render: (user) => (
         <Badge variant="outline" className={
-          user.role === 'super_admin' ? 'border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400'
-            : user.role === 'admin' ? 'border-teal-300 text-teal-700 dark:border-teal-700 dark:text-teal-400' : ''
+          user.role === 'SUPER_ADMIN' ? 'border-emerald-300 text-emerald-700 dark:border-emerald-700 dark:text-emerald-400'
+            : user.role === 'ADMIN' ? 'border-teal-300 text-teal-700 dark:border-teal-700 dark:text-teal-400' : ''
         }>
           {roleLabels[user.role] || user.role}
         </Badge>
@@ -263,11 +265,11 @@ export default function AdminUsersPage() {
     },
     {
       label: 'অ্যাডমিন করুন',
-      handler: (ids) => handleBulkRole(ids, 'admin'),
+      handler: (ids) => handleBulkRole(ids, 'ADMIN'),
     },
     {
       label: 'শিক্ষার্থী করুন',
-      handler: (ids) => handleBulkRole(ids, 'student'),
+      handler: (ids) => handleBulkRole(ids, 'STUDENT'),
     },
     {
       label: 'প্রিমিয়াম করুন',
@@ -291,9 +293,8 @@ export default function AdminUsersPage() {
             <SelectTrigger className="w-full sm:w-40"><SelectValue placeholder="ভূমিকা" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">সব ভূমিকা</SelectItem>
-              <SelectItem value="student">শিক্ষার্থী</SelectItem>
-              <SelectItem value="admin">অ্যাডমিন</SelectItem>
-              <SelectItem value="super_admin">সুপার অ্যাডমিন</SelectItem>
+              <SelectItem value="STUDENT">শিক্ষার্থী</SelectItem>
+              <SelectItem value="ADMIN">অ্যাডমিন</SelectItem>
             </SelectContent>
           </Select>
           <Select value={premiumFilter} onValueChange={(v) => { setPremiumFilter(v); setPage(1) }}>
@@ -360,9 +361,8 @@ export default function AdminUsersPage() {
               <Select value={editRole} onValueChange={setEditRole}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="student">শিক্ষার্থী</SelectItem>
-                  <SelectItem value="admin">অ্যাডমিন</SelectItem>
-                  <SelectItem value="super_admin">সুপার অ্যাডমিন</SelectItem>
+              <SelectItem value="STUDENT">শিক্ষার্থী</SelectItem>
+              <SelectItem value="ADMIN">অ্যাডমিন</SelectItem>
                 </SelectContent>
               </Select>
             </div>

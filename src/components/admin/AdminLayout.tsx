@@ -39,6 +39,7 @@ import {
 } from 'lucide-react'
 import { useRouterStore, RoutePath, isAdminRoute } from '@/store/router'
 import { useAuthStore } from '@/store/auth'
+import AdminAuthGuard from './AdminAuthGuard'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
@@ -310,7 +311,7 @@ function SidebarContent({
               >
                 <p className="text-sm font-medium truncate">{user?.name || 'অ্যাডমিন'}</p>
                 <p className="text-xs text-sidebar-foreground/60 truncate">
-                  {user?.role === 'super_admin' ? 'সুপার অ্যাডমিন' : 'অ্যাডমিন'}
+                  {user?.role === 'SUPER_ADMIN' ? 'সুপার অ্যাডমিন' : 'অ্যাডমিন'}
                 </p>
               </motion.div>
             )}
@@ -356,9 +357,11 @@ function AdminContent() {
   const Page = AdminPages[currentRoute] || AdminPages['admin-dashboard']
 
   return (
-    <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" /></div>}>
-      <Page />
-    </Suspense>
+    <AdminAuthGuard>
+      <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" /></div>}>
+        <Page />
+      </Suspense>
+    </AdminAuthGuard>
   )
 }
 

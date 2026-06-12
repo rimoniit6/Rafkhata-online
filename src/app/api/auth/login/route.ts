@@ -1,7 +1,7 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
-import { verifyPassword, hashPassword } from '@/lib/password'
-import { createClient } from '@/lib/supabase/server'
+import { verifyPassword } from '@/lib/password'
+import { createClient, createServiceClient } from '@/lib/supabase/server'
 import { apiError } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 
@@ -15,25 +15,9 @@ export async function POST(request: Request) {
     }
 
     const normalizedEmail = email.toLowerCase().trim()
-    let user = await db.user.findUnique({
+    const user = await db.user.findUnique({
       where: { email: normalizedEmail },
     })
-
-    const superAdminEmail = process.env.SUPER_ADMIN_EMAIL
-    const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD
-
-    if (!user && superAdminEmail && superAdminPassword && normalizedEmail === superAdminEmail && password === superAdminPassword) {
-      const hashed = hashPassword(superAdminPassword)
-      user = await db.user.create({
-        data: {
-          email: superAdminEmail,
-          name: 'Super Admin',
-          password: hashed,
-          role: 'super_admin',
-          isVerified: true,
-        },
-      })
-    }
 
     if (!user) {
       return apiError('এই ইমেইলে কোনো অ্যাকাউন্ট নেই', 401, 'UNAUTHORIZED')
@@ -48,24 +32,35 @@ export async function POST(request: Request) {
       return apiError('পাসওয়ার্ড সঠিক নয়', 401, 'UNAUTHORIZED')
     }
 
-    if (superAdminEmail && normalizedEmail === superAdminEmail && user.role !== 'super_admin') {
-      user = await db.user.update({
-        where: { id: user.id },
-        data: { role: 'super_admin', isVerified: true },
-      })
-    }
-
     const supabase = await createClient()
 
-    // Try signing in with password
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: user.email,
       password,
     })
 
+    if (!signInError && signInData?.user && !user.supabaseUserId) {
+      await db.user.update({
+        where: { id: user.id },
+        data: { supabaseUserId: signInData.user.id },
+      })
+      user.supabaseUserId = signInData.user.id
+    }
+
+    // Sync Supabase Auth metadata with DB role on every login
+    if (signInData?.user) {
+      try {
+        const serviceSupabase = await createServiceClient()
+        await serviceSupabase.auth.admin.updateUserById(signInData.user.id, {
+          user_metadata: { role: user.role },
+        })
+      } catch (metaError) {
+        console.error('[Login] Failed to sync role metadata:', metaError)
+      }
+    }
+
     if (signInError) {
       if (!user.supabaseUserId) {
-        // Create Supabase Auth user via signUp (anon key, no admin API needed)
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email: user.email,
           password,
@@ -75,13 +70,9 @@ export async function POST(request: Request) {
         })
 
         if (signUpError) {
-          // User already exists in Supabase Auth — signInWithPassword already failed,
-          // so password might be stale. Delete the old unconfirmed user via API.
-          // Fallback: let user try again after confirming email.
           return apiError('লগইন ব্যর্থ হয়েছে। অনুগ্রহ করে Supabase ড্যাশবোর্ডে Authentication > Users থেকে পুরানো ইউজার ডিলিট করে আবার চেষ্টা করুন।', 500)
         }
 
-        // Link the Supabase Auth user ID
         if (signUpData?.user) {
           await db.user.update({
             where: { id: user.id },
@@ -89,9 +80,6 @@ export async function POST(request: Request) {
           })
         }
 
-        // If email_confirm is off, signUp returns a session automatically.
-        // If it returned a session, cookies are already set — no need to signIn.
-        // If signUp didn't return a session (email_confirm on), we need signIn.
         if (!signUpData?.session) {
           const { error: retryError } = await supabase.auth.signInWithPassword({
             email: user.email,
@@ -102,7 +90,6 @@ export async function POST(request: Request) {
           }
         }
       } else {
-        // Has supabaseUserId but sign-in failed
         return apiError('Supabase অ্যাকাউন্টে সমস্যা। অনুগ্রহ করে Supabase ড্যাশবোর্ডে গিয়ে Authentication > Settings > "Confirm email" বন্ধ আছে কিনা চেক করুন।', 500)
       }
     }

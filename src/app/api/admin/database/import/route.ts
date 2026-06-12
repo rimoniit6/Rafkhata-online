@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth'
+import { createClient } from '@/lib/supabase/server'
 
 const DELETE_ORDER = [
   'bundleItem', 'contentBundle', 'contentPackage',
@@ -109,22 +110,20 @@ export async function POST(request: NextRequest) {
       results[modelName] = { imported, errors }
     }
 
-    // Ensure super admin from .env exists
-    const email = process.env.SUPER_ADMIN_EMAIL
-    const password = process.env.SUPER_ADMIN_PASSWORD
-    if (email && password) {
-      const { hashPassword } = await import('@/lib/password')
-      const hashedPassword = hashPassword(password)
-      const existing = await db.user.findUnique({ where: { email } })
-      if (existing) {
-        await db.user.update({
-          where: { email },
-          data: { role: 'super_admin', password: hashedPassword, isVerified: true },
-        })
-      } else {
-        await db.user.create({
-          data: { email, name: 'Super Admin', password: hashedPassword, role: 'super_admin', isVerified: true },
-        })
+    // Preserve the importing admin's super admin access
+    const supabase = await createClient()
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+    if (supabaseUser?.email) {
+      const existingSuperAdmin = await db.user.findUnique({ where: { email: supabaseUser.email } })
+      if (!existingSuperAdmin || existingSuperAdmin.role !== 'SUPER_ADMIN') {
+        // The import data may not have restored this user as SUPER_ADMIN — ensure access
+        const target = existingSuperAdmin || await db.user.findFirst({ where: { supabaseUserId: supabaseUser.id } })
+        if (target) {
+          await db.user.update({
+            where: { id: target.id },
+            data: { role: 'SUPER_ADMIN', supabaseUserId: supabaseUser.id },
+          })
+        }
       }
     }
 

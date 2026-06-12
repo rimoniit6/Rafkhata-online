@@ -211,8 +211,51 @@ export async function GET(request: Request) {
       db.mCQ.count({ where }),
     ])
 
+    // Fetch user access control list
+    const auth = await verifyAuth(request)
+    const isAdmin = auth?.user && ['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)
+    
+    let accessMap = new Map()
+    if (!isAdmin && auth?.user) {
+      const premiumMcqIds = mcqs.filter((m) => m.isPremium).map((m) => m.id)
+      if (premiumMcqIds.length > 0) {
+        const { batchCheckContentAccess } = await import('@/lib/access-control')
+        accessMap = await batchCheckContentAccess({
+          userId: auth.user.id,
+          items: premiumMcqIds.map((id) => ({ contentType: 'mcq', contentId: id })),
+        })
+      }
+    }
+
     // Transform to frontend-expected format
-    const questions = mcqs.map(transformMCQ)
+    const questions = mcqs.map((mcq) => {
+      const baseTransformed = transformMCQ(mcq)
+      if (mcq.isPremium && !isAdmin) {
+        const hasAccess = auth?.user ? !!accessMap.get(mcq.id)?.hasAccess : false
+        if (!hasAccess) {
+          return {
+            id: baseTransformed.id,
+            text: baseTransformed.text,
+            questionImage: baseTransformed.questionImage,
+            isPremium: true,
+            price: baseTransformed.price,
+            classLevel: baseTransformed.classLevel,
+            subjectId: baseTransformed.subjectId,
+            chapterId: baseTransformed.chapterId,
+            chapterName: baseTransformed.chapterName,
+            difficulty: baseTransformed.difficulty,
+            board: baseTransformed.board,
+            year: baseTransformed.year,
+            hasAccess: false,
+            options: [],
+            correctAnswer: '',
+            explanation: '',
+            explanationImage: null,
+          }
+        }
+      }
+      return { ...baseTransformed, hasAccess: true }
+    })
 
     return NextResponse.json({
       questions,
@@ -232,7 +275,7 @@ export async function POST(request: Request) {
   try {
     // Require admin auth for creating MCQs
     const auth = await verifyAuth(request)
-    if (!auth || (auth.user.role !== 'admin' && auth.user.role !== 'super_admin')) {
+    if (!auth || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
       return apiError('MCQ তৈরি করার অনুমতি নেই', 403, 'FORBIDDEN')
     }
 

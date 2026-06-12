@@ -1,7 +1,11 @@
 import { db } from '@/lib/db'
-import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam, parseBulkActionBody } from '@/lib/api-utils'
-import { handleApiError } from '@/lib/errors'
+import { apiResponse, paginatedApiResponse, apiError, withAdmin, withSuperAdmin, parseIdsParam } from '@/lib/api-utils'
+import { handleApiError, AuthorizationError } from '@/lib/errors'
+import { createAuditLog, AuditActions, EntityTypes, auditFromRequest } from '@/lib/audit'
 import { NextResponse } from 'next/server'
+import type { Role } from '@prisma/client'
+
+const SUPER_ADMIN_ROLE: Role = 'SUPER_ADMIN'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -16,7 +20,6 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '20')
 
     const where: Record<string, unknown> = {}
-
     if (role) where.role = role
     if (isPremium !== null && isPremium !== undefined && isPremium !== '') {
       where.isPremium = isPremium === 'true'
@@ -64,16 +67,36 @@ export async function PATCH(request: Request) {
     const body = await request.json()
     const { id, ids, name, role, phone, institute, classLevel, board, isVerified, isPremium, premiumExpiry } = body
 
+    // NEVER allow setting role to SUPER_ADMIN through API
+    if (role === SUPER_ADMIN_ROLE) {
+      return apiError('এই API দিয়ে সুপার অ্যাডমিন তৈরি করা যাবে না। শুধুমাত্র CLI স্ক্রিপ্ট ব্যবহার করুন।', 403, 'FORBIDDEN')
+    }
+
     if (Array.isArray(ids) && ids.length > 0) {
+      // Block bulk role change to SUPER_ADMIN
+      if (role === SUPER_ADMIN_ROLE) {
+        return apiError('বাল্ক আপডেটে সুপার অ্যাডমিন রোল সেট করা যাবে না।', 403, 'FORBIDDEN')
+      }
+
+      // Check if any target users are SUPER_ADMIN
+      const superAdminTargets = await db.user.count({
+        where: { id: { in: ids }, role: SUPER_ADMIN_ROLE },
+      })
+      if (superAdminTargets > 0 && auth.user.role !== SUPER_ADMIN_ROLE) {
+        return apiError('সুপার অ্যাডমিন ব্যবহারকারীদের পরিবর্তন করতে সুপার অ্যাডমিন অনুমতি প্রয়োজন।', 403, 'FORBIDDEN')
+      }
+
       const updateData: Record<string, unknown> = {}
       if (role !== undefined) updateData.role = role
       if (isPremium !== undefined) updateData.isPremium = isPremium
       if (isVerified !== undefined) updateData.isVerified = isVerified
 
       const result = await db.user.updateMany({
-        where: { id: { in: ids } },
+        where: { id: { in: ids }, role: { not: SUPER_ADMIN_ROLE } },
         data: updateData,
       })
+
+      await auditFromRequest(request, auth.user.id, AuditActions.USER_UPDATE, EntityTypes.USER, ids.join(','), undefined, updateData)
       return apiResponse({ updated: result.count }, `${result.count} জন ব্যবহারকারী আপডেট হয়েছে`)
     }
 
@@ -85,6 +108,13 @@ export async function PATCH(request: Request) {
     if (!existingUser) {
       return apiError('ব্যবহারকারী খুঁজে পাওয়া যায়নি', 404)
     }
+
+    // SUPER_ADMIN users can only be modified by SUPER_ADMIN
+    if (existingUser.role === SUPER_ADMIN_ROLE && auth.user.role !== SUPER_ADMIN_ROLE) {
+      return apiError('সুপার অ্যাডমিন ব্যবহারকারীদের তথ্য পরিবর্তন করতে সুপার অ্যাডমিন অনুমতি প্রয়োজন।', 403, 'FORBIDDEN')
+    }
+
+    const oldData = { role: existingUser.role, isPremium: existingUser.isPremium, isVerified: existingUser.isVerified }
 
     const user = await db.user.update({
       where: { id },
@@ -107,6 +137,7 @@ export async function PATCH(request: Request) {
       },
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.USER_UPDATE, EntityTypes.USER, id, oldData, { role: user.role, isPremium: user.isPremium })
     return apiResponse(user, 'ব্যবহারকারী আপডেট হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Update user')
@@ -122,8 +153,23 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     const id = searchParams.get('id')
 
+    const targetIds = ids || (id ? [id] : null)
+    if (!targetIds || targetIds.length === 0) {
+      return apiError('ব্যবহারকারী ID আবশ্যক', 400)
+    }
+
+    // Check if any targets are SUPER_ADMIN
+    const superAdminTargets = await db.user.count({
+      where: { id: { in: targetIds }, role: SUPER_ADMIN_ROLE },
+    })
+
+    if (superAdminTargets > 0) {
+      return apiError('সুপার অ্যাডমিন ব্যবহারকারীদের মুছে ফেলা যাবে না।', 403, 'FORBIDDEN')
+    }
+
     if (ids) {
-      const result = await db.user.deleteMany({ where: { id: { in: ids } } })
+      const result = await db.user.deleteMany({ where: { id: { in: ids }, role: { not: SUPER_ADMIN_ROLE } } })
+      await auditFromRequest(request, auth.user.id, AuditActions.USER_DELETE, EntityTypes.USER, ids.join(','))
       return apiResponse({ deleted: result.count }, `${result.count} জন ব্যবহারকারী মুছে ফেলা হয়েছে`)
     }
 
@@ -137,6 +183,7 @@ export async function DELETE(request: Request) {
     }
 
     await db.user.delete({ where: { id } })
+    await auditFromRequest(request, auth.user.id, AuditActions.USER_DELETE, EntityTypes.USER, id)
     return apiResponse({ id }, 'ব্যবহারকারী সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Delete user')

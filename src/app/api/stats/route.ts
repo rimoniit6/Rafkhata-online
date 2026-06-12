@@ -11,7 +11,7 @@ export async function GET() {
       totalCqs,
       totalExams,
     ] = await Promise.all([
-      db.user.count({ where: { role: 'student' } }),
+      db.user.count({ where: { role: 'STUDENT' } }),
       db.mCQ.count({ where: { isActive: true } }),
       db.lecture.count({ where: { isActive: true } }),
       db.cQ.count({ where: { isActive: true } }),

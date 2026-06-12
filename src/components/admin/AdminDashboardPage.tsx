@@ -62,6 +62,8 @@ export default function AdminDashboardPage() {
         if (res.ok) {
           const json = await res.json()
           if (!cancelled) setStats(json.data.stats)
+        } else {
+          console.error('[AdminDashboard] Stats fetch failed:', res.status, await res.text().catch(() => ''))
         }
       } catch (err) {
         if (!cancelled) console.error('Failed to fetch stats:', err)

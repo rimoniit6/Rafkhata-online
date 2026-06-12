@@ -106,7 +106,7 @@ function addSecurityHeaders(response: NextResponse, nonce?: string): NextRespons
     `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; ` +
     `font-src 'self' https://fonts.gstatic.com; ` +
     `img-src 'self' data: https: blob:; ` +
-    `connect-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co https://utfs.io https://api.uploadthing.com; ` +
+    `connect-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co https://utfs.io https://api.uploadthing.com https://*.ingest.uploadthing.com; ` +
     `frame-src 'self' https://eylbmvqyrtkfcnfsienv.supabase.co; ` +
     `base-uri 'self'; ` +
     `form-action 'self';`
@@ -156,10 +156,16 @@ export async function proxy(request: NextRequest) {
       return addSecurityHeaders(errorResponse, cspNonce)
     }
 
-    const role = user.user_metadata?.role || 'student'
+    // Query actual role from Prisma database instead of trusting Supabase metadata
+    const { db } = await import('@/lib/db')
+    const dbUser = await db.user.findUnique({
+      where: { supabaseUserId: user.id },
+      select: { role: true },
+    })
+    const role = dbUser?.role || 'STUDENT'
 
     if (isSuperAdminRoute(pathname)) {
-      if (role !== 'super_admin') {
+      if (role !== 'SUPER_ADMIN') {
         const errorResponse = NextResponse.json(
           { success: false, error: 'এই কাজের জন্য সুপার অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
           { status: 403 }
@@ -169,7 +175,7 @@ export async function proxy(request: NextRequest) {
     }
 
     if (isAdminRoute(pathname)) {
-      if (role !== 'admin' && role !== 'super_admin') {
+      if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
         const errorResponse = NextResponse.json(
           { success: false, error: 'এই কাজের জন্য অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
           { status: 403 }
@@ -185,6 +191,10 @@ export async function proxy(request: NextRequest) {
     const response = NextResponse.next({
       request: { headers: requestHeaders },
     })
+    // Forward session refresh cookies from updateSession
+    supabaseResponse.cookies.getAll().forEach(cookie => {
+      response.cookies.set(cookie.name, cookie.value, cookie)
+    })
     return addSecurityHeaders(response, cspNonce)
   }
 
@@ -197,15 +207,26 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Query actual role from Prisma database instead of trusting Supabase metadata
+  const { db } = await import('@/lib/db')
+  const dbUser = await db.user.findUnique({
+    where: { supabaseUserId: user.id },
+    select: { role: true },
+  })
+  const role = dbUser?.role || 'STUDENT'
+
   // Admin page protection
   if (isAdminRoute(pathname)) {
-    const role = user.user_metadata?.role || 'student'
-    if (role !== 'admin' && role !== 'super_admin') {
+    if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
       return NextResponse.redirect(new URL('/', request.url))
     }
   }
 
   const response = NextResponse.next()
+  // Forward session refresh cookies from updateSession
+  supabaseResponse.cookies.getAll().forEach(cookie => {
+    response.cookies.set(cookie.name, cookie.value, cookie)
+  })
   return addSecurityHeaders(response, cspNonce)
 }
 

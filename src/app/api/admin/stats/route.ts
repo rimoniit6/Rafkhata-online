@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       todayUsers,
     ] = await Promise.all([
       db.user.count(),
-      db.user.count({ where: { role: 'student' } }),
+      db.user.count({ where: { role: 'STUDENT' } }),
       db.user.count({ where: { isPremium: true } }),
       db.mCQ.count({ where: { isActive: true } }),
       db.cQ.count({ where: { isActive: true } }),

@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 
     if (broadcast && !userId) {
       const users = await db.user.findMany({
-        where: { role: 'student' },
+        where: { role: 'STUDENT' },
         select: { id: true },
       })
 

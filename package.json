@@ -13,7 +13,12 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:reset": "prisma migrate reset"
+    "db:reset": "prisma migrate reset",
+    "seed:content": "bunx tsx prisma/seed-content.ts",
+    "create-super-admin": "bunx tsx scripts/create-super-admin.ts",
+    "list-super-admins": "bunx tsx scripts/list-super-admins.ts",
+    "revoke-super-admin": "bunx tsx scripts/revoke-super-admin.ts",
+    "sync-supabase-roles": "bunx tsx scripts/sync-supabase-roles.ts"
   },
   "prisma": {
     "seed": "bunx tsx prisma/seed.ts"

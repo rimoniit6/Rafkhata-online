@@ -254,8 +254,62 @@ export async function GET(request: Request) {
       db.cQ.count({ where }),
     ])
 
-    // Transform to frontend-expected format
-    const transformedCqs = cqs.map(transformCQ)
+    // Fetch user access control list
+    const auth = await verifyAuth(request)
+    const isAdmin = auth?.user && ['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)
+
+    let accessMap = new Map()
+    if (!isAdmin && auth?.user) {
+      const premiumCqIds = cqs.filter((c) => c.isPremium).map((c) => c.id)
+      if (premiumCqIds.length > 0) {
+        const { batchCheckContentAccess } = await import('@/lib/access-control')
+        accessMap = await batchCheckContentAccess({
+          userId: auth.user.id,
+          items: premiumCqIds.map((id) => ({ contentType: 'cq', contentId: id })),
+        })
+      }
+    }
+
+    // Transform to frontend-expected format and apply access restriction
+    const transformedCqs = cqs.map((cq) => {
+      const baseTransformed = transformCQ(cq)
+      if (cq.isPremium && !isAdmin) {
+        const hasAccess = auth?.user ? !!accessMap.get(cq.id)?.hasAccess : false
+        if (!hasAccess) {
+          // Return stripped version of questions (questions list without answers)
+          const strippedQuestions = baseTransformed.questions.map((q) => ({
+            id: q.id,
+            label: q.label,
+            number: q.number,
+            text: q.text,
+            marks: q.marks,
+            questionImage: q.questionImage,
+            answer: '',
+            answerImage: null,
+          }))
+
+          return {
+            id: baseTransformed.id,
+            uddeepok: baseTransformed.uddeepok,
+            uddeepokImage: baseTransformed.uddeepokImage,
+            questions: strippedQuestions,
+            chapterName: baseTransformed.chapterName,
+            subjectName: baseTransformed.subjectName,
+            className: baseTransformed.className,
+            classSlug: baseTransformed.classSlug,
+            subjectId: baseTransformed.subjectId,
+            chapterId: baseTransformed.chapterId,
+            isPremium: true,
+            price: baseTransformed.price,
+            difficulty: baseTransformed.difficulty,
+            year: baseTransformed.year,
+            board: baseTransformed.board,
+            hasAccess: false,
+          }
+        }
+      }
+      return { ...baseTransformed, hasAccess: true }
+    })
 
     return NextResponse.json({
       cqs: transformedCqs,
@@ -279,7 +333,7 @@ export async function POST(request: Request) {
   try {
     // Require admin auth for creating CQs
     const auth = await verifyAuth(request)
-    if (!auth?.user || (auth.user.role !== 'admin' && auth.user.role !== 'super_admin')) {
+    if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
       return NextResponse.json({ error: 'সৃজনশীল প্রশ্ন তৈরি করার অনুমতি নেই' }, { status: 403 })
     }
 

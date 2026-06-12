@@ -9,6 +9,14 @@ datasource db {
   relationMode = "prisma"
 }
 
+// ============ ENUMS ============
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  STUDENT
+}
+
 // ============ USER SYSTEM ============
 
 model User {
@@ -17,7 +25,7 @@ model User {
   email         String    @unique
   name          String?
   password      String?
-  role          String    @default("student") // super_admin, admin, evaluator, teacher, student
+  role          Role      @default(STUDENT)
   avatar        String?
   phone         String?
   institute     String?

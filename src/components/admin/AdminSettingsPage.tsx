@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import {
   Settings, Save, Globe, Phone, Share2, Wallet,
   Database, Download, Upload, Trash2, Shield, AlertTriangle,
-  CheckCircle2, XCircle, Loader2, FileJson, RefreshCw, Info, Sparkles, Palette,
+  CheckCircle2, XCircle, Loader2, FileJson, RefreshCw, Info, Sparkles, Palette, Terminal,
   MessageSquareText, FileText, Scale,
 } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -102,13 +102,6 @@ export default function AdminSettingsPage() {
   const [faviconUrl, setFaviconUrl] = useState('')
 
   // Database tab states
-  const [superAdminInfo, setSuperAdminInfo] = useState<{
-    configured: boolean
-    exists: boolean
-    email?: string | null
-    isSuperAdmin?: boolean
-    message?: string
-  } | null>(null)
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -121,7 +114,6 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     fetchSettings()
-    fetchSuperAdminInfo()
   }, [])
 
   const fetchSettings = async () => {
@@ -191,16 +183,6 @@ export default function AdminSettingsPage() {
       }
     } catch { /* */ }
     finally { setLoading(false) }
-  }
-
-  const fetchSuperAdminInfo = async () => {
-    try {
-      const res = await fetch('/api/admin/ensure-super-admin')
-      if (res.ok) {
-        const json = await res.json()
-        setSuperAdminInfo(json.data || json)
-      }
-    } catch { /* */ }
   }
 
   const handleSave = async () => {
@@ -334,7 +316,6 @@ export default function AdminSettingsPage() {
         setImportResults(result.results || null)
         setImportProgress(100)
         toast({ title: 'ইম্পোর্ট সফল হয়েছে' })
-        fetchSuperAdminInfo()
       } else {
         const err = await res.json()
         toast({ title: 'ত্রুটি', description: err.error || 'ইম্পোর্ট করতে সমস্যা হয়েছে', variant: 'destructive' })
@@ -358,7 +339,6 @@ export default function AdminSettingsPage() {
       if (res.ok) {
         toast({ title: 'সকল ডাটা ডিলিট হয়েছে' })
         cancelDelete()
-        fetchSuperAdminInfo()
       } else {
         toast({ title: 'ত্রুটি', description: 'ডিলিট করতে সমস্যা হয়েছে', variant: 'destructive' })
       }
@@ -833,121 +813,30 @@ export default function AdminSettingsPage() {
 
         <TabsContent value="database">
           <div className="space-y-6">
-            {/* Super Admin Info Card */}
-            <Card className="border-emerald-200 dark:border-emerald-800">
+            {/* Super Admin CLI Management Card */}
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <Shield className="h-5 w-5 text-emerald-600" />
-                  সুপার অ্যাডমিন
+                  সুপার অ্যাডমিন ব্যবস্থাপনা
                 </CardTitle>
-                <CardDescription>.env ফাইল থেকে কনফিগার করা সুপার অ্যাডমিন — ডাটাবেজ রিসেটের পরেও স্বয়ংক্রিয়ভাবে তৈরি হবে</CardDescription>
+                <CardDescription>সুপার অ্যাডমিন তৈরি ও পরিচালনার জন্য CLI কমান্ড ব্যবহার করুন</CardDescription>
               </CardHeader>
-              <CardContent>
-                {superAdminInfo ? (
-                  <div className="space-y-3">
-                    {/* Status indicator */}
-                    <div className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg border",
-                      superAdminInfo.exists && superAdminInfo.isSuperAdmin
-                        ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800"
-                        : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800"
-                    )}>
-                      {superAdminInfo.exists && superAdminInfo.isSuperAdmin ? (
-                        <CheckCircle2 className="size-5 text-emerald-600 shrink-0" />
-                      ) : (
-                        <XCircle className="size-5 text-red-500 shrink-0" />
-                      )}
-                      <div>
-                        <p className="text-sm font-medium">
-                          {superAdminInfo.exists && superAdminInfo.isSuperAdmin
-                            ? 'সুপার অ্যাডমিন সক্রিয় আছে'
-                            : superAdminInfo.exists
-                              ? 'অ্যাকাউন্ট আছে কিন্তু সুপার অ্যাডমিন নয়'
-                              : superAdminInfo.configured
-                                ? 'সুপার অ্যাডমিন তৈরি হয়নি (.env কনফিগার করা আছে)'
-                                : 'সুপার অ্যাডমিন তৈরি হয়নি'
-                          }
-                        </p>
-                        {superAdminInfo.email && (
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            ইমেইল: <span className="font-mono">{superAdminInfo.email}</span>
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* .env configuration info */}
-                    <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">.env কনফিগারেশন</p>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-muted-foreground font-mono">SUPER_ADMIN_EMAIL</span>
-                          <span className="text-foreground/70">=</span>
-                          <span className={cn("font-mono", superAdminInfo.email ? "text-emerald-600" : "text-red-500")}>
-                            {superAdminInfo.email || '(সেট করা হয়নি)'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="text-muted-foreground font-mono">SUPER_ADMIN_PASSWORD</span>
-                          <span className="text-foreground/70">=</span>
-                          <span className={cn("font-mono", superAdminInfo.configured ? "text-emerald-600" : "text-red-500")}>
-                            {superAdminInfo.configured ? '••••••••' : '(সেট করা হয়নি)'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex flex-wrap gap-2">
-                      {(!superAdminInfo.exists || !superAdminInfo.isSuperAdmin) && superAdminInfo.configured && (
-                        <Button className="gap-2 bg-emerald-600 hover:bg-emerald-700" onClick={async () => {
-                          try {
-                            const res = await fetch('/api/admin/ensure-super-admin', { method: 'POST' })
-                            if (res.ok) {
-                              const data = await res.json()
-                              toast({ title: data.data?.message || 'সুপার অ্যাডমিন তৈরি/আপডেট হয়েছে' })
-                              fetchSuperAdminInfo()
-                            } else {
-                              const data = await res.json()
-                              toast({ title: 'ত্রুটি', description: data.error || 'সুপার অ্যাডমিন তৈরি করতে সমস্যা হয়েছে', variant: 'destructive' })
-                            }
-                          } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-                        }}>
-                          <Shield className="size-4" />
-                          {superAdminInfo.exists ? 'সুপার অ্যাডমিন রাইট দিন' : 'সুপার অ্যাডমিন তৈরি করুন'}
-                        </Button>
-                      )}
-                      {superAdminInfo.exists && superAdminInfo.isSuperAdmin && (
-                        <Button variant="outline" className="gap-2" onClick={async () => {
-                          try {
-                            const res = await fetch('/api/admin/ensure-super-admin', { method: 'POST' })
-                            if (res.ok) {
-                              const data = await res.json()
-                              toast({ title: data.data?.message || 'সুপার অ্যাডমিন সিঙ্ক হয়েছে' })
-                              fetchSuperAdminInfo()
-                            }
-                          } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-                        }}>
-                          <RefreshCw className="size-4" /> .env থেকে সিঙ্ক করুন
-                        </Button>
-                      )}
-                    </div>
-
-                    {/* Info note */}
-                    <div className="flex items-center gap-3 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
-                      <Info className="size-4 text-blue-600 shrink-0" />
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        সুপার অ্যাডমিন .env ফাইলের ক্রেডেনশিয়াল থেকে তৈরি হয়। ডাটাবেজ রিসেট করলে স্বয়ংক্রিয়ভাবে পুনরায় তৈরি হবে।
-                        .env পরিবর্তন করলে "সিঙ্ক করুন" বাটনে ক্লিক করুন।
-                      </p>
-                    </div>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                  <Terminal className="size-4 text-blue-600 shrink-0" />
+                  <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                    <p><code className="font-mono font-semibold">npm run create-super-admin &lt;email&gt;</code> — ব্যবহারকারীকে সুপার অ্যাডমিন করুন</p>
+                    <p><code className="font-mono font-semibold">npm run list-super-admins</code> — সব সুপার অ্যাডমিন দেখুন</p>
+                    <p><code className="font-mono font-semibold">npm run revoke-super-admin &lt;email&gt;</code> — সুপার অ্যাডমিনের ভূমিকা প্রত্যাহার করুন</p>
                   </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" />
-                    <span className="text-sm">তথ্য লোড হচ্ছে...</span>
-                  </div>
-                )}
+                </div>
+                <div className="flex items-center gap-3 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+                  <AlertTriangle className="size-4 text-amber-600 shrink-0" />
+                  <p className="text-xs text-amber-700 dark:text-amber-300">
+                    সুপার অ্যাডমিন শুধুমাত্র CLI স্ক্রিপ্টের মাধ্যমে তৈরি/পরিবর্তন করা যায়। শেষ সুপার অ্যাডমিনকে সরানো যাবে না।
+                  </p>
+                </div>
               </CardContent>
             </Card>
 

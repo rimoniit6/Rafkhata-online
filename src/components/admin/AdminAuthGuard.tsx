@@ -15,7 +15,7 @@ export default function AdminAuthGuard({ children }: AdminAuthGuardProps) {
   const { user, isAuthenticated } = useAuthStore()
   const { navigate } = useRouterStore()
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
+  const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
 
   // Not authenticated — show login prompt
   if (!isAuthenticated) {

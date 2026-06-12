@@ -68,7 +68,7 @@ export async function POST(
         data: {
           feedbackId: id,
           senderId: auth.user.id,
-          senderRole: 'admin',
+          senderRole: 'ADMIN',
           message: message.trim(),
         },
         include: {

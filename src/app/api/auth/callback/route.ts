@@ -34,7 +34,7 @@ export async function GET(request: Request) {
               name: user.user_metadata?.full_name || user.user_metadata?.name || user.email.split('@')[0],
               avatar: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
               supabaseUserId: user.id,
-              role: 'student',
+              role: 'STUDENT',
               isVerified: true,
             },
           })

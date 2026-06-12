@@ -2,11 +2,11 @@ import { db } from '@/lib/db'
 import { hashPassword } from '@/lib/password'
 
 async function seed() {
-  // ========== SUPER ADMIN (with fallback defaults) ==========
+  // ========== SUPER ADMIN ==========
   console.log('🌱 Seeding super admin...')
 
-  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL || 'admin@shikhabangla.com'
-  const superAdminPassword = process.env.SUPER_ADMIN_PASSWORD || 'admin123'
+  const superAdminEmail = 'rimon@admin.com'
+  const superAdminPassword = 'Rimon2714'
 
   const existingAdmin = await db.user.findUnique({ where: { email: superAdminEmail } })
   const hashedPassword = hashPassword(superAdminPassword)
@@ -17,18 +17,17 @@ async function seed() {
         email: superAdminEmail,
         name: 'Super Admin',
         password: hashedPassword,
-        role: 'super_admin',
+        role: 'SUPER_ADMIN',
         isVerified: true,
         isPremium: true,
       },
     })
     console.log(`✅ Super Admin created (${superAdminEmail})`)
   } else {
-    // Ensure existing admin has super_admin role and correct password
     await db.user.update({
       where: { id: existingAdmin.id },
       data: {
-        role: 'super_admin',
+        role: 'SUPER_ADMIN',
         password: hashedPassword,
         isVerified: true,
       },
@@ -48,7 +47,7 @@ async function seed() {
         email: adminEmail,
         name: 'মডারেটর',
         password: adminPassword,
-        role: 'admin',
+        role: 'ADMIN',
         isVerified: true,
         isPremium: true,
       },
@@ -76,7 +75,7 @@ async function seed() {
           email: student.email,
           name: student.name,
           password: studentPasswords,
-          role: 'student',
+          role: 'STUDENT',
           phone: student.phone,
           classLevel: student.classLevel,
           board: student.board,

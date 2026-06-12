@@ -29,7 +29,7 @@ export default function Header() {
   const { headerNav } = useNavigation()
 
   const siteName = config?.siteName || 'শিক্ষা বাংলা'
-  const isAdmin = user?.role === 'super_admin' || user?.role === 'admin'
+  const isAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'ADMIN'
   const isDark = theme === 'dark'
 
   useEffect(() => {

@@ -3,9 +3,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth'
 import { validateBody } from '@/lib/api-utils'
 import { databaseResetSchema } from '@/lib/validations'
+import { createClient } from '@/lib/supabase/server'
 
 const DELETE_ORDER = [
   'bundleItem', 'contentBundle', 'contentPackage',
+  'cQExamRetakeRequest', 'cQExamAnswerImage', 'cQExamAnswer', 'cQExamSubmission',
+  'cQExamPackagePurchase', 'cQExamSetQuestion', 'cQExamSet', 'cQExamPackage',
   'mCQExamSetQuestion', 'mCQExamSetResult', 'mCQExamSet', 'mCQExamPackagePurchase', 'mCQExamPackage',
   'userSubscription',
   'notification', 'recentlyViewed', 'note', 'bookmark', 'progress',
@@ -15,6 +18,7 @@ const DELETE_ORDER = [
   'cQ', 'mCQ', 'resource', 'lecture',
   'topic', 'chapter', 'subject', 'classCategory',
   'boardYear', 'board', 'examYear',
+  'teacherModerator',
   'user',
 ]
 
@@ -22,6 +26,14 @@ const modelMap: Record<string, any> = {
   bundleItem: db.bundleItem,
   contentBundle: db.contentBundle,
   contentPackage: db.contentPackage,
+  cQExamRetakeRequest: db.cQExamRetakeRequest,
+  cQExamAnswerImage: db.cQExamAnswerImage,
+  cQExamAnswer: db.cQExamAnswer,
+  cQExamSubmission: db.cQExamSubmission,
+  cQExamPackagePurchase: db.cQExamPackagePurchase,
+  cQExamSetQuestion: db.cQExamSetQuestion,
+  cQExamSet: db.cQExamSet,
+  cQExamPackage: db.cQExamPackage,
   mCQExamSetQuestion: db.mCQExamSetQuestion,
   mCQExamSetResult: db.mCQExamSetResult,
   mCQExamSet: db.mCQExamSet,
@@ -57,6 +69,7 @@ const modelMap: Record<string, any> = {
   boardYear: db.boardYear,
   board: db.board,
   examYear: db.examYear,
+  teacherModerator: db.teacherModerator,
   user: db.user,
 }
 
@@ -70,6 +83,11 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       )
     }
+
+    // Save current Supabase session user ID before deleting anything
+    const supabase = await createClient()
+    const { data: { user: supabaseUser } } = await supabase.auth.getUser()
+    const currentSupabaseUserId = supabaseUser?.id || undefined
 
     const body = await request.json()
     const validation = validateBody(databaseResetSchema, body)
@@ -85,17 +103,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Re-seed super admin from .env
-    let superAdminRestored = false
-    const email = process.env.SUPER_ADMIN_EMAIL
-    const password = process.env.SUPER_ADMIN_PASSWORD
-    if (email && password) {
-      const { hashPassword } = await import('@/lib/password')
-      const hashedPassword = hashPassword(password)
+    // Preserve the current super admin user
+    const adminEmail = await db.user.findUnique({
+      where: { supabaseUserId: currentSupabaseUserId },
+      select: { email: true, name: true },
+    })
+
+    const { hashPassword } = await import('@/lib/password')
+    const tempPassword = hashPassword('AdminReset123!')
+    if (adminEmail?.email) {
       await db.user.create({
-        data: { email, name: 'Super Admin', password: hashedPassword, role: 'super_admin', isVerified: true },
+        data: {
+          email: adminEmail.email,
+          name: adminEmail.name || 'Super Admin',
+          password: tempPassword,
+          role: 'SUPER_ADMIN',
+          supabaseUserId: currentSupabaseUserId,
+          isVerified: true,
+        },
       })
-      superAdminRestored = true
     }
 
     // Re-seed content types so the UI works after reset
@@ -120,7 +146,6 @@ export async function POST(request: NextRequest) {
       data: {
         message: 'সকল ডাটা মুছে ফেলা হয়েছে',
         deletionCounts,
-        superAdminRestored,
         contentTypesRestored,
       },
     })

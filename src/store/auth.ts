@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
+import type { Role } from '@prisma/client'
 
 interface User {
   id: string
   email: string
   name: string
-  role: 'super_admin' | 'admin' | 'student'
+  role: Role
   avatar?: string
   phone?: string
   institute?: string

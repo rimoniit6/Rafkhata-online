@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { ZodError, ZodSchema } from 'zod'
 import { RateLimiter, getClientIdentifier, rateLimitHeaders, type RateLimitResult } from './rate-limit'
-import { requireAuth, requireAdmin, requireSuperAdmin, type AuthResult } from './auth'
+import { verifyAuth, requireAuth, requireRole, requireAdmin, requireSuperAdmin, type AuthResult } from './auth'
+import type { Role } from '@prisma/client'
 
 export interface PaginationInput {
   page: number
@@ -10,15 +11,6 @@ export interface PaginationInput {
   totalPages: number
 }
 
-/**
- * Standardized API response format
- * Supports both patterns:
- *   apiResponse(data)                              — data only, status 200
- *   apiResponse(data, status)                      — data + numeric status
- *   apiResponse(data, 'message')                   — data + message, status 200
- *   apiResponse(data, 'message', status)            — data + message + status
- *   apiResponse(data, null, status)                 — data + explicit status, no message
- */
 export function apiResponse<T>(data: T, messageOrStatus?: string | number | null, status?: number, headers?: Record<string, string>) {
   let message: string | null = null
   let finalStatus = 200
@@ -38,9 +30,6 @@ export function apiResponse<T>(data: T, messageOrStatus?: string | number | null
   )
 }
 
-/**
- * Standardized paginated API response
- */
 export function paginatedApiResponse<T>(data: T, pagination: PaginationInput, status = 200) {
   return NextResponse.json(
     { success: true, data, pagination },
@@ -48,9 +37,6 @@ export function paginatedApiResponse<T>(data: T, pagination: PaginationInput, st
   )
 }
 
-/**
- * Standardized error response format
- */
 export function apiError(message: string, status = 400, code?: string, details?: unknown) {
   return NextResponse.json(
     {
@@ -63,30 +49,18 @@ export function apiError(message: string, status = 400, code?: string, details?:
   )
 }
 
-/**
- * Unauthorized response
- */
 export function unauthorized(message = 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।') {
   return apiError(message, 401, 'UNAUTHORIZED')
 }
 
-/**
- * Forbidden response
- */
 export function forbidden(message = 'এই কাজের জন্য অনুমতি নেই।') {
   return apiError(message, 403, 'FORBIDDEN')
 }
 
-/**
- * Not found response
- */
 export function notFound(message = 'তথ্য খুঁজে পাওয়া যায়নি।') {
   return apiError(message, 404, 'NOT_FOUND')
 }
 
-/**
- * Rate limit exceeded response
- */
 export function rateLimitExceeded(result: RateLimitResult) {
   const headers = rateLimitHeaders(result)
   return NextResponse.json(
@@ -99,9 +73,6 @@ export function rateLimitExceeded(result: RateLimitResult) {
   )
 }
 
-/**
- * Validate request body against a Zod schema
- */
 export function validateBody<T>(schema: ZodSchema<T>, body: unknown): { data: T } | { error: NextResponse } {
   try {
     const data = schema.parse(body)
@@ -118,9 +89,6 @@ export function validateBody<T>(schema: ZodSchema<T>, body: unknown): { data: T 
   }
 }
 
-/**
- * Apply rate limiting to a request
- */
 export async function applyRateLimit(limiter: RateLimiter, request: Request): Promise<{ result: RateLimitResult } | { error: NextResponse }> {
   const identifier = getClientIdentifier(request)
   const result = await limiter.limit(identifier)
@@ -130,21 +98,41 @@ export async function applyRateLimit(limiter: RateLimiter, request: Request): Pr
   return { result }
 }
 
-/**
- * Require authentication for an API route handler
- * Returns the auth result or an error response
- */
 export async function withAuth(request: Request): Promise<AuthResult | NextResponse> {
-  const auth = await requireAuth(request)
-  if (!auth) {
+  try {
+    return await requireAuth(request)
+  } catch {
     return unauthorized()
   }
-  return auth
 }
 
-/**
- * Parse comma-separated IDs from search params (e.g. ?ids=abc,def,ghi)
- */
+export async function withRole(request: Request, ...roles: Role[]): Promise<AuthResult | NextResponse> {
+  try {
+    return await requireRole(request, ...roles)
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'AuthenticationError') return unauthorized()
+    return forbidden()
+  }
+}
+
+export async function withAdmin(request: Request): Promise<AuthResult | NextResponse> {
+  try {
+    return await requireAdmin(request)
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'AuthenticationError') return unauthorized()
+    return forbidden('এই কাজের জন্য অ্যাডমিন অনুমতি প্রয়োজন।')
+  }
+}
+
+export async function withSuperAdmin(request: Request): Promise<AuthResult | NextResponse> {
+  try {
+    return await requireSuperAdmin(request)
+  } catch (e: unknown) {
+    if (e instanceof Error && e.name === 'AuthenticationError') return unauthorized()
+    return forbidden('এই কাজের জন্য সুপার অ্যাডমিন অনুমতি প্রয়োজন।')
+  }
+}
+
 export function parseIdsParam(searchParams: URLSearchParams): string[] | null {
   const ids = searchParams.get('ids')
   if (!ids) return null
@@ -152,9 +140,6 @@ export function parseIdsParam(searchParams: URLSearchParams): string[] | null {
   return parts.length > 0 ? parts : null
 }
 
-/**
- * Parse bulk action body: { ids: string[], action?: string }
- */
 export function parseBulkActionBody(body: Record<string, unknown>): {
   ids: string[]
   action?: string
@@ -164,33 +149,4 @@ export function parseBulkActionBody(body: Record<string, unknown>): {
     return { error: apiError('কমপক্ষে একটি ID প্রয়োজন', 400) }
   }
   return { ids, action: typeof body.action === 'string' ? body.action : undefined }
-}
-
-/**
- * Require admin role for an API route handler
- */
-export async function withAdmin(request: Request): Promise<AuthResult | NextResponse> {
-  const auth = await requireAdmin(request)
-  if (!auth) {
-    return unauthorized()
-  }
-  if (auth instanceof NextResponse) return auth
-  if (!auth.isAdmin) {
-    return forbidden('এই কাজের জন্য অ্যাডমিন অনুমতি প্রয়োজন।')
-  }
-  return auth
-}
-
-/**
- * Require super admin role for an API route handler
- */
-export async function withSuperAdmin(request: Request): Promise<AuthResult | NextResponse> {
-  const auth = await requireSuperAdmin(request)
-  if (!auth) {
-    return unauthorized()
-  }
-  if (!auth.isSuperAdmin) {
-    return forbidden('এই কাজের জন্য সুপার অ্যাডমিন অনুমতি প্রয়োজন।')
-  }
-  return auth
 }

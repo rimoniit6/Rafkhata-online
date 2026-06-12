@@ -63,7 +63,12 @@ export default function SocialLoginPage() {
       const user = data.data?.user || data.user
       if (user) {
         login(user)
-        if (user.role === 'super_admin' || user.role === 'admin') {
+        // Sync supabase user so AuthProvider has consistent supabaseUser state
+        const supabase = createClient()
+        supabase.auth.getUser().then(({ data: { user: su } }) => {
+          if (su) useAuthStore.getState().setSupabaseUser(su)
+        }).catch(() => {})
+        if (user.role === 'SUPER_ADMIN' || user.role === 'ADMIN') {
           navigate('admin-dashboard')
         } else {
           navigate('home')

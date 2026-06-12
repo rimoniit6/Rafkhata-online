@@ -219,7 +219,7 @@ export async function POST(request: NextRequest) {
   try {
     // Require super_admin auth for seeding content types
     const auth = await verifyAuth(request)
-    if (!auth || !auth.user || auth.user.role !== 'super_admin') {
+    if (!auth || !auth.user || auth.user.role !== 'SUPER_ADMIN') {
       return NextResponse.json({ error: 'কন্টেন্ট টাইপ seed করার অনুমতি নেই' }, { status: 403 })
     }
 

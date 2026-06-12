@@ -41,8 +41,10 @@ export const AuditActions = {
   GRADE_BULK: 'grade_bulk',
   
   // User actions
+  USER_CREATE: 'user_create',
   USER_UPDATE: 'user_update',
   USER_DELETE: 'user_delete',
+  ROLE_CHANGE: 'role_change',
   
   // Retake actions
   RETAKE_APPROVE: 'retake_approve',
