@@ -168,6 +168,12 @@ export async function DELETE(request: Request) {
     }
 
     if (ids) {
+      await Promise.all([
+        db.payment.deleteMany({ where: { userId: { in: ids } } }),
+        db.bookmark.deleteMany({ where: { userId: { in: ids } } }),
+        db.progress.deleteMany({ where: { userId: { in: ids } } }),
+        db.notification.deleteMany({ where: { userId: { in: ids } } }),
+      ])
       const result = await db.user.deleteMany({ where: { id: { in: ids }, role: { not: SUPER_ADMIN_ROLE } } })
       await auditFromRequest(request, auth.user.id, AuditActions.USER_DELETE, EntityTypes.USER, ids.join(','))
       return apiResponse({ deleted: result.count }, `${result.count} জন ব্যবহারকারী মুছে ফেলা হয়েছে`)
@@ -181,6 +187,23 @@ export async function DELETE(request: Request) {
     if (!existingUser) {
       return apiError('ব্যবহারকারী খুঁজে পাওয়া যায়নি', 404)
     }
+
+    // Clean up orphaned records before deleting user
+    await Promise.all([
+      db.payment.deleteMany({ where: { userId: id } }),
+      db.bookmark.deleteMany({ where: { userId: id } }),
+      db.progress.deleteMany({ where: { userId: id } }),
+      db.examResult.deleteMany({ where: { userId: id } }),
+      db.note.deleteMany({ where: { userId: id } }),
+      db.notification.deleteMany({ where: { userId: id } }),
+      db.recentlyViewed.deleteMany({ where: { userId: id } }),
+      db.userSubscription.deleteMany({ where: { userId: id } }),
+      db.mCQExamPackagePurchase.deleteMany({ where: { userId: id } }),
+      db.cQExamPackagePurchase.deleteMany({ where: { userId: id } }),
+      db.cQExamSubmission.deleteMany({ where: { userId: id } }),
+      db.userFeedback.deleteMany({ where: { userId: id } }),
+      db.mCQExamSetResult.deleteMany({ where: { userId: id } }),
+    ])
 
     await db.user.delete({ where: { id } })
     await auditFromRequest(request, auth.user.id, AuditActions.USER_DELETE, EntityTypes.USER, id)

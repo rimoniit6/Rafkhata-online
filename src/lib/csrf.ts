@@ -2,7 +2,13 @@ import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 
 const CSRF_SECRET = new TextEncoder().encode(
-  process.env.CSRF_SECRET || 'your-super-secret-csrf-key-change-in-production-min-32-chars'
+  (() => {
+    const secret = process.env.CSRF_SECRET
+    if (!secret || secret.length < 32) {
+      throw new Error('CSRF_SECRET environment variable must be set and at least 32 characters long')
+    }
+    return secret
+  })()
 )
 const CSRF_COOKIE_NAME = 'csrf_token'
 const CSRF_HEADER_NAME = 'x-csrf-token'

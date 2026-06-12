@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('faq')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create FAQ')
@@ -66,6 +68,7 @@ export async function PUT(request: Request) {
       const bulkData: Record<string, unknown> = {}
       if (updateData.isActive !== undefined) bulkData.isActive = updateData.isActive
       const result = await db.fAQ.updateMany({ where: { id: { in: ids } }, data: bulkData })
+      await invalidateContentCache('faq')
       return apiResponse({ updated: result.count }, `${result.count}টি আপডেট হয়েছে`)
     }
 
@@ -92,6 +95,7 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await invalidateContentCache('faq')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update FAQ')
@@ -107,6 +111,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.fAQ.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('faq')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
     const idFromQuery = searchParams.get('id')
@@ -131,6 +136,7 @@ export async function DELETE(request: Request) {
     }
 
     await db.fAQ.delete({ where: { id } })
+    await invalidateContentCache('faq')
     return apiResponse({ id }, 'FAQ সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete FAQ')

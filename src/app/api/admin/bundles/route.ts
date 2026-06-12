@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -104,6 +105,7 @@ export async function POST(request: Request) {
       include: { items: true },
     })
 
+    await invalidateContentCache('bundle')
     return apiResponse(bundle, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Bundle')
@@ -180,6 +182,7 @@ export async function PUT(request: Request) {
       include: { items: true },
     })
 
+    await invalidateContentCache('bundle')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Bundle')
@@ -195,6 +198,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.contentBundle.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('bundle')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
     const idFromQuery = searchParams.get('id')
@@ -217,6 +221,7 @@ export async function DELETE(request: Request) {
     }
 
     await db.contentBundle.delete({ where: { id } })
+    await invalidateContentCache('bundle')
     return apiResponse({ id }, 'বান্ডেল সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Bundle')

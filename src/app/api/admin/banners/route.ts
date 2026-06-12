@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('banner')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Banner')
@@ -68,6 +70,7 @@ export async function PUT(request: Request) {
       const updateData: Record<string, unknown> = {}
       if (isActive !== undefined) updateData.isActive = isActive
       const result = await db.banner.updateMany({ where: { id: { in: ids } }, data: updateData })
+      await invalidateContentCache('banner')
       return apiResponse({ updated: result.count }, `${result.count}টি আপডেট হয়েছে`)
     }
     const { id, ...updateData } = body
@@ -105,6 +108,7 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await invalidateContentCache('banner')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Banner')
@@ -121,6 +125,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.banner.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('banner')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
 
@@ -148,6 +153,7 @@ export async function DELETE(request: Request) {
 
     await db.banner.delete({ where: { id } })
 
+    await invalidateContentCache('banner')
     return apiResponse({ id }, 'ব্যানার সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Banner')

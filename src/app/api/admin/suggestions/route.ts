@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('suggestion')
     return apiResponse(data, null, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Suggestion error')
@@ -169,6 +171,7 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await invalidateContentCache('suggestion')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Suggestion error')
@@ -185,6 +188,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.suggestion.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('suggestion')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
 
@@ -212,6 +216,7 @@ export async function DELETE(request: Request) {
 
     await db.suggestion.delete({ where: { id } })
 
+    await invalidateContentCache('suggestion')
     return apiResponse({ id }, 'সাজেশন সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Suggestion error')

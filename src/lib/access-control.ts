@@ -439,11 +439,59 @@ export async function batchCheckContentAccess(
     contentToBundles.set(bi.contentId, existing)
   }
 
+  // ── Batch-resolve class levels (fixes N+1) ──
+  // Instead of calling resolveContentClassLevel() per item (N queries),
+  // query all content class levels in a single batch per type
+  const classLevelCache = new Map<string, string | null>()
+  const mcqIds = items.filter(i => i.contentType === 'mcq' || i.contentType === 'board-mcq').map(i => i.contentId)
+  const cqIds = items.filter(i => i.contentType === 'cq' || i.contentType === 'board-cq').map(i => i.contentId)
+  const lectureIds = items.filter(i => i.contentType === 'lecture').map(i => i.contentId)
+  const examIds = items.filter(i => i.contentType === 'exam').map(i => i.contentId)
+  const suggestionIds = items.filter(i => i.contentType === 'suggestion').map(i => i.contentId)
+
+  if (mcqIds.length > 0) {
+    const mcqs = await db.mCQ.findMany({ where: { id: { in: mcqIds } }, select: { id: true, classLevel: true } })
+    for (const m of mcqs) classLevelCache.set(`mcq:${m.id}`, m.classLevel)
+  }
+  if (cqIds.length > 0) {
+    const cqs = await db.cQ.findMany({ where: { id: { in: cqIds } }, select: { id: true, classLevel: true } })
+    for (const c of cqs) classLevelCache.set(`cq:${c.id}`, c.classLevel)
+  }
+  if (lectureIds.length > 0) {
+    const lectures = await db.lecture.findMany({
+      where: { id: { in: lectureIds } },
+      select: { id: true, chapter: { select: { subject: { select: { classId: true } } } } },
+    })
+    const classIds = [...new Set(lectures.map(l => l.chapter.subject.classId).filter((id): id is string => !!id))]
+    if (classIds.length > 0) {
+      const classCats = await db.classCategory.findMany({ where: { id: { in: classIds } }, select: { id: true, slug: true } })
+      const classSlugMap = new Map(classCats.map(c => [c.id, c.slug]))
+      for (const l of lectures) {
+        classLevelCache.set(`lecture:${l.id}`, classSlugMap.get(l.chapter.subject.classId) || null)
+      }
+    }
+  }
+  if (examIds.length > 0) {
+    const exams = await db.exam.findMany({ where: { id: { in: examIds } }, select: { id: true, classLevel: true } })
+    for (const e of exams) classLevelCache.set(`exam:${e.id}`, e.classLevel)
+  }
+  if (suggestionIds.length > 0) {
+    const suggestions = await db.suggestion.findMany({ where: { id: { in: suggestionIds } }, select: { id: true, classId: true } })
+    const classIds = [...new Set(suggestions.map(s => s.classId).filter((id): id is string => !!id))]
+    if (classIds.length > 0) {
+      const classCats = await db.classCategory.findMany({ where: { id: { in: classIds } }, select: { id: true, slug: true } })
+      const classSlugMap = new Map(classCats.map(c => [c.id, c.slug]))
+      for (const s of suggestions) {
+        classLevelCache.set(`suggestion:${s.id}`, s.classId ? classSlugMap.get(s.classId) || null : null)
+      }
+    }
+  }
+
   for (const item of items) {
     const { contentType, contentId } = item
     const directKey = `${contentType}:${contentId}`
 
-    const itemClassLevel = await resolveContentClassLevel(contentType, contentId)
+    const itemClassLevel = classLevelCache.get(`${contentType}:${contentId}`) ?? await resolveContentClassLevel(contentType, contentId)
 
     // Check subscription
     if (itemClassLevel && subscriptionClassLevels.has(itemClassLevel)) {

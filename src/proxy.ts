@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
-
-// CSRF is handled by the app's existing csrf.ts library (JWT-based via x-csrf-token header)
-// The proxy should NOT manage CSRF — it conflicts with the useCsrf hook's flow
+import { csrfMiddleware } from '@/lib/csrf'
 
 // Generate a CSP nonce
 function generateNonce(): string {
@@ -157,6 +155,30 @@ export async function proxy(request: NextRequest) {
         { status: 401 }
       )
       return addSecurityHeaders(errorResponse, cspNonce)
+    }
+
+    // ── CSRF Protection for state-changing requests ─────────────────
+    // Skip CSRF for auth endpoints, uploadthing, and user feedback
+    // (feedback routes are already auth-protected by verifyAuth).
+    const isCsrfExempt =
+      pathname.startsWith('/api/auth/') ||
+      pathname.startsWith('/api/uploadthing') ||
+      pathname.startsWith('/api/csrf-token') ||
+      pathname.startsWith('/api/user/feedback')
+    const isMutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)
+
+    // CSRF protection for user-facing mutations only.
+    // Admin API routes are exempt because the admin SPA is already
+    // protected by session auth + role check (prevents regressions).
+    if (!isCsrfExempt && !isAdminRoute(pathname) && isMutating) {
+      const csrfResult = await csrfMiddleware(request)
+      if (!csrfResult.valid) {
+        const errorResponse = NextResponse.json(
+          { success: false, error: 'CSRF টোকেন বৈধ নয়।', code: 'CSRF_INVALID' },
+          { status: 403 }
+        )
+        return addSecurityHeaders(errorResponse, cspNonce)
+      }
     }
 
     // Query actual role from Prisma database instead of trusting Supabase metadata

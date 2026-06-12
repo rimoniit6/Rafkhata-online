@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, paginatedApiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 function mapMCQ(item: Record<string, unknown>) {
@@ -159,6 +160,7 @@ export async function POST(request: Request) {
         },
       })
 
+      await invalidateContentCache('board-question')
       return apiResponse(data, 201)
     }
 
@@ -187,6 +189,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('board-question')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Board Question')
@@ -221,6 +224,7 @@ export async function PUT(request: Request) {
       }
 
       const updated = await db.mCQ.update({ where: { id }, data })
+      await invalidateContentCache('board-question')
       return apiResponse(updated)
     }
 
@@ -241,6 +245,7 @@ export async function PUT(request: Request) {
     }
 
     const updated = await db.cQ.update({ where: { id }, data })
+    await invalidateContentCache('board-question')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Board Question')
@@ -263,12 +268,14 @@ export async function DELETE(request: Request) {
       const existing = await db.mCQ.findUnique({ where: { id } })
       if (!existing) return apiError('MCQ খুঁজে পাওয়া যায়নি', 404)
       await db.mCQ.delete({ where: { id } })
+      await invalidateContentCache('board-question')
       return apiResponse({ id }, 'MCQ সফলভাবে মুছে ফেলা হয়েছে')
     }
 
     const existing = await db.cQ.findUnique({ where: { id } })
     if (!existing) return apiError('CQ খুঁজে পাওয়া যায়নি', 404)
     await db.cQ.delete({ where: { id } })
+    await invalidateContentCache('board-question')
     return apiResponse({ id }, 'CQ সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Board Question')

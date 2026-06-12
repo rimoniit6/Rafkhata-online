@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { apiLimiter, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-utils'
+import { handleApiError } from '@/lib/errors'
 
 export async function GET(request: Request) {
   try {
@@ -20,10 +22,7 @@ export async function GET(request: Request) {
     const contentId = searchParams.get('contentId')
 
     if (!contentType || !contentId) {
-      return NextResponse.json(
-        { success: false, error: 'contentType এবং contentId আবশ্যক' },
-        { status: 400 }
-      )
+      return apiError('contentType এবং contentId আবশ্যক', 400)
     }
 
     // Try to get userId from session first, fall back to query param
@@ -321,10 +320,6 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
-    console.error('Payment check error:', error)
-    return NextResponse.json(
-      { success: false, error: 'পেমেন্ট যাচাই করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return handleApiError(error, 'Payment check error')
   }
 }

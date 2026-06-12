@@ -2,17 +2,16 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { apiLimiter, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit'
+import { apiError } from '@/lib/api-utils'
 import { getValidContentTypes } from '@/lib/content-type-labels'
+import { handleApiError } from '@/lib/errors'
 
 export async function GET(request: Request) {
   try {
     // Require authentication
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন।', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন।', 401, 'UNAUTHORIZED')
     }
 
     // Rate limiting
@@ -33,10 +32,7 @@ export async function GET(request: Request) {
     const userId = auth.user.id
 
     if (!contentType) {
-      return NextResponse.json(
-        { success: false, error: 'কন্টেন্ট টাইপ প্রয়োজন' },
-        { status: 400 }
-      )
+      return apiError('কন্টেন্ট টাইপ প্রয়োজন', 400)
     }
 
     const VALID_CONTENT_TYPES = await getValidContentTypes()
@@ -252,10 +248,6 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
-    console.error('Check access error:', error)
-    return NextResponse.json(
-      { success: false, error: 'অ্যাক্সেস চেক করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return handleApiError(error, 'Check access error')
   }
 }

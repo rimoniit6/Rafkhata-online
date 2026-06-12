@@ -50,17 +50,38 @@ export const uploadLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 10
 export const authLimiter = new RateLimiter({ windowMs: 15 * 60 * 1000, maxRequests: 10 })
 
 export function getClientIdentifier(request: Request): string {
+  // Check proxy/cloudflare headers first (most authoritative)
+  const cfIp = request.headers.get('cf-connecting-ip')
+  if (cfIp) return `ip:${cfIp}`
+
+  const vercelIp = request.headers.get('x-vercel-ip')
+  if (vercelIp) return `ip:${vercelIp}`
+
   const forwarded = request.headers.get('x-forwarded-for')
   if (forwarded) {
-    return forwarded.split(',')[0].trim()
+    const ip = forwarded.split(',')[0].trim()
+    if (ip && ip !== 'unknown') return `ip:${ip}`
   }
 
   const realIp = request.headers.get('x-real-ip')
-  if (realIp) {
-    return realIp
-  }
+  if (realIp && realIp !== 'unknown') return `ip:${realIp}`
 
-  return 'unknown'
+  // Last resort: fingerprint based on available headers to prevent collapsing to a single key
+  const ua = request.headers.get('user-agent') || ''
+  const url = new URL(request.url)
+  const pathPrefix = url.pathname.split('/').slice(0, 3).join('/')
+  const uaHash = simpleHash(`${ua}:${pathPrefix}`)
+  return `fp:${uaHash}`
+}
+
+function simpleHash(str: string): string {
+  let hash = 0
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i)
+    hash = ((hash << 5) - hash) + char
+    hash = hash & hash
+  }
+  return Math.abs(hash).toString(36)
 }
 
 export function rateLimitHeaders(result: RateLimitResult): Record<string, string> {

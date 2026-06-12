@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -131,6 +132,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('mcq')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create MCQ')
@@ -179,6 +181,7 @@ export async function PUT(request: Request) {
       data: updateFields,
     })
 
+    await invalidateContentCache('mcq')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update MCQ')
@@ -195,6 +198,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.mCQ.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('mcq')
       return apiResponse({ deleted: result.count }, `${result.count}টি MCQ মুছে ফেলা হয়েছে`)
     }
 
@@ -222,6 +226,7 @@ export async function DELETE(request: Request) {
 
     await db.mCQ.delete({ where: { id } })
 
+    await invalidateContentCache('mcq')
     return apiResponse({ id }, 'MCQ সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete MCQ')

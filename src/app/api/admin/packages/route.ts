@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -115,6 +116,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('package')
     return apiResponse(newPackage, 'প্যাকেজ তৈরি হয়েছে', 201)
   } catch (error) {
     return handleApiError(error, 'Create package error')
@@ -133,6 +135,7 @@ export async function PUT(request: Request) {
       const updateData: Record<string, unknown> = {}
       if (isActive !== undefined) updateData.isActive = isActive
       const result = await db.contentPackage.updateMany({ where: { id: { in: ids } }, data: updateData })
+      await invalidateContentCache('package')
       return apiResponse({ updated: result.count }, `${result.count}টি আপডেট হয়েছে`)
     }
 
@@ -162,6 +165,7 @@ export async function PUT(request: Request) {
       data: updateData,
     })
 
+    await invalidateContentCache('package')
     return apiResponse(updated, 'প্যাকেজ আপডেট হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Update package error')
@@ -178,6 +182,7 @@ export async function DELETE(request: Request) {
     if (ids) {
       await db.userSubscription.deleteMany({ where: { packageId: { in: ids } } })
       const result = await db.contentPackage.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('package')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
     const id = searchParams.get('id')
@@ -195,6 +200,7 @@ export async function DELETE(request: Request) {
     await db.userSubscription.deleteMany({ where: { packageId: id } })
     await db.contentPackage.delete({ where: { id } })
 
+    await invalidateContentCache('package')
     return apiResponse({ id }, 'প্যাকেজ মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Delete package error')

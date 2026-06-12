@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -105,6 +106,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('cq')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create CQ')
@@ -147,6 +149,7 @@ export async function PUT(request: Request) {
 
     const updated = await db.cQ.update({ where: { id }, data: updateFields })
 
+    await invalidateContentCache('cq')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update CQ')
@@ -163,6 +166,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.cQ.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('cq')
       return apiResponse({ deleted: result.count }, `${result.count}টি CQ মুছে ফেলা হয়েছে`)
     }
 
@@ -190,6 +194,7 @@ export async function DELETE(request: Request) {
 
     await db.cQ.delete({ where: { id } })
 
+    await invalidateContentCache('cq')
     return apiResponse({ id }, 'CQ সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete CQ')

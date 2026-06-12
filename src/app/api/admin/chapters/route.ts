@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -71,6 +72,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('chapter')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Chapter')
@@ -119,6 +121,7 @@ export async function PUT(request: Request) {
       },
     })
 
+    await invalidateContentCache('chapter')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Chapter')
@@ -144,6 +147,7 @@ export async function DELETE(request: Request) {
     if (!existing) return apiError('অধ্যায় খুঁজে পাওয়া যায়নি', 404)
 
     await db.chapter.delete({ where: { id } })
+    await invalidateContentCache('chapter')
     return apiResponse({ id, message: 'অধ্যায় সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     return handleApiError(error, 'Admin Delete Chapter')

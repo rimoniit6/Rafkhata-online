@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
       data: { key, value, group: group || null, label: label || null },
     })
 
+    await invalidateContentCache('settings')
     return apiResponse({ data }, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Setting')
@@ -77,6 +79,7 @@ export async function PUT(request: Request) {
       },
     })
 
+    await invalidateContentCache('settings')
     return apiResponse({ data })
   } catch (error) {
     return handleApiError(error, 'Admin Update Setting')

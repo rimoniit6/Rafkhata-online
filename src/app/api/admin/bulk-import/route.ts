@@ -1,6 +1,9 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
+import { withAdmin, applyRateLimit, apiError } from '@/lib/api-utils'
+import { uploadLimiter } from '@/lib/rate-limit'
+import { handleApiError } from '@/lib/errors'
 
 interface ImportError {
   row: number
@@ -8,6 +11,12 @@ interface ImportError {
 }
 
 export async function POST(request: Request) {
+  const auth = await withAdmin(request)
+  if (auth instanceof NextResponse) return auth
+
+  const rateCheck = await applyRateLimit(uploadLimiter, request)
+  if ('error' in rateCheck) return rateCheck.error
+
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File | null
@@ -20,19 +29,19 @@ export async function POST(request: Request) {
     const difficulty = formData.get('difficulty') as string | null
 
     if (!file) {
-      return NextResponse.json({ error: 'ফাইল আপলোড করুন' }, { status: 400 })
+      return apiError('ফাইল আপলোড করুন', 400)
     }
     if (!type || !['mcq', 'cq', 'board-mcq', 'board-cq'].includes(type)) {
-      return NextResponse.json({ error: 'সঠিক টাইপ নির্বাচন করুন' }, { status: 400 })
+      return apiError('সঠিক টাইপ নির্বাচন করুন', 400)
     }
     if (!classId || !subjectId || !chapterId) {
-      return NextResponse.json({ error: 'ক্লাস, বিষয় ও অধ্যায় আবশ্যক' }, { status: 400 })
+      return apiError('ক্লাস, বিষয় ও অধ্যায় আবশ্যক', 400)
     }
 
     // Resolve classLevel (slug) from classId
     const classObj = await db.classCategory.findUnique({ where: { id: classId } })
     if (!classObj) {
-      return NextResponse.json({ error: 'ক্লাস খুঁজে পাওয়া যায়নি' }, { status: 400 })
+      return apiError('ক্লাস খুঁজে পাওয়া যায়নি', 400)
     }
     const classLevel = classObj.slug
 
@@ -43,13 +52,13 @@ export async function POST(request: Request) {
     const workbook = XLSX.read(buffer, { type: 'buffer' })
     const sheetName = workbook.SheetNames[0]
     if (!sheetName) {
-      return NextResponse.json({ error: 'ফাইলে কোনো শীট নেই' }, { status: 400 })
+      return apiError('ফাইলে কোনো শীট নেই', 400)
     }
     const worksheet = workbook.Sheets[sheetName]
     const rows: Record<string, string | number | boolean | undefined>[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' })
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'ফাইলে কোনো ডেটা নেই' }, { status: 400 })
+      return apiError('ফাইলে কোনো ডেটা নেই', 400)
     }
 
     const errors: ImportError[] = []
@@ -61,10 +70,10 @@ export async function POST(request: Request) {
     // For board questions, board and year are required
     if (isBoard) {
       if (!board) {
-        return NextResponse.json({ error: 'বোর্ড প্রশ্নের জন্য বোর্ড আবশ্যক' }, { status: 400 })
+        return apiError('বোর্ড প্রশ্নের জন্য বোর্ড আবশ্যক', 400)
       }
       if (!year) {
-        return NextResponse.json({ error: 'বোর্ড প্রশ্নের জন্য সাল আবশ্যক' }, { status: 400 })
+        return apiError('বোর্ড প্রশ্নের জন্য সাল আবশ্যক', 400)
       }
     }
 
@@ -202,10 +211,6 @@ export async function POST(request: Request) {
       total: rows.length,
     })
   } catch (error) {
-    console.error('Bulk import error:', error)
-    return NextResponse.json(
-      { error: 'বাল্ক ইম্পোর্ট করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return handleApiError(error, 'Bulk import error')
   }
 }

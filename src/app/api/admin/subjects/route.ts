@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -81,6 +82,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('subject')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Subject')
@@ -129,6 +131,7 @@ export async function PUT(request: Request) {
       },
     })
 
+    await invalidateContentCache('subject')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Subject')
@@ -154,6 +157,7 @@ export async function DELETE(request: Request) {
     if (!existing) return apiError('বিষয় খুঁজে পাওয়া যায়নি', 404)
 
     await db.subject.delete({ where: { id } })
+    await invalidateContentCache('subject')
     return apiResponse({ id, message: 'বিষয় সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     return handleApiError(error, 'Admin Delete Subject')

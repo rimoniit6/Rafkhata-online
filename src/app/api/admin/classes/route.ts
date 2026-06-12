@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
       include: { _count: { select: { subjects: true } } },
     })
 
+    await invalidateContentCache('class')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Class')
@@ -95,6 +97,7 @@ export async function PUT(request: Request) {
       include: { _count: { select: { subjects: true } } },
     })
 
+    await invalidateContentCache('class')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Class')
@@ -120,6 +123,7 @@ export async function DELETE(request: Request) {
     if (!existing) return apiError('শ্রেণি খুঁজে পাওয়া যায়নি', 404)
 
     await db.classCategory.delete({ where: { id } })
+    await invalidateContentCache('class')
     return apiResponse({ id, message: 'শ্রেণি সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     return handleApiError(error, 'Admin Delete Class')

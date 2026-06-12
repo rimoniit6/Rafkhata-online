@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -91,6 +92,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('lecture')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Lecture')
@@ -128,6 +130,7 @@ export async function PUT(request: Request) {
 
     const updated = await db.lecture.update({ where: { id }, data: updateFields })
 
+    await invalidateContentCache('lecture')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Lecture')
@@ -144,6 +147,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.lecture.deleteMany({ where: { id: { in: ids } } })
+      await invalidateContentCache('lecture')
       return apiResponse({ deleted: result.count }, `${result.count}টি লেকচার মুছে ফেলা হয়েছে`)
     }
 
@@ -171,6 +175,7 @@ export async function DELETE(request: Request) {
 
     await db.lecture.delete({ where: { id } })
 
+    await invalidateContentCache('lecture')
     return apiResponse({ id }, 'লেকচার সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Lecture')

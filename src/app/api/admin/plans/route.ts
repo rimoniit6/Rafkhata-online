@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
       },
     })
 
+    await invalidateContentCache('package')
     return apiResponse(data, null, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Plan error')
@@ -99,6 +101,7 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await invalidateContentCache('package')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Plan error')
@@ -135,6 +138,7 @@ export async function DELETE(request: Request) {
 
     await db.contentPackage.delete({ where: { id } })
 
+    await invalidateContentCache('package')
     return apiResponse({ id }, 'সাবস্ক্রিপশন প্ল্যান সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Plan error')

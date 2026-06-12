@@ -19,17 +19,8 @@ export async function POST(request: Request) {
       where: { email: normalizedEmail },
     })
 
-    if (!user) {
-      return apiError('এই ইমেইলে কোনো অ্যাকাউন্ট নেই', 401, 'UNAUTHORIZED')
-    }
-
-    if (!user.password) {
-      return apiError('এই অ্যাকাউন্টে পাসওয়ার্ড লগইন সক্রিয় নেই। সামাজিক লগইন ব্যবহার করুন।', 401, 'UNAUTHORIZED')
-    }
-
-    const isValid = verifyPassword(password, user.password)
-    if (!isValid) {
-      return apiError('পাসওয়ার্ড সঠিক নয়', 401, 'UNAUTHORIZED')
+    if (!user || !user.password || !verifyPassword(password, user.password)) {
+      return apiError('ইমেইল বা পাসওয়ার্ড সঠিক নয়', 401, 'UNAUTHORIZED')
     }
 
     const supabase = await createClient()
