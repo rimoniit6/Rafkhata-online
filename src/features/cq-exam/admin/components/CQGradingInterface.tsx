@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useEffect } from 'react'
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft, Save, CheckCircle2, ImageIcon, Star, MessageSquare,
@@ -57,22 +57,24 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
     }
   }, [])
 
-  useEffect(() => {
+  const submissionIdRef = useRef<string | undefined>(submission?.id)
+  if (submission?.id !== submissionIdRef.current) {
+    submissionIdRef.current = submission?.id
     if (!submission) {
       setAnswerGrades({})
       setSavedAnswers(new Set())
-      return
-    }
-    setAnswerGrades(
-      Object.fromEntries(
-        submission.answers.map((a) => [
-          a.id,
-          { obtainedMarks: a.obtainedMarks ?? 0, feedback: a.feedback ?? '' },
-        ])
+    } else {
+      setAnswerGrades(
+        Object.fromEntries(
+          submission.answers.map((a) => [
+            a.id,
+            { obtainedMarks: a.obtainedMarks ?? 0, feedback: a.feedback ?? '' },
+          ])
+        )
       )
-    )
-    setSavedAnswers(new Set())
-  }, [submission?.id])
+      setSavedAnswers(new Set())
+    }
+  }
 
   const handleMarksChange = useCallback((answerId: string, value: string) => {
     const num = parseFloat(value)
@@ -123,7 +125,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
       }
     }
     return map
-  }, [setData?.questions])
+  }, [setData])
 
   // Group answers by questionId for easier rendering
   const answersByQuestion = useMemo(() => {
@@ -134,7 +136,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
       groups.get(a.questionId)!.push(a)
     }
     return groups
-  }, [submission?.answers])
+  }, [submission])
 
   // Get questions in order
   const orderedQuestionIds = useMemo(() => {
@@ -142,7 +144,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
       return setData.questions.map(q => q.id)
     }
     return Array.from(answersByQuestion.keys())
-  }, [setData?.questions, answersByQuestion])
+  }, [setData, answersByQuestion])
 
   if (!submission) {
     return (

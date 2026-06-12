@@ -2,7 +2,7 @@ import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
-import { applyRateLimit, apiError, withCsrf } from '@/lib/api-utils'
+import { applyRateLimit, apiError } from '@/lib/api-utils'
 import { apiLimiter } from '@/lib/rate-limit'
 import { handleApiError } from '@/lib/errors'
 import { auditFromRequest, AuditActions, EntityTypes } from '@/lib/audit'
@@ -61,8 +61,6 @@ const modelMap: Record<string, any> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireSuperAdmin(request)
     if (!auth) {
       return NextResponse.json(

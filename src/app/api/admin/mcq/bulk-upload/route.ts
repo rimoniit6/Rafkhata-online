@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
-import { withCsrf } from '@/lib/api-utils'
 
 // Excel column mapping (Bengali headers → DB fields)
 const COLUMN_MAP: Record<string, string> = {
@@ -42,8 +41,6 @@ const COLUMN_MAP: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const formData = await request.formData()
     const file = formData.get('file') as File
     const classLevel = formData.get('classLevel') as string

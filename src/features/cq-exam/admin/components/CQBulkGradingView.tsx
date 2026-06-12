@@ -239,11 +239,10 @@ export function CQBulkGradingView({ saving, set: setData, bulkSubmissions, onBul
   const [annotatingImage, setAnnotatingImage] = useState<string | null>(null)
 
   // Track which answer IDs have been saved to DB (not dirty)
-  const [syncedAnswerIds, setSyncedAnswerIds] = useState<Set<string>>(new Set())
-  useEffect(() => {
+  const syncedAnswerIds = useMemo(() => {
     const ids = new Set<string>()
     bulkSubmissions.forEach(sub => sub.answers.forEach(a => { if (a.obtainedMarks != null) ids.add(a.id) }))
-    setSyncedAnswerIds(ids)
+    return ids
   }, [bulkSubmissions])
 
   const handleAnnotationSave = useCallback(async (imageId: string, annotationsJson: string) => {
@@ -285,7 +284,6 @@ export function CQBulkGradingView({ saving, set: setData, bulkSubmissions, onBul
         .map(a => ({ id: a.id, obtainedMarks: grades[a.id].obtainedMarks ?? 0 })),
     })).filter(item => item.answers.length > 0)
     onSaveBulk(selectedQuestionId, payload)
-    setSyncedAnswerIds(prev => { const n = new Set(prev); gradeKeys.forEach(id => n.add(id)); return n })
   }
 
   const selectedQuestion = questions.find(q => q.id === selectedQuestionId)

@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin, validateBody, applyRateLimit, withCsrf, parsePaginationParams } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, validateBody, applyRateLimit, parsePaginationParams } from '@/lib/api-utils'
 import { handleApiError, safeTransaction } from '@/lib/errors'
 import { reviewPaymentSchema } from '@/lib/validations'
 import { NextResponse } from 'next/server'
@@ -129,9 +129,7 @@ export async function PATCH(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    // CSRF validation for mutation
-    const csrfCheck = await withCsrf(request)
-    if ('error' in csrfCheck) return csrfCheck.error
+
 
     const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error

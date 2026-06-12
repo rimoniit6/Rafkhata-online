@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
-import { withCsrf } from '@/lib/api-utils'
 
 // GET /api/admin/navigation — fetch ALL navigation items (including inactive) ordered by location, then order
 export async function GET(request: Request) {
@@ -28,8 +27,6 @@ export async function GET(request: Request) {
 // POST /api/admin/navigation — create a new navigation item
 export async function POST(request: Request) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
@@ -71,8 +68,6 @@ if ('error' in csrfCheck) return csrfCheck.error
 // PUT /api/admin/navigation — update a navigation item by id
 export async function PUT(request: Request) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
@@ -103,8 +98,6 @@ if ('error' in csrfCheck) return csrfCheck.error
 // DELETE /api/admin/navigation — soft delete by setting isActive = false
 export async function DELETE(request: Request) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })

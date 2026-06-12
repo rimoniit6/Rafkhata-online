@@ -2,7 +2,6 @@ import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { getContentTypeLabels } from '@/lib/content-type-labels'
-import { withCsrf } from '@/lib/api-utils'
 
 export async function GET(request: Request) {
   try {
@@ -117,8 +116,6 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return NextResponse.json(

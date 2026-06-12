@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin, withCsrf } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
@@ -53,8 +53,6 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { name, slug, classId, icon, color, description, order, isActive } = body
 
@@ -96,8 +94,6 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { id, ...updateData } = body
 
@@ -147,8 +143,6 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(request.url)
     let id = searchParams.get('id')
 

@@ -98,7 +98,7 @@ export default function AdminMCQPage() {
   // ─── Helper: update form field ─────────────────────────────
   const updateForm = useCallback((field: string, value: string | boolean) => {
     setForm((f) => ({ ...f, [field]: value }))
-  }, [])
+  }, [setForm])
 
   // ─── Step Indicator ────────────────────────────────────────
   const StepIndicator = () => (

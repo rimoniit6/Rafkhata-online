@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { requireSuperAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
-import { withCsrf } from '@/lib/api-utils'
 
 const DEFAULT_NAVIGATION_ITEMS = [
   // Header nav items
@@ -31,8 +30,6 @@ const DEFAULT_NAVIGATION_ITEMS = [
 // POST /api/admin/navigation/seed — seed default navigation items (super_admin only)
 export async function POST(request: Request) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireSuperAdmin(request)
     if (!auth) {
       return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })

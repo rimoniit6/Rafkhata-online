@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, paginatedApiResponse, apiError, withAdmin, withCsrf } from '@/lib/api-utils'
+import { apiResponse, paginatedApiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
@@ -130,8 +130,6 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { type, ...fields } = body
 
@@ -203,8 +201,6 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { id, type, ...updateData } = body
 
@@ -261,8 +257,6 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     const type = searchParams.get('type')

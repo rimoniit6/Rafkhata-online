@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, paginatedApiResponse, apiError, withAdmin, withSuperAdmin, parseIdsParam, withCsrf, validateBody, parsePaginationParams } from '@/lib/api-utils'
+import { apiResponse, paginatedApiResponse, apiError, withAdmin, withSuperAdmin, parseIdsParam, validateBody, parsePaginationParams } from '@/lib/api-utils'
 import { handleApiError, AuthorizationError } from '@/lib/errors'
 import { createAuditLog, AuditActions, EntityTypes, auditFromRequest } from '@/lib/audit'
 import { adminUpdateUserSchema } from '@/lib/validations'
@@ -65,9 +65,6 @@ export async function PATCH(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-    if ('error' in csrfCheck) return csrfCheck.error
-
     const body = await request.json()
     const validation = validateBody(adminUpdateUserSchema, body)
     if ('error' in validation) return validation.error
@@ -155,9 +152,6 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-    if ('error' in csrfCheck) return csrfCheck.error
-
     const { searchParams } = new URL(request.url)
     const ids = parseIdsParam(searchParams)
     const id = searchParams.get('id')

@@ -1,7 +1,6 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
-import { withCsrf } from '@/lib/api-utils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -73,8 +72,6 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })

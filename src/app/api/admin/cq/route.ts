@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam, withCsrf } from '@/lib/api-utils'
+import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
@@ -73,8 +73,6 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const {
       uddeepok, uddeepokImage, question1, question1Image,
@@ -120,8 +118,6 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { id, ...updateData } = body
 
@@ -165,8 +161,6 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-    const csrfCheck = await withCsrf(request)
-if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(request.url)
 
     const ids = parseIdsParam(searchParams)
