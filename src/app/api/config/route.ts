@@ -14,6 +14,8 @@ function safeJSONParse(str: string | undefined | null, fallback: string[] = []):
 
 // GET /api/config - Public site configuration
 // Returns site name, description, contact info, social links, payment accounts, UI content, homepage sections, and messages
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   const defaultConfig = {
     siteName: 'শিক্ষা বাংলা',

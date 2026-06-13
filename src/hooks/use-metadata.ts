@@ -230,6 +230,8 @@ export function useSiteConfig() {
       return data
     },
     select: (data) => data,
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: true,
   })
 
   return { config, loading: isLoading, error: error?.message ?? null }

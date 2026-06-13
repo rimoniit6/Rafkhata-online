@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import {
   GraduationCap,
@@ -21,6 +22,10 @@ import { getMessages } from '@/lib/messages'
 import Image from 'next/image'
 
 export default function Footer() {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const currentYear = useMemo(() => new Date().getFullYear(), [])
+
   const { navigate } = useRouterStore()
   const { config } = useSiteConfig()
   const { classOptions } = useHierarchyMetadata()
@@ -80,7 +85,7 @@ export default function Footer() {
               {config?.footerDescription || config?.siteDescription || 'শিক্ষার্থীদের জন্য অনলাইন শিক্ষা প্ল্যাটফর্ম।'}
             </p>
             {/* Social Links */}
-            {socialLinks.length > 0 && (
+            {socialLinks.length > 0 && mounted && (
               <div className="flex items-center gap-3 mt-4">
                 {socialLinks.map((social) => {
                   const Icon = social.icon
@@ -179,7 +184,7 @@ export default function Footer() {
         <Separator />
         <div className="py-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} {siteName}। সর্বস্বত্ব সংরক্ষিত।
+            © {currentYear} {siteName}। সর্বস্বত্ব সংরক্ষিত।
           </p>
           <div className="flex items-center gap-4">
             <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-xs text-muted-foreground hover:text-edu-primary transition-colors">
