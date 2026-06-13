@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 
 // GET /api/admin/years - List all exam years
 export async function GET(request: Request) {
@@ -46,6 +48,8 @@ export async function POST(request: Request) {
       },
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, 'year', examYear.id, body)
+    await invalidateContentCache('settings')
     return apiResponse(examYear, 201)
   } catch (error) {
     return handleApiError(error, 'Year create error')
@@ -75,6 +79,8 @@ export async function PUT(request: Request) {
       data: updateData,
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'year', examYear.id)
+    await invalidateContentCache('settings')
     return apiResponse(examYear)
   } catch (error) {
     return handleApiError(error, 'Year update error')
@@ -95,6 +101,8 @@ export async function DELETE(request: Request) {
     }
 
     await db.examYear.delete({ where: { id } })
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'year', id)
+    await invalidateContentCache('settings')
     return apiResponse({ id }, 'সাল সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Year delete error')

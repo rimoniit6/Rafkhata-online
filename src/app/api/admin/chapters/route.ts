@@ -3,6 +3,7 @@ import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -73,6 +74,7 @@ export async function POST(request: Request) {
     })
 
     await invalidateContentCache('chapter')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, 'chapter', data.id, body)
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Chapter')
@@ -122,6 +124,7 @@ export async function PUT(request: Request) {
     })
 
     await invalidateContentCache('chapter')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'chapter', existing.id, { ...existing }, data)
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Chapter')
@@ -148,6 +151,7 @@ export async function DELETE(request: Request) {
 
     await db.chapter.delete({ where: { id } })
     await invalidateContentCache('chapter')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'chapter', id)
     return apiResponse({ id, message: 'অধ্যায় সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     return handleApiError(error, 'Admin Delete Chapter')

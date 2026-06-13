@@ -3,6 +3,7 @@ import { apiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -49,6 +50,8 @@ export async function POST(request: Request) {
       },
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, 'faq', data.id, body)
+
     await invalidateContentCache('faq')
     return apiResponse(data, 201)
   } catch (error) {
@@ -68,6 +71,7 @@ export async function PUT(request: Request) {
       const bulkData: Record<string, unknown> = {}
       if (updateData.isActive !== undefined) bulkData.isActive = updateData.isActive
       const result = await db.fAQ.updateMany({ where: { id: { in: ids } }, data: bulkData })
+      await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'faq', 'bulk:' + ids.join(','))
       await invalidateContentCache('faq')
       return apiResponse({ updated: result.count }, `${result.count}টি আপডেট হয়েছে`)
     }
@@ -95,6 +99,7 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'faq', updated.id)
     await invalidateContentCache('faq')
     return apiResponse(updated)
   } catch (error) {
@@ -111,6 +116,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.fAQ.deleteMany({ where: { id: { in: ids } } })
+      await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'faq', 'bulk:' + ids.join(','))
       await invalidateContentCache('faq')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
@@ -136,6 +142,7 @@ export async function DELETE(request: Request) {
     }
 
     await db.fAQ.delete({ where: { id } })
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'faq', id)
     await invalidateContentCache('faq')
     return apiResponse({ id }, 'FAQ সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {

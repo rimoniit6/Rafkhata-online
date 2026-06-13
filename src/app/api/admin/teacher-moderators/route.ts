@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -41,6 +43,8 @@ export async function POST(request: Request) {
       },
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, 'teacher', data.id, body)
+    await invalidateContentCache('settings')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create TeacherModerator error')
@@ -78,6 +82,8 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'teacher', updated.id)
+    await invalidateContentCache('settings')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update TeacherModerator error')
@@ -114,6 +120,8 @@ export async function DELETE(request: Request) {
 
     await db.teacherModerator.delete({ where: { id } })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'teacher', id)
+    await invalidateContentCache('settings')
     return apiResponse({ id }, 'সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete TeacherModerator error')

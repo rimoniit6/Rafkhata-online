@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -47,6 +49,8 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    await auditFromRequest(req, auth.user.id, AuditActions.CONTENT_CREATE, 'board', board.id, body)
+    await invalidateContentCache('board')
     return apiResponse(board, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Board')
@@ -88,6 +92,8 @@ export async function PUT(req: NextRequest) {
       data: updateData,
     })
 
+    await auditFromRequest(req, auth.user.id, AuditActions.CONTENT_UPDATE, 'board', existing.id, { ...existing }, updateData)
+    await invalidateContentCache('board')
     return apiResponse(board)
   } catch (error) {
     return handleApiError(error, 'Admin Update Board')
@@ -112,6 +118,8 @@ export async function DELETE(req: NextRequest) {
     }
 
     await db.board.delete({ where: { id } })
+    await auditFromRequest(req, auth.user.id, AuditActions.CONTENT_DELETE, 'board', id)
+    await invalidateContentCache('board')
     return apiResponse({ id }, 'বোর্ড সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Board')

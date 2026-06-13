@@ -21,7 +21,7 @@
     "sync-supabase-roles": "bunx tsx scripts/sync-supabase-roles.ts"
   },
   "prisma": {
-    "seed": "bunx tsx prisma/seed.ts"
+    "seed": "bunx tsx prisma/seed-all.ts"
   },
   "dependencies": {
     "@prisma/client": "6.11.1",

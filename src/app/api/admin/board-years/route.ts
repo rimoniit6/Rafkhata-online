@@ -63,7 +63,7 @@ export async function PUT(request: Request) {
 
     if (!id) {
       return NextResponse.json(
-        { error: 'বোর্ড সাল ID আবশ্যক' },
+        { success: false, error: 'বোর্ড সাল ID আবশ্যক' },
         { status: 400 }
       )
     }
@@ -71,7 +71,7 @@ export async function PUT(request: Request) {
     const existing = await db.boardYear.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json(
-        { error: 'বোর্ড সাল খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'বোর্ড সাল খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }

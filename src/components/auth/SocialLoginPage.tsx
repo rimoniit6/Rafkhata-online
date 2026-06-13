@@ -131,7 +131,7 @@ export default function SocialLoginPage() {
 
             {showAdminLogin ? (
               <form onSubmit={handleEmailLogin} className="space-y-4">
-                <motion.div variants={itemVariants} className="space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="email">ইমেইল</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -145,9 +145,9 @@ export default function SocialLoginPage() {
                       disabled={isLoading}
                     />
                   </div>
-                </motion.div>
+                </div>
 
-                <motion.div variants={itemVariants} className="space-y-2">
+                <div className="space-y-2">
                   <Label htmlFor="password">পাসওয়ার্ড</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -161,9 +161,9 @@ export default function SocialLoginPage() {
                       disabled={isLoading}
                     />
                   </div>
-                </motion.div>
+                </div>
 
-                <motion.div variants={itemVariants}>
+                <div>
                   <Button
                     type="submit"
                     className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold h-11"
@@ -178,7 +178,7 @@ export default function SocialLoginPage() {
                       'লগইন করুন'
                     )}
                   </Button>
-                </motion.div>
+                </div>
 
                 <div className="text-center">
                   <button

@@ -49,6 +49,7 @@ export interface BoardQuestionFilterData {
     name: string
     slug: string
     order: number
+    gradient: string | null
     mcqCount: number
     cqCount: number
     boardCount: number

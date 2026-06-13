@@ -3,6 +3,7 @@ import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -83,6 +84,7 @@ export async function POST(request: Request) {
     })
 
     await invalidateContentCache('subject')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, 'subject', data.id, body)
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Subject')
@@ -132,6 +134,7 @@ export async function PUT(request: Request) {
     })
 
     await invalidateContentCache('subject')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'subject', existing.id, { ...existing }, data)
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Subject')
@@ -158,6 +161,7 @@ export async function DELETE(request: Request) {
 
     await db.subject.delete({ where: { id } })
     await invalidateContentCache('subject')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'subject', id)
     return apiResponse({ id, message: 'বিষয় সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     return handleApiError(error, 'Admin Delete Subject')

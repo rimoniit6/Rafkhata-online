@@ -71,6 +71,10 @@ export default function PaymentPage() {
     return <Icon className={className} />
   }
 
+  const defaultBkashInstructions = ['bKash অ্যাপ খুলুন', 'Send Money অপশনে যান', `নম্বর: ${config?.bkash || ''}`, 'টাকার পরিমাণ লিখুন', 'রেফারেন্সে আপনার নাম লিখুন']
+  const defaultNagadInstructions = ['Nagad অ্যাপ খুলুন', 'Cash Out / Send Money যান', `নম্বর: ${config?.nagad || ''}`, 'টাকার পরিমাণ লিখুন', 'রেফারেন্সে আপনার নাম লিখুন']
+  const defaultRocketInstructions = ['Rocket অ্যাপ খুলুন', 'Send Money অপশনে যান', `নম্বর: ${config?.rocket || ''}`, 'টাকার পরিমাণ লিখুন', 'রেফারেন্সে আপনার নাম লিখুন']
+
   // Build payment methods dynamically from site config
   const paymentMethods: {
     id: PaymentMethod
@@ -88,13 +92,9 @@ export default function PaymentPage() {
       bgColor: 'bg-pink-50 dark:bg-pink-950/30',
       borderColor: 'border-pink-300 dark:border-pink-700',
       accountNumber: config?.bkash || '',
-      instructions: [
-        'bKash অ্যাপ খুলুন',
-        'Send Money অপশনে যান',
-        `নম্বর: ${config?.bkash || ''}`,
-        'টাকার পরিমাণ লিখুন',
-        'রেফারেন্সে আপনার নাম লিখুন',
-      ],
+      instructions: (config?.paymentBkashInstructions?.length ? config.paymentBkashInstructions : defaultBkashInstructions).map(
+        s => s.replace('{account}', config?.bkash || '')
+      ),
     },
     {
       id: 'nagad',
@@ -103,13 +103,9 @@ export default function PaymentPage() {
       bgColor: 'bg-orange-50 dark:bg-orange-950/30',
       borderColor: 'border-orange-300 dark:border-orange-700',
       accountNumber: config?.nagad || '',
-      instructions: [
-        'Nagad অ্যাপ খুলুন',
-        'Cash Out / Send Money যান',
-        `নম্বর: ${config?.nagad || ''}`,
-        'টাকার পরিমাণ লিখুন',
-        'রেফারেন্সে আপনার নাম লিখুন',
-      ],
+      instructions: (config?.paymentNagadInstructions?.length ? config.paymentNagadInstructions : defaultNagadInstructions).map(
+        s => s.replace('{account}', config?.nagad || '')
+      ),
     },
     {
       id: 'rocket',
@@ -118,13 +114,9 @@ export default function PaymentPage() {
       bgColor: 'bg-purple-50 dark:bg-purple-950/30',
       borderColor: 'border-purple-300 dark:border-purple-700',
       accountNumber: config?.rocket || '',
-      instructions: [
-        'Rocket অ্যাপ খুলুন',
-        'Send Money অপশনে যান',
-        `নম্বর: ${config?.rocket || ''}`,
-        'টাকার পরিমাণ লিখুন',
-        'রেফারেন্সে আপনার নাম লিখুন',
-      ],
+      instructions: (config?.paymentRocketInstructions?.length ? config.paymentRocketInstructions : defaultRocketInstructions).map(
+        s => s.replace('{account}', config?.rocket || '')
+      ),
     },
   ]
   const [contentInfo, setContentInfo] = useState<ContentInfo | null>(null)

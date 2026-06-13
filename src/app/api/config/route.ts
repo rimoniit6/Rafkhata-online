@@ -108,6 +108,10 @@ export async function GET() {
         premiumFeatures: safeJSONParse(config.premiumFeatures),
         mcqFeatures: safeJSONParse(config.mcqFeatures),
         searchSuggestions: safeJSONParse(config.searchSuggestions),
+        // Payment instructions (JSON arrays from admin site settings)
+        paymentBkashInstructions: safeJSONParse(config.paymentBkashInstructions || config.payment_bkash_instructions),
+        paymentNagadInstructions: safeJSONParse(config.paymentNagadInstructions || config.payment_nagad_instructions),
+        paymentRocketInstructions: safeJSONParse(config.paymentRocketInstructions || config.payment_rocket_instructions),
         // Homepage section text (from SiteSetting keys)
         homepageClassesBadge: config.homepage_classes_badge || '',
         homepageClassesTitle: config.homepage_classes_title || '',

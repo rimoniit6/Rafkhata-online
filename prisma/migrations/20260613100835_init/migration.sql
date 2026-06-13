@@ -1,3 +1,6 @@
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('SUPER_ADMIN', 'ADMIN', 'STUDENT');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -5,7 +8,7 @@ CREATE TABLE "User" (
     "email" TEXT NOT NULL,
     "name" TEXT,
     "password" TEXT,
-    "role" TEXT NOT NULL DEFAULT 'student',
+    "role" "Role" NOT NULL DEFAULT 'STUDENT',
     "avatar" TEXT,
     "phone" TEXT,
     "institute" TEXT,
@@ -339,6 +342,7 @@ CREATE TABLE "Payment" (
     "reviewedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "idempotencyKey" TEXT,
 
     CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
@@ -355,6 +359,22 @@ CREATE TABLE "Notification" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "Notification_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AuditLog" (
+    "id" TEXT NOT NULL,
+    "adminId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "entityType" TEXT NOT NULL,
+    "entityId" TEXT NOT NULL,
+    "oldData" TEXT,
+    "newData" TEXT,
+    "ipAddress" TEXT,
+    "userAgent" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AuditLog_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -597,7 +617,7 @@ CREATE TABLE "ContentPackage" (
     "price" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "originalPrice" DOUBLE PRECISION NOT NULL DEFAULT 0,
     "duration" INTEGER NOT NULL DEFAULT 30,
-    "durationLabel" TEXT NOT NULL DEFAULT 'αº⌐αºª αªªαª┐αª¿',
+    "durationLabel" TEXT NOT NULL DEFAULT '৩০ দিন',
     "classLevel" TEXT,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "order" INTEGER NOT NULL DEFAULT 0,
@@ -787,6 +807,9 @@ CREATE TABLE "CQExamSetQuestion" (
     "order" INTEGER NOT NULL DEFAULT 0,
     "type" TEXT NOT NULL DEFAULT 'cq',
     "subMarks" TEXT,
+    "stem" TEXT,
+    "stemImage" TEXT,
+    "config" TEXT NOT NULL DEFAULT '{}',
     "typedUddeepok" TEXT,
     "typedUddeepokImage" TEXT,
     "typedQuestion1" TEXT,
@@ -918,6 +941,30 @@ CREATE UNIQUE INDEX "Chapter_slug_subjectId_key" ON "Chapter"("slug", "subjectId
 CREATE UNIQUE INDEX "Topic_slug_chapterId_key" ON "Topic"("slug", "chapterId");
 
 -- CreateIndex
+CREATE INDEX "Lecture_chapterId_isActive_idx" ON "Lecture"("chapterId", "isActive");
+
+-- CreateIndex
+CREATE INDEX "Lecture_isPremium_isActive_idx" ON "Lecture"("isPremium", "isActive");
+
+-- CreateIndex
+CREATE INDEX "MCQ_isActive_classLevel_subjectId_chapterId_idx" ON "MCQ"("isActive", "classLevel", "subjectId", "chapterId");
+
+-- CreateIndex
+CREATE INDEX "MCQ_classLevel_subjectId_chapterId_isActive_idx" ON "MCQ"("classLevel", "subjectId", "chapterId", "isActive");
+
+-- CreateIndex
+CREATE INDEX "MCQ_chapterId_isActive_idx" ON "MCQ"("chapterId", "isActive");
+
+-- CreateIndex
+CREATE INDEX "CQ_isActive_classLevel_subjectId_chapterId_idx" ON "CQ"("isActive", "classLevel", "subjectId", "chapterId");
+
+-- CreateIndex
+CREATE INDEX "CQ_classLevel_subjectId_chapterId_isActive_idx" ON "CQ"("classLevel", "subjectId", "chapterId", "isActive");
+
+-- CreateIndex
+CREATE INDEX "CQ_chapterId_isActive_idx" ON "CQ"("chapterId", "isActive");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "ExamQuestion_examId_questionType_questionId_key" ON "ExamQuestion"("examId", "questionType", "questionId");
 
 -- CreateIndex
@@ -934,6 +981,39 @@ CREATE INDEX "UserFeedback_status_idx" ON "UserFeedback"("status");
 
 -- CreateIndex
 CREATE INDEX "FeedbackMessage_feedbackId_idx" ON "FeedbackMessage"("feedbackId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Payment_idempotencyKey_key" ON "Payment"("idempotencyKey");
+
+-- CreateIndex
+CREATE INDEX "Payment_userId_contentType_contentId_idx" ON "Payment"("userId", "contentType", "contentId");
+
+-- CreateIndex
+CREATE INDEX "Payment_status_createdAt_idx" ON "Payment"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Payment_contentType_contentId_status_idx" ON "Payment"("contentType", "contentId", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Payment_userId_contentType_contentId_status_key" ON "Payment"("userId", "contentType", "contentId", "status");
+
+-- CreateIndex
+CREATE INDEX "Notification_userId_isRead_createdAt_idx" ON "Notification"("userId", "isRead", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Notification_isRead_createdAt_idx" ON "Notification"("isRead", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_adminId_idx" ON "AuditLog"("adminId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_entityType_entityId_idx" ON "AuditLog"("entityType", "entityId");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_action_idx" ON "AuditLog"("action");
+
+-- CreateIndex
+CREATE INDEX "AuditLog_createdAt_idx" ON "AuditLog"("createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "Board_slug_key" ON "Board"("slug");
@@ -969,6 +1049,9 @@ CREATE UNIQUE INDEX "UserSubscription_userId_packageId_classLevel_key" ON "UserS
 CREATE UNIQUE INDEX "MCQExamSetQuestion_setId_mcqId_key" ON "MCQExamSetQuestion"("setId", "mcqId");
 
 -- CreateIndex
+CREATE INDEX "MCQExamSetResult_userId_status_idx" ON "MCQExamSetResult"("userId", "status");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "MCQExamSetResult_userId_setId_key" ON "MCQExamSetResult"("userId", "setId");
 
 -- CreateIndex
@@ -978,17 +1061,52 @@ CREATE UNIQUE INDEX "MCQExamRetakeRequest_userId_setId_key" ON "MCQExamRetakeReq
 CREATE UNIQUE INDEX "MCQExamPackagePurchase_userId_packageId_key" ON "MCQExamPackagePurchase"("userId", "packageId");
 
 -- CreateIndex
+CREATE INDEX "CQExamPackage_status_isActive_order_idx" ON "CQExamPackage"("status", "isActive", "order");
+
+-- CreateIndex
+CREATE INDEX "CQExamPackage_classId_idx" ON "CQExamPackage"("classId");
+
+-- CreateIndex
+CREATE INDEX "CQExamSet_packageId_idx" ON "CQExamSet"("packageId");
+
+-- CreateIndex
+CREATE INDEX "CQExamSet_status_idx" ON "CQExamSet"("status");
+
+-- CreateIndex
+CREATE INDEX "CQExamSetQuestion_setId_order_idx" ON "CQExamSetQuestion"("setId", "order");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "CQExamSetQuestion_setId_cqId_key" ON "CQExamSetQuestion"("setId", "cqId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CQExamPackagePurchase_userId_packageId_key" ON "CQExamPackagePurchase"("userId", "packageId");
 
 -- CreateIndex
+CREATE INDEX "CQExamSubmission_setId_status_idx" ON "CQExamSubmission"("setId", "status");
+
+-- CreateIndex
+CREATE INDEX "CQExamSubmission_setId_status_submittedAt_idx" ON "CQExamSubmission"("setId", "status", "submittedAt");
+
+-- CreateIndex
+CREATE INDEX "CQExamSubmission_userId_setId_idx" ON "CQExamSubmission"("userId", "setId");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "CQExamSubmission_userId_setId_key" ON "CQExamSubmission"("userId", "setId");
+
+-- CreateIndex
+CREATE INDEX "CQExamAnswer_submissionId_questionId_idx" ON "CQExamAnswer"("submissionId", "questionId");
+
+-- CreateIndex
+CREATE INDEX "CQExamAnswer_questionId_obtainedMarks_idx" ON "CQExamAnswer"("questionId", "obtainedMarks");
+
+-- CreateIndex
+CREATE INDEX "CQExamAnswer_submissionId_obtainedMarks_idx" ON "CQExamAnswer"("submissionId", "obtainedMarks");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "CQExamAnswer_submissionId_questionId_subIndex_key" ON "CQExamAnswer"("submissionId", "questionId", "subIndex");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "CQExamRetakeRequest_userId_setId_key" ON "CQExamRetakeRequest"("userId", "setId");
+CREATE INDEX "CQExamAnswerImage_answerId_idx" ON "CQExamAnswerImage"("answerId");
 
+-- CreateIndex
+CREATE UNIQUE INDEX "CQExamRetakeRequest_userId_setId_key" ON "CQExamRetakeRequest"("userId", "setId");

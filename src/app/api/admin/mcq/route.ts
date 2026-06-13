@@ -3,6 +3,7 @@ import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam }
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions, EntityTypes } from '@/lib/audit'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -133,6 +134,7 @@ export async function POST(request: Request) {
     })
 
     await invalidateContentCache('mcq')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, EntityTypes.MCQ_QUESTION, data.id, body)
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create MCQ')
@@ -182,6 +184,7 @@ export async function PUT(request: Request) {
     })
 
     await invalidateContentCache('mcq')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, EntityTypes.MCQ_QUESTION, existing.id, { ...existing }, updateData)
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update MCQ')
@@ -199,6 +202,7 @@ export async function DELETE(request: Request) {
     if (ids) {
       const result = await db.mCQ.deleteMany({ where: { id: { in: ids } } })
       await invalidateContentCache('mcq')
+      await Promise.all(ids.map(id => auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, EntityTypes.MCQ_QUESTION, id)))
       return apiResponse({ deleted: result.count }, `${result.count}টি MCQ মুছে ফেলা হয়েছে`)
     }
 
@@ -227,6 +231,7 @@ export async function DELETE(request: Request) {
     await db.mCQ.delete({ where: { id } })
 
     await invalidateContentCache('mcq')
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, EntityTypes.MCQ_QUESTION, id)
     return apiResponse({ id }, 'MCQ সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete MCQ')

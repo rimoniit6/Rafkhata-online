@@ -1,10 +1,39 @@
 import { Ratelimit } from '@upstash/ratelimit'
 import { Redis } from '@upstash/redis'
+import { db } from '@/lib/db'
 
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
 })
+
+const DEFAULT_LIMITS = {
+  api: { windowMs: 60_000, maxRequests: 60 },
+  upload: { windowMs: 60_000, maxRequests: 10 },
+  auth: { windowMs: 15 * 60 * 1000, maxRequests: 10 },
+}
+
+let cachedLimits: typeof DEFAULT_LIMITS | null = null
+
+async function loadLimits(): Promise<typeof DEFAULT_LIMITS> {
+  if (cachedLimits) return cachedLimits
+  try {
+    const settings = await db.siteSetting.findMany({
+      where: { key: { in: ['rate_limit_api_max', 'rate_limit_upload_max', 'rate_limit_auth_max'] } },
+    })
+    const map: Record<string, string> = {}
+    for (const s of settings) map[s.key] = s.value
+
+    cachedLimits = {
+      api: { windowMs: 60_000, maxRequests: parseInt(map.rate_limit_api_max) || DEFAULT_LIMITS.api.maxRequests },
+      upload: { windowMs: 60_000, maxRequests: parseInt(map.rate_limit_upload_max) || DEFAULT_LIMITS.upload.maxRequests },
+      auth: { windowMs: 15 * 60 * 1000, maxRequests: parseInt(map.rate_limit_auth_max) || DEFAULT_LIMITS.auth.maxRequests },
+    }
+    return cachedLimits
+  } catch {
+    return DEFAULT_LIMITS
+  }
+}
 
 export interface RateLimitResult {
   success: boolean
@@ -45,9 +74,26 @@ export class RateLimiter {
   }
 }
 
-export const apiLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 60 })
-export const uploadLimiter = new RateLimiter({ windowMs: 60_000, maxRequests: 10 })
-export const authLimiter = new RateLimiter({ windowMs: 15 * 60 * 1000, maxRequests: 10 })
+class LazyRateLimiter {
+  private key: keyof typeof DEFAULT_LIMITS
+  private instance: RateLimiter | null = null
+
+  constructor(key: keyof typeof DEFAULT_LIMITS) {
+    this.key = key
+  }
+
+  async limit(identifier: string): Promise<RateLimitResult> {
+    if (!this.instance) {
+      const limits = await loadLimits()
+      this.instance = new RateLimiter(limits[this.key])
+    }
+    return this.instance.limit(identifier)
+  }
+}
+
+export const apiLimiter = new LazyRateLimiter('api') as unknown as RateLimiter
+export const uploadLimiter = new LazyRateLimiter('upload') as unknown as RateLimiter
+export const authLimiter = new LazyRateLimiter('auth') as unknown as RateLimiter
 
 export function getClientIdentifier(request: Request): string {
   // Check proxy/cloudflare headers first (most authoritative)

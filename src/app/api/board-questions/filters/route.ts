@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
     const classCategories = classLevelSlugs.length > 0
       ? await db.classCategory.findMany({
           where: { slug: { in: classLevelSlugs }, isActive: true },
-          select: { id: true, name: true, slug: true, order: true },
+          select: { id: true, name: true, slug: true, order: true, gradient: true },
           orderBy: { order: 'asc' },
         })
       : []
@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
       name: c.name,
       slug: c.slug,
       order: c.order,
+      gradient: c.gradient || null,
       mcqCount: classLevelCounts[c.slug]?.mcqCount || 0,
       cqCount: classLevelCounts[c.slug]?.cqCount || 0,
       boardCount: allBoards.filter(b => boardsWithData.has(b.slug)).length,

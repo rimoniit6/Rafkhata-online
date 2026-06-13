@@ -2,6 +2,8 @@ import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
+import { invalidateContentCache } from '@/lib/cache-invalidate'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -49,6 +51,8 @@ export async function POST(request: Request) {
       },
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, 'testimonial', data.id, body)
+    await invalidateContentCache('faq')
     return apiResponse(data, 201)
   } catch (error) {
     return handleApiError(error, 'Admin Create Testimonial error')
@@ -86,6 +90,8 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'testimonial', updated.id)
+    await invalidateContentCache('faq')
     return apiResponse(updated)
   } catch (error) {
     return handleApiError(error, 'Admin Update Testimonial error')
@@ -102,6 +108,8 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.testimonial.deleteMany({ where: { id: { in: ids } } })
+      await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'testimonial', 'bulk:' + ids.join(','))
+      await invalidateContentCache('faq')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
 
@@ -129,6 +137,8 @@ export async function DELETE(request: Request) {
 
     await db.testimonial.delete({ where: { id } })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'testimonial', id)
+    await invalidateContentCache('faq')
     return apiResponse({ id }, 'টেস্টিমোনিয়াল সফলভাবে মুছে ফেলা হয়েছে')
   } catch (error) {
     return handleApiError(error, 'Admin Delete Testimonial error')

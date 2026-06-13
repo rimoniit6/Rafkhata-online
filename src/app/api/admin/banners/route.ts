@@ -3,6 +3,7 @@ import { apiResponse, apiError, withAdmin, parseIdsParam } from '@/lib/api-utils
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
+import { auditFromRequest, AuditActions } from '@/lib/audit'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -52,6 +53,8 @@ export async function POST(request: Request) {
       },
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_CREATE, 'banner', data.id, body)
+
     await invalidateContentCache('banner')
     return apiResponse(data, 201)
   } catch (error) {
@@ -70,6 +73,7 @@ export async function PUT(request: Request) {
       const updateData: Record<string, unknown> = {}
       if (isActive !== undefined) updateData.isActive = isActive
       const result = await db.banner.updateMany({ where: { id: { in: ids } }, data: updateData })
+      await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'banner', 'bulk:' + ids.join(','))
       await invalidateContentCache('banner')
       return apiResponse({ updated: result.count }, `${result.count}টি আপডেট হয়েছে`)
     }
@@ -108,6 +112,7 @@ export async function PUT(request: Request) {
       data,
     })
 
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_UPDATE, 'banner', updated.id)
     await invalidateContentCache('banner')
     return apiResponse(updated)
   } catch (error) {
@@ -125,6 +130,7 @@ export async function DELETE(request: Request) {
     const ids = parseIdsParam(searchParams)
     if (ids) {
       const result = await db.banner.deleteMany({ where: { id: { in: ids } } })
+      await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'banner', 'bulk:' + ids.join(','))
       await invalidateContentCache('banner')
       return apiResponse({ deleted: result.count }, `${result.count}টি সফলভাবে মুছে ফেলা হয়েছে`)
     }
@@ -152,6 +158,8 @@ export async function DELETE(request: Request) {
     }
 
     await db.banner.delete({ where: { id } })
+
+    await auditFromRequest(request, auth.user.id, AuditActions.CONTENT_DELETE, 'banner', id)
 
     await invalidateContentCache('banner')
     return apiResponse({ id }, 'ব্যানার সফলভাবে মুছে ফেলা হয়েছে')

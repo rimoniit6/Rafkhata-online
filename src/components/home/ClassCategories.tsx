@@ -23,41 +23,8 @@ function toBn(n: number): string {
   return n.toString().replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[parseInt(d)])
 }
 
-// Color theme map by class slug — used for card backgrounds
-const CLASS_THEMES: Record<string, { bg: string; cardBg: string; textAccent: string; lightBg: string }> = {
-  'class-6': {
-    bg: 'from-emerald-500 to-emerald-600',
-    cardBg: 'bg-emerald-50 dark:bg-emerald-950/30',
-    textAccent: 'text-emerald-600 dark:text-emerald-400',
-    lightBg: 'bg-emerald-100 dark:bg-emerald-900/40',
-  },
-  'class-7': {
-    bg: 'from-teal-500 to-teal-600',
-    cardBg: 'bg-teal-50 dark:bg-teal-950/30',
-    textAccent: 'text-teal-600 dark:text-teal-400',
-    lightBg: 'bg-teal-100 dark:bg-teal-900/40',
-  },
-  'class-8': {
-    bg: 'from-cyan-500 to-cyan-600',
-    cardBg: 'bg-cyan-50 dark:bg-cyan-950/30',
-    textAccent: 'text-cyan-600 dark:text-cyan-400',
-    lightBg: 'bg-cyan-100 dark:bg-cyan-900/40',
-  },
-  'ssc': {
-    bg: 'from-amber-500 to-orange-500',
-    cardBg: 'bg-amber-50 dark:bg-amber-950/30',
-    textAccent: 'text-amber-600 dark:text-amber-400',
-    lightBg: 'bg-amber-100 dark:bg-amber-900/40',
-  },
-  'hsc': {
-    bg: 'from-rose-500 to-pink-500',
-    cardBg: 'bg-rose-50 dark:bg-rose-950/30',
-    textAccent: 'text-rose-600 dark:text-rose-400',
-    lightBg: 'bg-rose-100 dark:bg-rose-900/40',
-  },
-}
-
-const defaultTheme = CLASS_THEMES['class-6']
+// ──- Default gradient fallback ─────────────
+const DEFAULT_GRADIENT = 'from-emerald-500 to-emerald-600'
 
 // Quick access chips data
 const QUICK_ACCESS = [
@@ -119,8 +86,8 @@ export default function ClassCategories() {
             >
               {classes.map((cls) => {
                 const IconComponent = iconMap[cls.icon] || BookOpen
-                const theme = CLASS_THEMES[cls.slug] || defaultTheme
                 const cc = cls.contentCounts
+                const cardGradient = cls.gradient || DEFAULT_GRADIENT
 
                 return (
                   <div
@@ -128,7 +95,7 @@ export default function ClassCategories() {
                     className="snap-center min-w-[180px] sm:min-w-0 cursor-pointer group transition-all duration-300 hover:-translate-y-1.5 hover:scale-[1.02] active:scale-[0.98]"
                     onClick={() => navigate('class-detail', { classSlug: cls.slug })}
                   >
-                    <div className={`relative bg-gradient-to-br ${theme.bg} rounded-2xl p-5 sm:p-6 text-white overflow-hidden h-full transition-shadow duration-300 group-hover:shadow-xl`}>
+                    <div className={`relative bg-gradient-to-br ${cardGradient} rounded-2xl p-5 sm:p-6 text-white overflow-hidden h-full transition-shadow duration-300 group-hover:shadow-xl`}>
                       {/* Decorative circles */}
                       <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10" />
                       <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/5" />

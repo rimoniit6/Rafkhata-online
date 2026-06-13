@@ -15,65 +15,11 @@ function formatBengali(num: number): string {
   return new Intl.NumberFormat('bn-BD').format(num)
 }
 
-/** Deterministic gradient per class slug so each chip has a unique look */
-const CLASS_GRADIENTS: Record<string, { active: string; light: string }> = {
-  'class-6': {
-    active: 'from-sky-500 to-cyan-600',
-    light: 'from-sky-50 to-cyan-50 dark:from-sky-950/40 dark:to-cyan-950/40',
-  },
-  'class-7': {
-    active: 'from-emerald-500 to-teal-600',
-    light: 'from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40',
-  },
-  'class-8': {
-    active: 'from-amber-500 to-orange-600',
-    light: 'from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40',
-  },
-  'class-9': {
-    active: 'from-orange-500 to-rose-600',
-    light: 'from-orange-50 to-rose-50 dark:from-orange-950/40 dark:to-rose-950/40',
-  },
-  'class-10': {
-    active: 'from-rose-500 to-pink-600',
-    light: 'from-rose-50 to-pink-50 dark:from-rose-950/40 dark:to-pink-950/40',
-  },
-  ssc: {
-    active: 'from-rose-500 to-pink-600',
-    light: 'from-rose-50 to-pink-50 dark:from-rose-950/40 dark:to-pink-950/40',
-  },
-  hsc: {
-    active: 'from-violet-500 to-purple-600',
-    light: 'from-violet-50 to-purple-50 dark:from-violet-950/40 dark:to-purple-950/40',
-  },
-  'hsc-2nd-year': {
-    active: 'from-fuchsia-500 to-pink-600',
-    light: 'from-fuchsia-50 to-pink-50 dark:from-fuchsia-950/40 dark:to-pink-950/40',
-  },
-  'ssc-2nd-year': {
-    active: 'from-orange-500 to-rose-600',
-    light: 'from-orange-50 to-rose-50 dark:from-orange-950/40 dark:to-rose-950/40',
-  },
-}
+const DEFAULT_GRADIENT = 'from-emerald-500 to-teal-600'
 
-/** Fallback palette cycled by slug char-code hash */
-const FALLBACK_PALETTE = [
-  { active: 'from-rose-500 to-pink-600', light: 'from-rose-50 to-pink-50 dark:from-rose-950/40 dark:to-pink-950/40' },
-  { active: 'from-teal-500 to-emerald-600', light: 'from-teal-50 to-emerald-50 dark:from-teal-950/40 dark:to-emerald-950/40' },
-  { active: 'from-amber-500 to-orange-600', light: 'from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40' },
-]
-
-function hashSlug(slug: string): number {
-  let h = 0
-  for (let i = 0; i < slug.length; i++) h = ((h << 5) - h + slug.charCodeAt(i)) | 0
-  return Math.abs(h)
-}
-
-function classGradient(slug: string): string {
-  return CLASS_GRADIENTS[slug]?.active ?? FALLBACK_PALETTE[hashSlug(slug) % FALLBACK_PALETTE.length].active
-}
-
-function classGradientLight(slug: string): string {
-  return CLASS_GRADIENTS[slug]?.light ?? FALLBACK_PALETTE[hashSlug(slug) % FALLBACK_PALETTE.length].light
+function getClassGradient(slug: string, classLevels: Array<{ slug: string; gradient: string | null }>): string {
+  const cls = classLevels.find(c => c.slug === slug)
+  return cls?.gradient || DEFAULT_GRADIENT
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -184,6 +130,7 @@ export default function BoardQuestionSection() {
                   >
                     {filterData.classLevels.map((cls) => {
                       const isSelected = selectedClass === cls.slug
+                      const grad = getClassGradient(cls.slug, filterData.classLevels)
                       return (
                         <button
                           key={cls.slug}
@@ -196,8 +143,8 @@ export default function BoardQuestionSection() {
                             hover:scale-[1.06] active:scale-[0.95]
                             ${
                               isSelected
-                                ? `bg-gradient-to-r ${classGradient(cls.slug)} text-white shadow-lg shadow-rose-500/25 dark:shadow-rose-500/15`
-                                : `bg-gradient-to-br ${classGradientLight(cls.slug)} text-foreground/80 border border-border/50 hover:border-rose-300 dark:hover:border-rose-700`
+                                ? `bg-gradient-to-r ${grad} text-white shadow-lg`
+                                : `bg-muted/50 text-foreground/80 border border-border/50 hover:border-foreground/30`
                             }
                           `}
                         >
@@ -284,8 +231,8 @@ export default function BoardQuestionSection() {
                     onClick={handleQuickStart}
                     className={`
                       w-full sm:w-auto font-bold gap-2 px-6 py-5 rounded-xl
-                      bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700
-                      text-white shadow-lg shadow-rose-500/25 dark:shadow-rose-500/15
+                      bg-gradient-to-r ${selectedClass && filterData ? getClassGradient(selectedClass, filterData.classLevels) : 'from-emerald-500 to-teal-600'}
+                      text-white shadow-lg
                       disabled:opacity-50 disabled:cursor-not-allowed
                       transition-all duration-200
                     `}
