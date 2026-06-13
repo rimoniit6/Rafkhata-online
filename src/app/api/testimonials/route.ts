@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { cacheHeaders } from '@/lib/cache-headers'
 
@@ -12,9 +13,6 @@ export async function GET() {
     return NextResponse.json({ success: true, data: { testimonials } }, { headers: cacheHeaders.public.long })
   } catch (error) {
     console.error('Get testimonials error:', error)
-    return NextResponse.json(
-      { success: false, error: 'টেস্টিমোনিয়াল আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('টেস্টিমোনিয়াল আনতে সমস্যা হয়েছে', 500)
   }
 }

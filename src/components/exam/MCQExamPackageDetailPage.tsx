@@ -128,7 +128,7 @@ interface ExamResult {
   id: string
   userId: string
   setId: string
-  answers: string
+  answers: Record<string, string>
   totalCorrect: number
   totalWrong: number
   totalSkipped: number
@@ -622,7 +622,7 @@ export default function MCQExamPackageDetailPage() {
         // Start or resume exam
         setExamResult(result as ExamResult)
         setResultId(result.id)
-        setAnswers(result.answers ? JSON.parse(result.answers) : {})
+        setAnswers(result.answers || {})
         setTimeRemaining(remaining || set.duration * 60)
         setCurrentIndex(0)
         setCurrentView('exam')
@@ -1207,13 +1207,7 @@ export default function MCQExamPackageDetailPage() {
     const { result, questions: resultQuestions } = resultDetail
     const percentage = result.totalMarks > 0 ? (result.marksObtained / result.totalMarks) * 100 : 0
     const { grade, color: gradeColor } = getGrade(percentage)
-    const parsedAnswers: Record<string, string> = (() => {
-      try {
-        return JSON.parse(result.answers || '{}')
-      } catch {
-        return {}
-      }
-    })()
+    const parsedAnswers: Record<string, string> = result.answers || {}
 
     return (
       <div>

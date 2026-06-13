@@ -136,11 +136,11 @@ describe('Auth', () => {
     const request = new Request('http://localhost/api/test')
     const result = await withAuth(request)
 
-    if ('error' in result) {
+    if (!('user' in result)) {
       expect.unreachable('should not return error')
     } else {
-      expect(result.userId).toBe('user-1')
-      expect(result.role).toBe('STUDENT')
+      expect(result.user.id).toBe('user-1')
+      expect(result.user.role).toBe('STUDENT')
     }
   })
 
@@ -148,7 +148,7 @@ describe('Auth', () => {
     const { requireRole } = await import('@/lib/auth')
     const request = new Request('http://localhost/api/test')
     const result = await requireRole(request, 'STUDENT')
-    expect(result.role).toBe('STUDENT')
+    expect(result.user.role).toBe('STUDENT')
   })
 
   it('withRole correctly rejects unauthorized role', async () => {

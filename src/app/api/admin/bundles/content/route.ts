@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 
 // GET /api/admin/bundles/content — Search for content items to add to a bundle
@@ -14,10 +15,7 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '100')
 
     if (!type) {
-      return NextResponse.json(
-        { success: false, error: 'কন্টেন্ট টাইপ আবশ্যক (mcq, cq, lecture, exam)' },
-        { status: 400 }
-      )
+      return apiError('কন্টেন্ট টাইপ আবশ্যক (mcq, cq, lecture, exam)', 400)
     }
 
     let results: Array<{
@@ -159,18 +157,12 @@ export async function GET(request: Request) {
       }
 
       default:
-        return NextResponse.json(
-          { success: false, error: 'অবৈধ কন্টেন্ট টাইপ। সমর্থিত: mcq, cq, lecture, exam' },
-          { status: 400 }
-        )
+        return apiError('অবৈধ কন্টেন্ট টাইপ। সমর্থিত: mcq, cq, lecture, exam', 400)
     }
 
     return NextResponse.json({ success: true, data: results })
   } catch (error) {
     console.error('Admin Bundle Content Search error:', error)
-    return NextResponse.json(
-      { success: false, error: 'কন্টেন্ট অনুসন্ধানে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('কন্টেন্ট অনুসন্ধানে সমস্যা হয়েছে', 500)
   }
 }

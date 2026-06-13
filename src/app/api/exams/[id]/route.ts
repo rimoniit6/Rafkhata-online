@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 
@@ -52,10 +53,7 @@ export async function GET(
     })
 
     if (!exam) {
-      return NextResponse.json(
-        { success: false, error: 'পরীক্ষা খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('পরীক্ষা খুঁজে পাওয়া যায়নি', 404)
     }
 
     const mcqQuestions: Array<{
@@ -101,9 +99,6 @@ export async function GET(
     })
   } catch (error) {
     console.error('Get exam detail error:', error)
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('পরীক্ষার বিস্তারিত তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }

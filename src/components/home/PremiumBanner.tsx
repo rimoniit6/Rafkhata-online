@@ -39,11 +39,11 @@ export default function PremiumBanner() {
               <span className="text-white/80 text-sm font-medium uppercase tracking-wider">Premium</span>
             </div>
 
-            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4" suppressHydrationWarning>
               {config?.homepagePremiumTitle || 'প্রিমিয়াম কন্টেন্ট'}
             </h2>
 
-            <p className="text-white/85 text-lg mb-6">
+            <p className="text-white/85 text-lg mb-6" suppressHydrationWarning>
               {config?.homepagePremiumSubtitle || 'প্রতিটি কন্টেন্ট আলাদাভাবে কিনুন অথবা বান্ডেলে আকর্ষণীয় ছাড়ে পান!'}
             </p>
 

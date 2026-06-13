@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { Prisma } from '@prisma/client'
@@ -7,10 +8,7 @@ export async function GET(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন।', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন।', 401, 'UNAUTHORIZED')
     }
 
     const userId = auth.user.id
@@ -56,10 +54,7 @@ export async function GET(request: Request) {
     ])
 
     if (!user) {
-      return NextResponse.json(
-        { success: false, error: 'ব্যবহারকারী খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('ব্যবহারকারী খুঁজে পাওয়া যায়নি', 404)
     }
 
     const lectureProgress = progress.filter((p) => p.contentType === 'lecture')
@@ -123,9 +118,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Get user dashboard error:', error)
-    return NextResponse.json(
-      { success: false, error: 'ড্যাশবোর্ড ডাটা আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('ড্যাশবোর্ড ডাটা আনতে সমস্যা হয়েছে', 500)
   }
 }

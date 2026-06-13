@@ -122,10 +122,10 @@ export default function FeaturedCourses() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
         <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3" suppressHydrationWarning>
             {config?.homepageFeaturedTitle || 'ফিচার্ড কন্টেন্ট'}
           </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto" suppressHydrationWarning>
             {config?.homepageFeaturedSubtitle || 'আমাদের সেরা কন্টেন্টসমূহ'}
           </p>
         </div>

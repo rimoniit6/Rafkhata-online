@@ -126,7 +126,7 @@ export default function AdminCQExamPackagesPage() {
                 setPkgClassId(pkg.classId); setPkgPrice(String(pkg.price)); setPkgOriginalPrice(String(pkg.originalPrice));
                 setPkgThumbnail(pkg.thumbnail || ''); setPkgIsPremium(pkg.isPremium); setPkgIsActive(pkg.isActive);
                 setPkgOrder(String(pkg.order));
-                setPkgStatus(pkg.status); try { setPkgSubjectIds(JSON.parse(pkg.subjectIds || '[]')) } catch { setPkgSubjectIds([]) }
+                setPkgStatus(pkg.status); try { setPkgSubjectIds(        pkg.subjectIds || []) } catch { setPkgSubjectIds([]) }
                 fetchSubjectsForClass(pkg.classId); setViewMode('package-editor');
               }}
               onDelete={(id) => setDeleteTarget({ type: 'package', id })}
@@ -158,7 +158,7 @@ export default function AdminCQExamPackagesPage() {
                 setPkgClassId(pkg.classId); setPkgPrice(String(pkg.price)); setPkgOriginalPrice(String(pkg.originalPrice));
                 setPkgThumbnail(pkg.thumbnail || ''); setPkgIsPremium(pkg.isPremium); setPkgIsActive(pkg.isActive);
                 setPkgOrder(String(pkg.order));
-                setPkgStatus(pkg.status); try { setPkgSubjectIds(JSON.parse(pkg.subjectIds || '[]')) } catch { setPkgSubjectIds([]) }
+                setPkgStatus(pkg.status); try { setPkgSubjectIds(        pkg.subjectIds || []) } catch { setPkgSubjectIds([]) }
                 fetchSubjectsForClass(pkg.classId); setViewMode('package-editor');
               }}
               onOpenBulkCreate={() => setBulkCreateDialogOpen(true)}
@@ -240,10 +240,7 @@ export default function AdminCQExamPackagesPage() {
                   typedQuestion3Image: q.typedQuestion3Image || '',
                   typedQuestion4: q.typedQuestion4 || '',
                   typedQuestion4Image: q.typedQuestion4Image || '',
-                  subMarks: (() => {
-                    if (!q.subMarks) return [1, 2, 3, 4]
-                    try { const p = JSON.parse(q.subMarks); return Array.isArray(p) ? p : [1, 2, 3, 4] } catch { return [1, 2, 3, 4] }
-                  })(),
+            subMarks: q.subMarks && Array.isArray(q.subMarks) ? q.subMarks : [1, 2, 3, 4],
                 }
                 setEditQuestionData(typedData)
                 setViewMode('create-question')

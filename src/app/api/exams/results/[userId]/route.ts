@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
@@ -10,20 +11,14 @@ export async function GET(
     // Verify user authentication
     const auth = await verifyAuth(request)
     if (!auth?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'অনুগ্রহ করে লগইন করুন' },
-        { status: 401 }
-      )
+      return apiError('অনুগ্রহ করে লগইন করুন', 401)
     }
 
     const { userId } = await props.params
 
     // Users can only view their own results (unless admin)
     if (auth.user.id !== userId && !auth.isAdmin) {
-      return NextResponse.json(
-        { success: false, error: 'আপনি শুধুমাত্র নিজের ফলাফল দেখতে পারবেন' },
-        { status: 403 }
-      )
+      return apiError('আপনি শুধুমাত্র নিজের ফলাফল দেখতে পারবেন', 403)
     }
 
     const { searchParams } = new URL(request.url)
@@ -64,9 +59,6 @@ export async function GET(
     })
   } catch (error) {
     console.error('Get User Exam Results error:', error)
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার ফলাফল আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('পরীক্ষার ফলাফল আনতে সমস্যা হয়েছে', 500)
   }
 }

@@ -131,10 +131,10 @@ export default function TestimonialsSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Title */}
         <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3" suppressHydrationWarning>
             {config?.homepageTestimonialsTitle || 'শিক্ষার্থীরা যা বলেন'}
           </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto" suppressHydrationWarning>
             {config?.homepageTestimonialsSubtitle || 'আমাদের প্ল্যাটফর্ম ব্যবহারকারী শিক্ষার্থীদের মতামত'}
           </p>
         </div>

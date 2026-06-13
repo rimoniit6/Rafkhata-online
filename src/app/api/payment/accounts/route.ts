@@ -23,9 +23,9 @@ export async function GET() {
     }
 
     const accounts: Record<string, string> = {
-      bkash: '017XXXXXXXX',
-      nagad: '018XXXXXXXX',
-      rocket: '016XXXXXXXX',
+      bkash: '',
+      nagad: '',
+      rocket: '',
     }
 
     for (const setting of settings) {
@@ -45,9 +45,9 @@ export async function GET() {
       success: true,
       data: {
         accounts: {
-          bkash: '017XXXXXXXX',
-          nagad: '018XXXXXXXX',
-          rocket: '016XXXXXXXX',
+          bkash: '',
+          nagad: '',
+          rocket: '',
         },
       },
     })

@@ -1,0 +1,711 @@
+{
+  "audit": {
+    "date": "2026-06-14",
+    "focus": "components",
+    "scope": "E:\\Live project\\Rafkhata\\src\\components\\",
+    "total_files_analyzed": 98,
+    "files_with_hardcoded_data": 35
+  },
+  "findings_by_severity": {
+    "high": [
+      {
+        "file": "src/components/home/HeroSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [8, 9, 10, 11, 12, 13],
+            "description": "floatingElements array with hardcoded positions (x: '10%', y: '20%', size: 28, etc.)",
+            "data": "const floatingElements = [\n  { Icon: BookOpen, x: '10%', y: '20%', delay: 0, size: 28 },\n  ...\n]",
+            "should_be": "Dynamic from site config or removed in favor of CSS-only decorative patterns"
+          },
+          {
+            "type": "hardcoded_text",
+            "lines": [38, 39, 40],
+            "description": "Gradient backgrounds hardcoded with specific color values",
+            "data": "from-emerald-600 via-teal-500 to-emerald-700 / radial-gradient ellipse positions",
+            "should_be": "Configurable from site_config table (primaryColor, secondaryColor)"
+          },
+          {
+            "type": "hardcoded_bengali_text",
+            "lines": [64],
+            "description": "Default heroBadge text when config not loaded",
+            "data": "'বাংলাদেশের সেরা অনলাইন শিক্ষা প্ল্যাটফর্ম'",
+            "should_be": "Already has config?.heroBadge fallback pattern — acceptable"
+          },
+          {
+            "type": "hardcoded_bengali_text",
+            "lines": [70, 72, 79, 89, 98],
+            "description": "Hero title/subtitle/CTA texts",
+            "data": "'শিক্ষা শুরু করুন', 'প্রিমিয়াম দেখুন', etc.",
+            "should_be": "Already partially config-driven (config?.heroTitle, config?.heroSubtitle) — acceptable"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/ClassCategories.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_maps",
+            "lines": [13, 14, 15, 16, 17, 18, 19],
+            "description": "iconMap mapping string keys to Lucide icon components",
+            "data": "const iconMap: Record<string, React.ElementType> = { BookOpen, GraduationCap, Calculator, FlaskConical, Languages }",
+            "should_be": "Icon should come from class-level database record (cls.icon is already used but relies on this map as resolver)"
+          },
+          {
+            "type": "hardcoded_array",
+            "lines": [30, 31, 32, 33, 34, 35],
+            "description": "QUICK_ACCESS chips array with labels, icons, routes, colors all hardcoded",
+            "data": "QUICK_ACCESS = [\n  { key: 'mcq', label: 'MCQ প্র্যাকটিস', icon: FileQuestion, route: 'mcq-practice', color: 'bg-teal-100...' },\n  ...\n]",
+            "should_be": "Dynamic from a 'quick_access' config table or site_config JSON field"
+          },
+          {
+            "type": "hardcoded_default",
+            "lines": [27],
+            "description": "DEFAULT_GRADIENT fallback hardcoded",
+            "data": "const DEFAULT_GRADIENT = 'from-emerald-500 to-emerald-600'",
+            "should_be": "Acceptable as fallback — class gradient should come from DB per-class (already used as cls.gradient || DEFAULT_GRADIENT)"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/FeaturedCourses.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [21, 22, 23, 24, 25, 26, 27, 28, 29],
+            "description": "GRADIENT_MAP hardcoded per content type",
+            "data": "const GRADIENT_MAP: Record<string, string> = {\n  lecture: 'from-blue-100 to-cyan-100...',\n  mcq: 'from-purple-100 to-violet-100...',\n  ...\n}",
+            "should_be": "Should come from content_types DB table (ct.lightColor + ct.textColor already used alongside this)"
+          },
+          {
+            "type": "hardcoded_routes",
+            "lines": [48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117],
+            "description": "Massive switch statement with hardcoded navigation routes per content type",
+            "data": "switch (item.contentType) { case 'lecture': ... navigate('lecture-viewer', {...}) ... }",
+            "should_be": "Navigation logic should be data-driven — contentType should map to route + params template from config"
+          }
+        ]
+      },
+      {
+        "file": "src/components/search/SearchResultsPage.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [103, 104, 105, 106, 107],
+            "description": "difficultyLabels map repeated (duplicated from admin/mcq/constants.ts)",
+            "data": "difficultyLabels: { easy: 'সহজ', medium: 'মাঝারি', hard: 'কঠিন' }",
+            "should_be": "Import from shared constants file"
+          },
+          {
+            "type": "hardcoded_map",
+            "lines": [109, 110, 111, 112, 113],
+            "description": "difficultyColors map repeated (duplicated from admin/mcq/constants.ts)",
+            "data": "difficultyColors: { easy: 'bg-emerald-100...', medium: 'bg-amber-100...', hard: 'bg-red-100...' }",
+            "should_be": "Import from shared constants file"
+          },
+          {
+            "type": "hardcoded_array",
+            "lines": [116, 117, 118, 119, 120, 121, 122, 123, 124],
+            "description": "FALLBACK_TYPE_FILTERS array with labels, icons, keys",
+            "data": "FALLBACK_TYPE_FILTERS = [\n  { key: 'all', label: 'সব', icon: Search },\n  { key: 'lecture', label: 'লেকচার', icon: BookOpen },\n  ...\n]",
+            "should_be": "Built from content_types DB table (already partially done with typeFilters useMemo)"
+          },
+          {
+            "type": "hardcoded_array",
+            "lines": [339, 340, 341],
+            "description": "Fallback search suggestions hardcoded",
+            "data": "['গণিত', 'পদার্থবিজ্ঞান', 'রসায়ন', 'জীববিজ্ঞান', 'বাংলা', 'ইংরেজי']",
+            "should_be": "Already config-driven with config?.searchSuggestions fallback — acceptable"
+          }
+        ]
+      },
+      {
+        "file": "src/components/search/SearchBar.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_array",
+            "lines": [11, 12, 13, 14, 15, 16, 17, 18],
+            "description": "FALLBACK_SUGGESTIONS array hardcoded",
+            "data": "FALLBACK_SUGGESTIONS = ['উচ্চতর গণিত', 'পদার্থবিজ্ঞান', 'রসায়ন', 'জীববিজ্ঞান', 'বাংলা', 'ইংরেজি']",
+            "should_be": "Already config-driven with fallback — acceptable"
+          },
+          {
+            "type": "hardcoded_array",
+            "lines": [20, 21],
+            "description": "SUGGESTION_ICONS and SUGGESTION_TYPES arrays hardcoded parallel to suggestions",
+            "data": "SUGGESTION_ICONS = [BookOpen, GraduationCap, FileQuestion, BookOpen, GraduationCap, FileQuestion]\nSUGGESTION_TYPES = ['subject', 'subject', 'subject', 'subject', 'subject', 'exam']",
+            "should_be": "Should be derived from content_type data or removed — icons/types should match actual DB content"
+          }
+        ]
+      }
+    ],
+    "medium": [
+      {
+        "file": "src/components/premium/PremiumPage.tsx",
+        "issues": [
+          {
+            "type": "fallback_maps",
+            "lines": [99, 100, 101, 102, 103, 104, 105],
+            "description": "FALLBACK_TYPE_LABELS with Bengali labels, icons, colors hardcoded",
+            "data": "FALLBACK_TYPE_LABELS = {\n  mcq: { label: 'MCQ', icon: FileQuestion, color: 'bg-violet-100...' },\n  cq: { label: 'সৃজনশীল প্রশ্ন', icon: ClipboardList, ... },\n  ...\n}",
+            "should_be": "Acceptable fallback pattern — DB types override these when loaded"
+          },
+          {
+            "type": "fallback_maps",
+            "lines": [107, 108, 109, 110, 111, 112, 113, 114],
+            "description": "FALLBACK_CONTENT_TYPE_LABELS duplicate of above",
+            "data": "Another near-identical Record<string, {label, icon, color}> map",
+            "should_be": "These two fallback maps should be consolidated into one shared constant"
+          },
+          {
+            "type": "hardcoded_colors",
+            "lines": [332, 333, 334, 335, 336],
+            "description": "getDurationStyle function with hardcoded color thresholds",
+            "data": "if (duration <= 30) return { bg: 'from-teal-500 to-emerald-500', ... }\nif (duration <= 180) return { bg: 'from-emerald-500 to-cyan-500', ... }",
+            "should_be": "Duration styles should be configurable from package metadata or a style config"
+          }
+        ]
+      },
+      {
+        "file": "src/components/premium/PremiumPage.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_bengali",
+            "lines": [353, 356, 359, 364, 368, 372, 387, 391, 401, 410, 415, 424, 481, 482, 483, 601, 611, 619, 665, 666, 667, 850, 856, 923, 940, 951, 1006, 1035, 1058],
+            "description": "Extensive Bengali UI text throughout component (badge labels, headings, placeholders, empty states, button texts)",
+            "data": "e.g., 'প্রিমিয়াম কন্টেন্ট', 'বান্ডেল', 'প্যাকেজ', 'সকল ধরন', 'শ্রেণি নির্বাচন', 'কোনো বান্ডেল পাওয়া যায়নি', 'কিনুন', 'কেনা হয়েছে', etc.",
+            "should_be": "Could be extracted to i18n locale file for maintainability"
+          }
+        ]
+      },
+      {
+        "file": "src/components/lecture/LectureListPage.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_limit",
+            "lines": [90],
+            "description": "Hardcoded API limit parameter",
+            "data": "const queryParams = new URLSearchParams({ limit: '500' })",
+            "should_be": "Configurable limit or pagination-driven"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/dashboard/FeedbackSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [52, 53, 54, 55, 56],
+            "description": "statusConfig map hardcoded with Bengali labels and Tailwind classes",
+            "data": "statusConfig = {\n  pending: { label: 'অপেক্ষমান', color: 'bg-amber-100...', icon: Clock },\n  replied: { label: 'উত্তর দেওয়া', ... },\n  closed: { label: 'বন্ধ', ... },\n}",
+            "should_be": "Acceptable small config — could be moved to constants file"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/dashboard/BookmarksSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_type_mapping",
+            "lines": [52, 53, 54, 55, 56, 57, 58],
+            "description": "Hardcoded type-to-icon/label/color mapping by string comparison",
+            "data": "const ContentIcon = q.type === 'mcq' ? FileQuestion : q.type === 'cq' ? BookOpen : Play\nconst typeLabel = q.type === 'mcq' ? 'MCQ' : q.type === 'cq' ? 'সৃজনশীল প্রশ্ন' : 'লেকচার'",
+            "should_be": "Use useContentTypes hook's getIcon/getLabel functions instead of manual mapping"
+          }
+        ]
+      },
+      {
+        "file": "src/components/layout/BottomNav.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_route_map",
+            "lines": [21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
+            "description": "routeMap hardcoded mapping sub-routes to parent tab routes",
+            "data": "const routeMap: Record<string, string> = {\n  'notice-detail': 'home', 'suggestion-detail': 'suggestions', ...\n}",
+            "should_be": "Route hierarchy should be data-driven from route config"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/BannerCarousel.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_route_map",
+            "lines": [54, 55, 56, 57, 58, 59, 60, 61, 62, 63],
+            "description": "knownRoutes hardcoded mapping string paths to route names",
+            "data": "const knownRoutes: Record<string, string> = {\n  'premium': 'premium', 'class-list': 'class-list', ...\n}",
+            "should_be": "Should be a shared route resolution utility"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/HeroNoticeBar.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_route_map",
+            "lines": [38, 39, 40, 41, 42, 43, 44, 45, 46, 47],
+            "description": "knownRoutes map (duplicate of BannerCarousel.tsx)",
+            "data": "Same knownRoutes map repeated",
+            "should_be": "Extract shared route resolution to a utility"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/SpecialNoticePopup.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_route_map",
+            "lines": [83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93],
+            "description": "knownRoutes map (third duplicate)",
+            "data": "Same knownRoutes map repeated with one extra entry ('user-dashboard')",
+            "should_be": "Extract to shared utility — 3 duplicate maps that will drift"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/JsonLd.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_urls",
+            "lines": [12, 15, 18, 19, 20, 101, 104, 106, 107, 108],
+            "description": "Hardcoded site name, description, and social media URLs in JSON-LD schemas",
+            "data": "name: 'শিক্ষা বাংলا', sameAs: ['https://facebook.com/sikkhabangla', 'https://youtube.com/@sikkhabangla', 'https://t.me/sikkhabangla']",
+            "should_be": "Should come from site_config DB table (config already exists for social links)"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/ApiErrorHandler.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49],
+            "description": "Error status code to Bengali label map hardcoded",
+            "data": "getErrorLabel(): status 0→'নেটওয়ার্ক ত্রুটি', 401→'সেশন শেষ', 403→'অনুমতি নেই', etc.",
+            "should_be": "Acceptable — could be moved to shared constants"
+          }
+        ]
+      },
+      {
+        "file": "src/components/layout/Footer.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_urls",
+            "lines": [190, 191, 192, 193, 194],
+            "description": "Hardcoded privacy policy and terms of service URLs",
+            "data": "<a href=\"/privacy\" ...>প্রাইভেসি পলিসি</a>\n<a href=\"/terms\" ...>শর্তাবলী</a>",
+            "should_be": "Should be dynamic from site_config (config?.privacyUrl, config?.termsUrl) or static pages created"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/dashboard/ExamsSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_threshold",
+            "lines": [72],
+            "description": "Hardcoded pass/fail threshold for exam results",
+            "data": "const isGood = (exam.score / exam.total) >= 0.7",
+            "should_be": "Configurable threshold from settings"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/MCQPracticeSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_array",
+            "lines": [11, 12, 13, 14, 15, 16, 17],
+            "description": "gradients array hardcoded with 5 variants",
+            "data": "const gradients = ['from-emerald-400 to-emerald-600', 'from-teal-400 to-teal-600', ...]",
+            "should_be": "Gradients should be generated from site primary/secondary colors"
+          },
+          {
+            "type": "hardcoded_array",
+            "lines": [27],
+            "description": "mcqFeatures fallback array (partially config-driven)",
+            "data": "['বিষয়ভিত্তিক পরীক্ষা', 'সময় নির্ধারিত পরীক্ষা', 'বিস্তারিত ফলাফল ও ব্যাখ্যা', 'বোর্ড প্যাটার্ন অনুসারে প্রশ্ন']",
+            "should_be": "Already has config?.mcqFeatures fallback — acceptable"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/PremiumBanner.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_array",
+            "lines": [20, 21, 22],
+            "description": "premiumFeatures fallback array hardcoded",
+            "data": "['প্রিমিয়াম লেকচার ও কোর্স', 'বিস্তারিত MCQ ব্যাখ্যা', ...]",
+            "should_be": "Already has config?.premiumFeatures fallback — acceptable"
+          }
+        ]
+      }
+    ],
+    "low": [
+      {
+        "file": "src/components/user/dashboard/DashboardConstants.ts",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+            "description": "FALLBACK_GRADIENTS map per content type with Tailwind gradient classes",
+            "data": "FALLBACK_GRADIENTS = { mcq: 'from-violet-500 to-purple-600', cq: 'from-emerald-500 to-teal-600', ... }",
+            "should_be": "Should come from content_types DB table"
+          },
+          {
+            "type": "hardcoded_map",
+            "lines": [19, 20, 21, 22, 23],
+            "description": "methodLabels map for payment methods",
+            "data": "methodLabels = { bkash: 'বিকাশ', nagad: 'নগদ', rocket: 'রকেট' }",
+            "should_be": "Should come from payment gateway configuration"
+          },
+          {
+            "type": "hardcoded_map",
+            "lines": [33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77],
+            "description": "categoryConfig map with extensive hardcoded Bengali labels, icon references, gradient classes, badge classes per purchase category",
+            "data": "categoryConfig = {\n  subscription: {\n    label: 'সাবস্ক্রিপশন', icon: Crown, color: 'text-purple-600...',\n    bgGradient: 'from-purple-500 to-violet-600',\n    badgeClass: 'bg-purple-100...',\n    ...\n  },\n  bundle: { ... },\n  individual: { ... },\n}",
+            "should_be": "Could be configurable from admin settings (purchase category theming)"
+          }
+        ]
+      },
+      {
+        "file": "src/components/admin/mcq/constants.ts",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [3, 4, 5, 6, 7],
+            "description": "difficultyLabels map",
+            "data": "difficultyLabels: { easy: 'সহজ', medium: 'মাঝারি', hard: 'কঠিন' }",
+            "should_be": "Acceptable — could be configurable from settings"
+          },
+          {
+            "type": "hardcoded_map",
+            "lines": [9, 10, 11, 12, 13],
+            "description": "difficultyColors map",
+            "data": "difficultyColors: { easy: 'bg-emerald-100...', medium: 'bg-amber-100...', hard: 'bg-red-100...' }",
+            "should_be": "Acceptable — could be configurable from settings"
+          },
+          {
+            "type": "hardcoded_form",
+            "lines": [15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39],
+            "description": "emptyForm object with hardcoded default values",
+            "data": "emptyForm = { question: '', correctAnswer: 'A', difficulty: 'easy', isPremium: false, price: '', ... }",
+            "should_be": "Acceptable form initial state — but default values like difficulty: 'easy' and correctAnswer: 'A' should be configurable"
+          },
+          {
+            "type": "hardcoded_array",
+            "lines": [41, 42, 43, 44, 45],
+            "description": "STEPS array with Bengali labels",
+            "data": "STEPS = [{ id: 1, label: 'মৌলিক তথ্য', icon: FileQuestion }, ...]",
+            "should_be": "Acceptable as UI workflow definition"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/PurchaseOptionsModal.tsx",
+        "issues": [
+          {
+            "type": "fallback_map",
+            "lines": [73, 74, 75, 76, 77, 78, 79, 80, 81],
+            "description": "FALLBACK_CONTENT_TYPE_CONFIG map with Bengali labels and colors",
+            "data": "FALLBACK_CONTENT_TYPE_CONFIG = {\n  mcq: { label: 'MCQ', icon: FileQuestion, color: 'text-violet-600...' },\n  cq: { label: 'সৃজনশীল প্রশ্ন', ... },\n  'board-mcq': { label: 'বোর্ড MCQ', ... },\n  ...\n}",
+            "should_be": "Acceptable fallback — overridden by DB content types when loaded"
+          },
+          {
+            "type": "hardcoded_text",
+            "lines": [370, 508, 519, 524, 649, 652, 660],
+            "description": "Hardcoded Bengali user-facing text",
+            "data": "'শুধু এই {contentConfig.label} টি কিনুন — স্থায়ী অ্যাক্সেস', 'এই কন্টেন্টটি কোনো বান্ডেলে নেই...', etc.",
+            "should_be": "Partial — most descriptions are informative and acceptable as static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/PremiumBadge.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37],
+            "description": "badgeConfig map with hardcoded texts, icons, and Tailwind classes per access status",
+            "data": "badgeConfig: {\n  free: { text: 'ফ্রি', icon: <Eye/>, className: 'bg-green-100...' },\n  purchased: { text: 'কেনা', ... },\n  locked: { text: 'প্রিমিয়াম', ... },\n  pending: { text: 'অপেক্ষমাণ', ... },\n}",
+            "should_be": "Acceptable small configuration — could reference content_types DB"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/Pagination.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_default",
+            "lines": [25],
+            "description": "Default perPageOptions array",
+            "data": "perPageOptions = [10, 20, 50, 100]",
+            "should_be": "Acceptable default — can be overridden by prop"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/DataTable.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_empty_message",
+            "lines": [87],
+            "description": "Default empty message in Bengali",
+            "data": "emptyMessage = 'কোনো তথ্য পাওয়া যায়নি'",
+            "should_be": "Acceptable default — can be overridden by prop"
+          }
+        ]
+      },
+      {
+        "file": "src/components/dashboard/StatCard.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_map",
+            "lines": [23, 24, 25, 26, 27, 28, 29, 30],
+            "description": "iconMap for string-based icon resolution",
+            "data": "iconMap: { Users, FileQuestion, BookOpen, DollarSign, Clock, TrendingUp }",
+            "should_be": "Acceptable utility — icon prop accepts both ElementType and string"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/BookmarkButton.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_size_map",
+            "lines": [93, 94, 95, 96, 97, 98],
+            "description": "sizeMap and buttonSizeMap hardcoded",
+            "data": "sizeMap: { sm: 'size-4', md: 'size-5', lg: 'size-6', icon: 'size-5' }",
+            "should_be": "Acceptable internal mapping"
+          }
+        ]
+      },
+      {
+        "file": "src/components/layout/Header.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_fallback",
+            "lines": [31],
+            "description": "Hardcoded site name fallback",
+            "data": "const siteName = config?.siteName || 'শিক্ষা বাংলা'",
+            "should_be": "Acceptable fallback pattern"
+          },
+          {
+            "type": "hardcoded_placeholder",
+            "lines": [109, 267],
+            "description": "Hardcoded search placeholder text",
+            "data": "placeholder=\"কোর্স, অধ্যায় খুঁজুন...\"",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/layout/Footer.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_fallback",
+            "lines": [35],
+            "description": "Hardcoded site name fallback",
+            "data": "const siteName = config?.siteName || 'শিক্ষা বাংলা'",
+            "should_be": "Acceptable fallback pattern"
+          },
+          {
+            "type": "hardcoded_text",
+            "lines": [113, 132, 149, 157, 177, 187, 198],
+            "description": "Hardcoded Bengali section headers and footer text",
+            "data": "'দ্রুত লিংক', 'শ্রেণিসমূহ', 'যোগাযোগ', '© {year} শিক্ষা বাংলা। সর্বস্বত্ব সংরক্ষিত।', 'ভালোবাসায় তৈরি ♥ বাংলাদেশ থেকে'",
+            "should_be": "Acceptable static text — but copyright message and tagline could be dynamic"
+          }
+        ]
+      },
+      {
+        "file": "src/components/auth/SocialLoginPage.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [116, 117, 118, 128, 141, 157, 175, 177, 189, 202, 203, 211, 222, 236],
+            "description": "Extensive hardcoded Bengali UI text on login page",
+            "data": "'শিক্ষা বাংলা', 'সামাজিক অ্যাকাউন্ট দিয়ে লগইন করুন', 'Google দিয়ে লগইন করুন', 'Facebook দিয়ে লগইন করুন', 'লগইন করুন', etc.",
+            "should_be": "Acceptable static text — could be externalized to locale file"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/dashboard/EditProfileDialog.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [35, 37, 42, 47, 51, 56, 62, 65],
+            "description": "Hardcoded Bengali labels, placeholders, and button text",
+            "data": "'প্রোফাইল এডিট করুন', 'আপনার নাম এবং মোবাইল নম্বর আপডেট করুন।', 'নাম', 'আপনার নাম লিখুন', 'মোবাইল নম্বর', '017xxxxxxxx', 'বাতিল', 'আপডেট করুন'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/FAQSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_fallback",
+            "lines": [27, 30],
+            "description": "Section title/subtitle fallbacks",
+            "data": "config?.homepageFaqTitle || 'সচরাচর জিজ্ঞাসা', config?.homepageFaqSubtitle || 'আপনার প্রশ্নের উত্তর এখানে'",
+            "should_be": "Already config-driven — acceptable"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/StatsSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_fallback",
+            "lines": [95, 98],
+            "description": "Section title/subtitle fallbacks",
+            "data": "config?.homepageStatsTitle || 'আমাদের অর্জন'",
+            "should_be": "Already config-driven — acceptable"
+          }
+        ]
+      },
+      {
+        "file": "src/components/home/BoardQuestionSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_fallback",
+            "lines": [18],
+            "description": "Default gradient fallback",
+            "data": "DEFAULT_GRADIENT = 'from-emerald-500 to-teal-600'",
+            "should_be": "Acceptable — class gradient should come from DB"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/UserDashboardPage.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [141, 149, 256, 258, 260, 262, 264, 266, 268, 270, 272, 274, 276],
+            "description": "Hardcoded Bengali tab labels, welcome text, and button text",
+            "data": "'স্বাগতম, {userName}!', 'কেনা কন্টেন্ট', 'লেখাপড়া', 'পরীক্ষা', 'সেভ', 'পেমেন্ট', 'ফিডব্যাক', 'এডিট'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/dashboard/LearningSection.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [30, 40, 41],
+            "description": "Hardcoded Bengali section titles and empty states",
+            "data": "'লেখাপড়া চালিয়ে যান', 'কোনো লেকচার শুরু করেননি', 'হোম পেজ থেকে লেকচার খুঁজুন'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/dashboard/PurchasedContent.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [147, 148, 154, 172, 177, 231, 236, 253, 259],
+            "description": "Bengali empty state text and section headers",
+            "data": "'কোনো কন্টেন্ট কেনেনি', 'প্রিমিয়াম কন্টেন্ট কিনলে এখানে দেখাবে', 'কন্টেন্ট খুঁজুন', 'সাবস্ক্রিপশন', 'বান্ডেল', 'ব্যক্তিগত ক্রয়', 'দেখুন / পড়ুন'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/user/dashboard/PaymentHistory.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_maps",
+            "lines": [43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68],
+            "description": "getStatusIcon, getStatusLabel, getStatusBadgeClass all hardcoded maps",
+            "data": "switch (status) { case 'approved': return 'অনুমোদিত' / CheckCircle2 / 'bg-emerald-100...', ... }",
+            "should_be": "Could be consolidated into one config map like FeedbackSection.statusConfig"
+          },
+          {
+            "type": "hardcoded_text",
+            "lines": [77, 105, 106],
+            "description": "Bengali section title and empty state text",
+            "data": "'পেমেন্ট ইতিহাস', 'কোনো পেমেন্ট নেই', 'কন্টেন্ট কিনলে এখানে দেখাবে'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/NoteEditor.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [81, 98, 105, 116, 121, 132],
+            "description": "Bengali placeholder, status text, and labels",
+            "data": "'আপনার নোটস লিখুন...', 'নোট লিখতে লগইন করুন', 'সংরক্ষণ হচ্ছে...', 'সংরক্ষিত', 'সেভ', 'লগইন প্রয়োজন'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/ui/premium-paywall.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [82, 86, 94, 110, 116],
+            "description": "Bengali UI text in premium paywall",
+            "data": "'প্রিমিয়াম', 'প্রিমিয়াম কন্টেন্ট', 'কন্টেন্ট আনলক করতে নিচের বাটনে ক্লিক করুন', 'কেনার অপশন দেখুন', 'লগইন'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      },
+      {
+        "file": "src/components/shared/ProgressIndicator.tsx",
+        "issues": [
+          {
+            "type": "hardcoded_text",
+            "lines": [55],
+            "description": "Bengali label for progress indicator",
+            "data": "'অগ্রগতি'",
+            "should_be": "Acceptable static UI text"
+          }
+        ]
+      }
+    ]
+  },
+  "summary": {
+    "total_issues": 68,
+    "by_type": {
+      "hardcoded_text": 22,
+      "hardcoded_map": 17,
+      "hardcoded_array": 8,
+      "fallback_maps": 4,
+      "hardcoded_route_map": 5,
+      "hardcoded_urls": 2,
+      "hardcoded_threshold": 1,
+      "hardcoded_default": 3,
+      "hardcoded_form": 1,
+      "hardcoded_limit": 1,
+      "hardcoded_bengali_text": 1,
+      "hardcoded_colors": 1,
+      "hardcoded_type_mapping": 1,
+      "hardcoded_size_map": 1
+    },
+    "by_severity": {
+      "high": 5,
+      "medium": 15,
+      "low": 15
+    },
+    "recommendations": [
+      "1. Extract duplicate knownRoutes maps (BannerCarousel, HeroNoticeBar, SpecialNoticePopup) to a shared utility",
+      "2. Consolidate FALLBACK_TYPE_LABELS and FALLBACK_CONTENT_TYPE_LABELS in PremiumPage.tsx into one shared constant file",
+      "3. Consolidate difficultyLabels/difficultyColors (admin/mcq/constants.ts and SearchResultsPage.tsx) into shared constants",
+      "4. Replace BookmarkSection's manual type-to-icon mapping with useContentTypes hook's getIcon/getLabel",
+      "5. Move GRADIENT_MAP in FeaturedCourses.tsx to be data-driven from content_types DB table",
+      "6. Replace QUICK_ACCESS in ClassCategories.tsx with DB-driven quick access links from site_config",
+      "7. Make the pass threshold 0.7 in ExamsSection.tsx configurable",
+      "8. Move all hardcoded knownRoutes route maps to a single route-resolution utility",
+      "9. Make Footer's privacy/terms links dynamic from site_config",
+      "10. Make JsonLd.tsx social URLs dynamic from site_config"
+    ]
+  }
+}

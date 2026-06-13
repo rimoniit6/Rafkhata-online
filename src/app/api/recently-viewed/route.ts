@@ -44,10 +44,7 @@ export async function GET(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন', 401)
     }
 
     const userId = auth.user.id
@@ -87,10 +84,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Get recently viewed error:', error)
-    return NextResponse.json(
-      { success: false, error: 'সাম্প্রতিক দেখা আইটেম আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('সাম্প্রতিক দেখা আইটেম আনতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -101,10 +95,7 @@ export async function POST(request: Request) {
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন', 401)
     }
 
     const userId = auth.user.id
@@ -112,24 +103,15 @@ export async function POST(request: Request) {
     const { contentId, contentType, title } = body
 
     if (!contentId || !contentType) {
-      return NextResponse.json(
-        { success: false, error: 'contentId এবং contentType আবশ্যক' },
-        { status: 400 }
-      )
+      return apiError('contentId এবং contentType আবশ্যক', 400)
     }
 
     if (!VALID_CONTENT_TYPES.includes(contentType)) {
-      return NextResponse.json(
-        { success: false, error: 'contentType অবশ্যই lecture, mcq, বা cq হতে হবে' },
-        { status: 400 }
-      )
+      return apiError('contentType অবশ্যই lecture, mcq, বা cq হতে হবে', 400)
     }
 
     if (!title || typeof title !== 'string' || title.trim() === '') {
-      return NextResponse.json(
-        { success: false, error: 'title আবশ্যক' },
-        { status: 400 }
-      )
+      return apiError('title আবশ্যক', 400)
     }
 
     // Upsert: if already exists, update viewedAt timestamp
@@ -166,9 +148,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Record recently viewed error:', error)
-    return NextResponse.json(
-      { success: false, error: 'সাম্প্রতিক দেখা রেকর্ড করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('সাম্প্রতিক দেখা রেকর্ড করতে সমস্যা হয়েছে', 500)
   }
 }

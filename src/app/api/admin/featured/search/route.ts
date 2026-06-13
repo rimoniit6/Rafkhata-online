@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -180,18 +181,12 @@ export async function GET(request: Request) {
       }
 
       default:
-        return NextResponse.json(
-          { success: false, error: `অবৈধ কন্টেন্ট টাইপ: ${type}` },
-          { status: 400 }
-        )
+        return apiError(`অবৈধ কন্টেন্ট টাইপ: ${type}`, 400)
     }
 
     return NextResponse.json({ success: true, data: items })
   } catch (error) {
     console.error('Admin Search Content error:', error)
-    return NextResponse.json(
-      { success: false, error: 'কন্টেন্ট খুঁজতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('কন্টেন্ট খুঁজতে সমস্যা হয়েছে', 500)
   }
 }

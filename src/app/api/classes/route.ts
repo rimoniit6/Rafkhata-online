@@ -121,7 +121,7 @@ export async function GET(request: Request) {
         slug: cls.slug,
         subjectCount: cls.subjects.length,
         icon: cls.icon || 'BookOpen',
-        gradient: FALLBACK_SLUG_GRADIENTS[cls.slug] || 'from-emerald-400 to-teal-600',
+        gradient: cls.gradient || FALLBACK_SLUG_GRADIENTS[cls.slug] || 'from-emerald-400 to-teal-600',
         description: cls.description ?? null,
         color: cls.color ?? null,
         contentCounts,

@@ -117,10 +117,7 @@ export async function GET(
     })
 
     if (!cq) {
-      return NextResponse.json(
-        { success: false, error: 'CQ খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('CQ খুঁজে পাওয়া যায়নি', 404)
     }
 
     if (cq.isPremium) {
@@ -128,10 +125,7 @@ export async function GET(
       const userId = auth?.user.id
 
       if (!userId) {
-        return NextResponse.json(
-          { success: false, error: 'এই CQ টি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
-          { status: 401 }
-        )
+        return apiError('এই CQ টি দেখতে লগইন করুন', 401, 'PREMIUM_REQUIRES_AUTH')
       }
 
       const access = await checkContentAccess({
@@ -175,7 +169,7 @@ export async function PUT(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ success: false, error: 'CQ আপডেট করার অনুমতি নেই' }, { status: 403 })
+      return apiError('CQ আপডেট করার অনুমতি নেই', 403)
     }
 
     const { id } = await props.params
@@ -184,10 +178,7 @@ export async function PUT(
     const existingCq = await db.cQ.findUnique({ where: { id } })
 
     if (!existingCq) {
-      return NextResponse.json(
-        { success: false, error: 'CQ খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('CQ খুঁজে পাওয়া যায়নি', 404)
     }
 
     const cq = await db.cQ.update({
@@ -224,10 +215,7 @@ export async function PUT(
     return NextResponse.json({ success: true, data: { message: 'CQ আপডেট হয়েছে', cq } })
   } catch (error) {
     console.error('Update CQ error:', error)
-    return NextResponse.json(
-      { success: false, error: 'CQ আপডেট করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('CQ আপডেট করতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -240,7 +228,7 @@ export async function DELETE(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ success: false, error: 'CQ মুছে ফেলার অনুমতি নেই' }, { status: 403 })
+      return apiError('CQ মুছে ফেলার অনুমতি নেই', 403)
     }
 
     const { id } = await props.params
@@ -248,10 +236,7 @@ export async function DELETE(
     const existingCq = await db.cQ.findUnique({ where: { id } })
 
     if (!existingCq) {
-      return NextResponse.json(
-        { success: false, error: 'CQ খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('CQ খুঁজে পাওয়া যায়নি', 404)
     }
 
     await db.cQ.update({
@@ -262,9 +247,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, data: { message: 'CQ সফলভাবে মুছে ফেলা হয়েছে' } })
   } catch (error) {
     console.error('Delete CQ error:', error)
-    return NextResponse.json(
-      { success: false, error: 'CQ মুছে ফেলতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('CQ মুছে ফেলতে সমস্যা হয়েছে', 500)
   }
 }

@@ -89,10 +89,10 @@ export default function BoardQuestionSection() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* ── Section Title ──────────────────────────────────────── */}
         <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3" suppressHydrationWarning>
             {config?.homepageBoardTitle || 'বোর্ড প্রশ্ন সমাধান'}
           </h2>
-          <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-base sm:text-lg max-w-xl mx-auto" suppressHydrationWarning>
             {config?.homepageBoardSubtitle || 'সকল বোর্ডের বিগত বছরের প্রশ্ন ও সমাধান অনুশীলন করুন'}
           </p>
         </div>

@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 
@@ -6,7 +7,7 @@ export async function GET(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth || !auth.isAdmin) {
-      return NextResponse.json({ success: false, error: 'অননুমোদিত' }, { status: 403 })
+      return apiError('অননুমোদিত', 403)
     }
 
     const { searchParams } = new URL(request.url)
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Admin Get Feedback error:', error)
-    return NextResponse.json({ success: false, error: 'ফিডব্যাক তথ্য আনতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('ফিডব্যাক তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -60,18 +61,18 @@ export async function PUT(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth || !auth.isAdmin) {
-      return NextResponse.json({ success: false, error: 'অননুমোদিত' }, { status: 403 })
+      return apiError('অননুমোদিত', 403)
     }
 
     const body = await request.json()
     const { id, status } = body
 
     if (!id || !status) {
-      return NextResponse.json({ success: false, error: 'id এবং status আবশ্যক' }, { status: 400 })
+      return apiError('id এবং status আবশ্যক', 400)
     }
 
     if (!['pending', 'replied', 'closed'].includes(status)) {
-      return NextResponse.json({ success: false, error: 'অবৈধ স্ট্যাটাস' }, { status: 400 })
+      return apiError('অবৈধ স্ট্যাটাস', 400)
     }
 
     const updated = await db.userFeedback.update({
@@ -82,6 +83,6 @@ export async function PUT(request: Request) {
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Admin Update Feedback error:', error)
-    return NextResponse.json({ success: false, error: 'ফিডব্যাক আপডেট করতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('ফিডব্যাক আপডেট করতে সমস্যা হয়েছে', 500)
   }
 }

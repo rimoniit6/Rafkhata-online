@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json({ success: false, error: 'প্রমাণীকরণ প্রয়োজন' }, { status: 401 })
+      return apiError('প্রমাণীকরণ প্রয়োজন', 401)
     }
 
     const { searchParams } = new URL(request.url)
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Get User Feedback error:', error)
-    return NextResponse.json({ success: false, error: 'ফিডব্যাক তথ্য আনতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('ফিডব্যাক তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -52,14 +52,14 @@ export async function POST(request: Request) {
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json({ success: false, error: 'প্রমাণীকরণ প্রয়োজন' }, { status: 401 })
+      return apiError('প্রমাণীকরণ প্রয়োজন', 401)
     }
 
     const body = await request.json()
     const { subject, message } = body
 
     if (!subject?.trim() || !message?.trim()) {
-      return NextResponse.json({ success: false, error: 'বিষয় এবং বার্তা আবশ্যক' }, { status: 400 })
+      return apiError('বিষয় এবং বার্তা আবশ্যক', 400)
     }
 
     const feedback = await db.userFeedback.create({
@@ -83,6 +83,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, data: feedback }, { status: 201 })
   } catch (error) {
     console.error('Create Feedback error:', error)
-    return NextResponse.json({ success: false, error: 'ফিডব্যাক তৈরি করতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('ফিডব্যাক তৈরি করতে সমস্যা হয়েছে', 500)
   }
 }

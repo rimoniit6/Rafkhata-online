@@ -16,7 +16,7 @@ export interface MCQExamPackageRecord {
   description: string | null
   classId: string
   class: ClassCategory
-  subjectIds: string // JSON string
+  subjectIds: string[]
   price: number
   originalPrice: number
   isPremium: boolean
@@ -101,7 +101,7 @@ export interface MCQExamSetResultRecord {
   id: string
   userId: string
   setId: string
-  answers: string
+  answers: Record<string, string>
   totalCorrect: number
   totalWrong: number
   totalSkipped: number

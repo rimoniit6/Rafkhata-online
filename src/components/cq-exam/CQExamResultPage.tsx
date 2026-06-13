@@ -33,13 +33,13 @@ import { bengaliLabels, getTypeLabel, getStatusBadge, getAnswerModeLabel, format
 import { useToast } from '@/hooks/use-toast'
 import SafeImage from '@/components/ui/safe-image'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
-import ImageAnnotator from '@/components/ui/image-annotator'
+import ImageAnnotator, { type Annotation } from '@/components/ui/image-annotator'
 
 interface CQAnswerImage {
   id: string
   answerId: string
   imageUrl: string
-  annotations: string | null
+  annotations: unknown
   order: number
 }
 
@@ -148,7 +148,7 @@ function AnswerBlock({
   feedback: string | null
   showAnnotatedImages?: boolean
 }) {
-  const hasAnnotatedImages = showAnnotatedImages && images.some((img) => img.annotations && img.annotations.trim() !== '' && img.annotations !== '[]')
+  const hasAnnotatedImages = showAnnotatedImages && images.some((img) => img.annotations && Array.isArray(img.annotations) && img.annotations.length > 0)
 
   return (
     <div className="space-y-3">
@@ -198,13 +198,13 @@ function AnswerBlock({
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {images.map((img) => {
-              const hasAnnotations = showAnnotatedImages && img.annotations && img.annotations.trim() !== '' && img.annotations !== '[]'
+              const hasAnnotations = showAnnotatedImages && img.annotations && Array.isArray(img.annotations) && img.annotations.length > 0
               return (
                 <div key={img.id} className="relative">
                   {hasAnnotations ? (
                     <ImageAnnotator
                       imageUrl={img.imageUrl}
-                      annotations={img.annotations!}
+                      annotations={img.annotations as Annotation[]}
                       readonly={true}
                     />
                   ) : (
@@ -509,7 +509,7 @@ export default function CQExamResultPage() {
                 // Non-CQ question types
                 if (questionType !== 'cq' && questionType !== 'typed') {
                   let config: any = {}
-                  try { config = JSON.parse(q.config || '{}') } catch {}
+                  config = q.config || {}
                   const qStem = q.stem || ''
                   const qStemImage = q.stemImage || null
 
@@ -698,11 +698,11 @@ export default function CQExamResultPage() {
                                   </p>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {imgAns!.images.map((img) => {
-                                      const hasAnnotations = showAnnotatedImages && img.annotations && img.annotations.trim() !== '' && img.annotations !== '[]'
+                                      const hasAnnotations = showAnnotatedImages && img.annotations && Array.isArray(img.annotations) && img.annotations.length > 0
                                       return (
                                         <div key={img.id} className="relative">
                                           {hasAnnotations ? (
-                                            <ImageAnnotator imageUrl={img.imageUrl} annotations={img.annotations!} readonly={true} />
+                                            <ImageAnnotator imageUrl={img.imageUrl} annotations={img.annotations as Annotation[]} readonly={true} />
                                           ) : (
                                             <div className="rounded-lg overflow-hidden border bg-muted/30">
                                               <SafeImage src={img.imageUrl} alt="উত্তরের ছবি" className="w-full h-24 object-cover" />
@@ -896,7 +896,7 @@ export default function CQExamResultPage() {
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                               {globalAnswer.images.map((img: any) => {
-                                const hasGlobalAnnotations = showAnnotatedImages && img.annotations && img.annotations.trim() !== '' && img.annotations !== '[]'
+                                const hasGlobalAnnotations = showAnnotatedImages && img.annotations && Array.isArray(img.annotations) && img.annotations.length > 0
                                 return (
                                   <div key={img.id} className="relative">
                                     {hasGlobalAnnotations ? (

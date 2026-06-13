@@ -10,10 +10,7 @@ export async function POST(request: Request) {
     // Verify user authentication
     const auth = await verifyAuth(request)
     if (!auth?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'অনুগ্রহ করে লগইন করুন' },
-        { status: 401 }
-      )
+      return apiError('অনুগ্রহ করে লগইন করুন', 401)
     }
 
     const body = await request.json()
@@ -21,10 +18,7 @@ export async function POST(request: Request) {
 
     // Validate required fields
     if (!examId) {
-      return NextResponse.json(
-        { success: false, error: 'পরীক্ষার ID আবশ্যক' },
-        { status: 400 }
-      )
+      return apiError('পরীক্ষার ID আবশ্যক', 400)
     }
 
     // Verify the exam exists and is active/published
@@ -33,17 +27,11 @@ export async function POST(request: Request) {
     })
 
     if (!exam) {
-      return NextResponse.json(
-        { success: false, error: 'পরীক্ষা খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('পরীক্ষা খুঁজে পাওয়া যায়নি', 404)
     }
 
     if (!exam.isActive || exam.status !== 'published') {
-      return NextResponse.json(
-        { success: false, error: 'এই পরীক্ষাটি বর্তমানে উপলব্ধ নয়' },
-        { status: 400 }
-      )
+      return apiError('এই পরীক্ষাটি বর্তমানে উপলব্ধ নয়', 400)
     }
 
     // Create the exam result
@@ -54,7 +42,7 @@ export async function POST(request: Request) {
         score: score ?? 0,
         totalMarks: totalMarks ?? 0,
         timeTaken: timeTaken ?? 0,
-        answers: typeof answers === 'string' ? answers : JSON.stringify(answers ?? []),
+        answers: answers ?? [],
       },
     })
 
@@ -64,9 +52,6 @@ export async function POST(request: Request) {
     }, { status: 201 })
   } catch (error) {
     console.error('Save Exam Result error:', error)
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার ফলাফল সংরক্ষণ করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('পরীক্ষার ফলাফল সংরক্ষণ করতে সমস্যা হয়েছে', 500)
   }
 }

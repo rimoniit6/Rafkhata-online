@@ -37,17 +37,11 @@ export async function GET(request: Request) {
 
     const VALID_CONTENT_TYPES = await getValidContentTypes()
     if (!VALID_CONTENT_TYPES.includes(contentType)) {
-      return NextResponse.json(
-        { success: false, error: 'সঠিক কন্টেন্ট টাইপ দিন। সমর্থিত: ' + VALID_CONTENT_TYPES.join(', ') },
-        { status: 400 }
-      )
+      return apiError('সঠিক কন্টেন্ট টাইপ দিন। সমর্থিত: ' + VALID_CONTENT_TYPES.join(', '), 400)
     }
 
     if (!contentId) {
-      return NextResponse.json(
-        { success: false, error: 'কন্টেন্ট আইডি প্রয়োজন' },
-        { status: 400 }
-      )
+      return apiError('কন্টেন্ট আইডি প্রয়োজন', 400)
     }
 
     // NOTE: isPremium flag NO LONGER grants blanket access.

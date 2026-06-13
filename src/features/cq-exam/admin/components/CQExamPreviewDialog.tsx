@@ -45,7 +45,7 @@ function PreviewQuestionCard({
   // Non-CQ question preview
   if (isNonCq) {
     let config: any = {}
-    try { config = JSON.parse(question.config || '{}') } catch {}
+    config = question.config || {}
 
     const getTypeLabel = () => {
       switch (questionType) {

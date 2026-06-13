@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 
@@ -47,11 +48,11 @@ export async function POST(request: Request) {
     const subjectId = formData.get('subjectId') as string
 
     if (!file) {
-      return NextResponse.json({ success: false, error: 'Excel ফাইল আপলোড করুন' }, { status: 400 })
+      return apiError('Excel ফাইল আপলোড করুন', 400)
     }
 
     if (!classLevel) {
-      return NextResponse.json({ success: false, error: 'ক্লাস নির্বাচন আবশ্যক' }, { status: 400 })
+      return apiError('ক্লাস নির্বাচন আবশ্যক', 400)
     }
 
     // Parse Excel file
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' })
 
     if (rows.length === 0) {
-      return NextResponse.json({ success: false, error: 'Excel ফাইলে কোনো ডাটা নেই' }, { status: 400 })
+      return apiError('Excel ফাইলে কোনো ডাটা নেই', 400)
     }
 
     // Resolve subjectId — if "all" or not provided, look up from subject name
@@ -187,10 +188,7 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Bulk upload error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Excel ফাইল প্রসেস করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('Excel ফাইল প্রসেস করতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -303,9 +301,6 @@ export async function GET() {
     })
   } catch (error) {
     console.error('Template download error:', error)
-    return NextResponse.json(
-      { success: false, error: 'টেমপ্লেট তৈরি করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('টেমপ্লেট তৈরি করতে সমস্যা হয়েছে', 500)
   }
 }

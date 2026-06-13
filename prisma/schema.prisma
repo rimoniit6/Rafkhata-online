@@ -56,8 +56,6 @@ model User {
   mcqExamRetakeRequests MCQExamRetakeRequest[]
   auditLogs     AuditLog[]
 
-  @@index([supabaseUserId])
-  @@index([email])
 }
 
 // ============ CONTENT STRUCTURE ============
@@ -289,6 +287,9 @@ model Exam {
 
   questions   ExamQuestion[]
   results     ExamResult[]
+
+  @@index([classLevel, isActive])
+  @@index([subjectId])
 }
 
 model ExamQuestion {
@@ -312,7 +313,7 @@ model ExamResult {
   score       Float     @default(0)
   totalMarks  Float     @default(0)
   timeTaken   Int       @default(0) // seconds
-  answers     String    // JSON string
+  answers     Json      // JSON string
   completedAt DateTime  @default(now())
 
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -423,12 +424,13 @@ model Payment {
   updatedAt       DateTime  @updatedAt
   idempotencyKey  String?   @unique // Client-generated key for idempotent payment creation
 
-  user            User      @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, contentType, contentId, status])
   @@index([userId, contentType, contentId])
   @@index([status, createdAt])
   @@index([contentType, contentId, status])
+  @@index([reviewedBy])
 }
 
 // ============ NOTIFICATION ============
@@ -458,8 +460,8 @@ model AuditLog {
   action      String    // payment_approve, payment_reject, grade_update, grade_bulk, user_update, user_delete, retake_approve, retake_reject, content_create, content_update, content_delete
   entityType  String    // payment, submission, user, cq_question, cq_set, cq_package, mcq_question, lecture, bundle, package
   entityId    String
-  oldData     String?   // JSON string of previous state
-  newData     String?   // JSON string of new state
+  oldData     Json?     // JSON string of previous state
+  newData     Json?     // JSON string of new state
   ipAddress   String?
   userAgent   String?
   createdAt   DateTime  @default(now())
@@ -730,6 +732,7 @@ model UserSubscription {
   package     ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
 
   @@unique([userId, packageId, classLevel]) // One subscription per user per package per class
+  @@index([paymentId])
 }
 
 // ============ MCQ EXAM PACKAGE SYSTEM ============
@@ -739,8 +742,8 @@ model MCQExamPackage {
   title       String
   description String?
   classId     String    // Links to ClassCategory
-  class       ClassCategory @relation(fields: [classId], references: [id])
-  subjectIds  String    @default("[]") // JSON array of subject IDs — empty means "all subjects"
+  class       ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectIds  Json      @default("[]") // JSON array of subject IDs — empty means "all subjects"
   price       Float     @default(0)
   originalPrice Float   @default(0)
   isPremium   Boolean   @default(true)
@@ -780,6 +783,8 @@ model MCQExamSet {
   questions       MCQExamSetQuestion[]
   results         MCQExamSetResult[]
   retakeRequests  MCQExamRetakeRequest[]
+
+  @@index([scheduledDate])
 }
 
 model MCQExamSetQuestion {
@@ -787,7 +792,7 @@ model MCQExamSetQuestion {
   setId     String
   set       MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
   mcqId     String
-  mcq       MCQ       @relation(fields: [mcqId], references: [id])
+  mcq       MCQ       @relation(fields: [mcqId], references: [id], onDelete: Cascade)
   marks     Float     @default(1)
   order     Int       @default(0)
 
@@ -800,7 +805,7 @@ model MCQExamSetResult {
   user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   setId         String
   set           MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
-  answers       String    @default("{}") // JSON: {mcqId: "A"} — selected answer per question
+  answers       Json      @default("{}") // JSON: {mcqId: "A"} — selected answer per question
   totalCorrect  Int       @default(0)
   totalWrong    Int       @default(0)
   totalSkipped  Int       @default(0)
@@ -832,6 +837,7 @@ model MCQExamRetakeRequest {
   updatedAt   DateTime  @updatedAt
 
   @@unique([userId, setId])
+  @@index([reviewedBy])
 }
 
 model MCQExamPackagePurchase {
@@ -845,6 +851,7 @@ model MCQExamPackagePurchase {
   isActive    Boolean   @default(true)
 
   @@unique([userId, packageId])
+  @@index([paymentId])
 }
 
 // ============ CQ EXAM PACKAGE SYSTEM ============
@@ -854,8 +861,8 @@ model CQExamPackage {
   title       String
   description String?
   classId     String    // Links to ClassCategory
-  class       ClassCategory @relation(fields: [classId], references: [id])
-  subjectIds  String    @default("[]") // JSON array of subject IDs
+  class       ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectIds  Json      @default("[]") // JSON array of subject IDs
   price       Float     @default(0)
   originalPrice Float   @default(0)
   isPremium   Boolean   @default(true)
@@ -911,6 +918,7 @@ model CQExamSet {
 
   @@index([packageId])
   @@index([status])
+  @@index([scheduledDate])
 }
 
 model CQExamSetQuestion {
@@ -918,16 +926,16 @@ model CQExamSetQuestion {
   setId           String
   set             CQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
   cqId            String?
-  cq              CQ?       @relation(fields: [cqId], references: [id])
+  cq              CQ?       @relation(fields: [cqId], references: [id], onDelete: Cascade)
   marks           Float     @default(1)
   order           Int       @default(0)
   type            String    @default("cq") // cq, typed, mcq-single, mcq-multiple, fill-blanks, written
-  subMarks        String?   // JSON array [a,b,c,d] marks per sub-question
+  subMarks        Json?     // JSON array [a,b,c,d] marks per sub-question
 
   // For non-CQ question types (mcq-single, mcq-multiple, fill-blanks, written)
   stem            String?   // Question stem (question text)
   stemImage       String?   // Question stem image URL
-  config          String    @default("{}") // JSON: {options:[], correctIndex:N} for MCQ, {blanks:[]} for fill-blanks
+  config          Json      @default("{}") // JSON: {options:[], correctIndex:N} for MCQ, {blanks:[]} for fill-blanks
 
   // For typed questions (type = "typed")
   typedUddeepok       String?   // Stimulus text
@@ -984,6 +992,7 @@ model CQExamSubmission {
   @@index([setId, status])
   @@index([setId, status, submittedAt])
   @@index([userId, setId])
+  @@index([gradedBy])
 }
 
 model CQExamAnswer {
@@ -1014,7 +1023,7 @@ model CQExamAnswerImage {
   answerId        String
   answer          CQExamAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
   imageUrl        String
-  annotations     String?   // JSON string of annotation data {shapes, marks, comments}
+  annotations     Json?     // JSON string of annotation data {shapes, marks, comments}
   order           Int       @default(0)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -1038,9 +1047,34 @@ model CQExamRetakeRequest {
   updatedAt   DateTime  @updatedAt
 
   @@unique([userId, setId])
+  @@index([reviewedBy])
 }
 
 
+
+// ============ RBAC PERMISSION SYSTEM ============
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. "payment.approve", "content.manage", "users.manage"
+  description String?
+  group       String?  // Logical grouping: "payment", "content", "users", "system"
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([group])
+}
+
+model RolePermission {
+  id           String   @id @default(cuid())
+  role         Role
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
 
 // ============ TEACHERS & MODERATORS ============
 

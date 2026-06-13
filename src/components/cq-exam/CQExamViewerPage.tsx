@@ -131,7 +131,7 @@ function NonCQQuestionBlock({
 }) {
   const qType = question.type || 'mcq-single'
   let config: any = {}
-  try { config = JSON.parse(question.config || '{}') } catch {}
+  config = question.config || {}
 
   const stem = question.stem || ''
   const stemImage = question.stemImage || null
@@ -1120,7 +1120,7 @@ export default function CQExamViewerPage() {
     }
     if (qt === 'fill-blanks') {
       let blanks: any[] = []
-      try { const c = JSON.parse(q.config || '{}'); blanks = c.blanks || [] } catch {}
+      const c = q.config || {}; blanks = (c as any).blanks || []
       return blanks.filter((_, si) => !!answers[`${q.id}-${si}`]?.answerText?.trim()).length
     }
     const ans = answers[`${q.id}-0`]
@@ -1135,7 +1135,7 @@ export default function CQExamViewerPage() {
     if (qt === 'cq' || qt === 'typed') return 4
     if (qt === 'fill-blanks') {
       let blanks: any[] = []
-      try { const c = JSON.parse(q.config || '{}'); blanks = c.blanks || [] } catch {}
+      const c = q.config || {}; blanks = (c as any).blanks || []
       return blanks.length || 1
     }
     return 1

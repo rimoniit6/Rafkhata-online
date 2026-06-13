@@ -45,7 +45,7 @@ interface ExamResultItem {
   id: string
   userId: string
   setId: string
-  answers: string
+  answers: Record<string, string>
   totalCorrect: number
   totalWrong: number
   totalSkipped: number

@@ -44,12 +44,12 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
     setLightboxOpen(true)
   }, [])
 
-  const handleAnnotationSave = useCallback(async (imageId: string, annotationsJson: string) => {
+  const handleAnnotationSave = useCallback(async (imageId: string, annotations: unknown) => {
     try {
       await fetch('/api/admin/cq-exam-packages', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'save-annotation', imageId, annotations: annotationsJson }),
+        body: JSON.stringify({ action: 'save-annotation', imageId, annotations }),
       })
       setAnnotatingImage(null)
     } catch {
@@ -217,7 +217,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
           // Parse non-CQ config
           let config: any = {}
           if (isNonCq) {
-            try { config = JSON.parse(question?.config || '{}') } catch {}
+            config = question?.config || {}
           }
 
           // Non-CQ question grading interface
@@ -421,7 +421,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                   {answer.images.map((img, imgIdx) => {
                                     const isAnnotating = annotatingImage === img.id
-                                    const allImages = answer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: `উত্তর ছবি ${i.order + 1}`, annotations: i.annotations }))
+                                    const allImages = answer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: `উত্তর ছবি ${i.order + 1}` }))
                                     return (
                                       <div key={img.id} className="space-y-1">
                                         <div className={cn('relative group rounded-lg overflow-hidden border transition-all', isAnnotating && 'ring-2 ring-emerald-500', img.annotations && !isAnnotating && 'ring-1 ring-amber-400')}>
@@ -559,7 +559,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
                               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {actualAnswer.images.map((img, imgIdx) => {
                                   const isAnnotating = annotatingImage === img.id
-                                  const allImages = actualAnswer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: `উত্তর ছবি ${i.order + 1}`, annotations: i.annotations }))
+                                  const allImages = actualAnswer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: `উত্তর ছবি ${i.order + 1}` }))
                                   return (
                                     <div key={img.id} className="space-y-1">
                                       <div className={cn('relative group rounded-lg overflow-hidden border transition-all', isAnnotating && 'ring-2 ring-emerald-500', img.annotations && !isAnnotating && 'ring-1 ring-amber-400')}>
@@ -612,7 +612,7 @@ export function CQGradingInterface({ submission, set: setData, saving, onGrade, 
                           </div>
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                             {globalAnswer.images.map((img, gi) => {
-                              const globalImgs = globalAnswer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: 'সম্পূর্ণ উত্তরের ছবি', annotations: i.annotations }))
+                              const globalImgs = globalAnswer.images.map(i => ({ id: i.id, url: i.imageUrl, alt: 'সম্পূর্ণ উত্তরের ছবি' }))
                               return (
                                 <div key={img.id} className="relative group rounded-lg overflow-hidden border bg-muted/30">
                                   <SafeImage src={img.imageUrl} alt="সম্পূর্ণ উত্তরের ছবি" className="w-full h-24 object-cover cursor-pointer" onClick={() => openLightbox(globalImgs, gi)} />

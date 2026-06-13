@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 
 // GET /api/admin/bundles/[id] — Get bundle by ID with all items
@@ -19,19 +20,13 @@ export async function GET(
     })
 
     if (!bundle) {
-      return NextResponse.json(
-        { success: false, error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('বান্ডল খুঁজে পাওয়া যায়নি', 404)
     }
 
     return NextResponse.json({ success: true, data: bundle })
   } catch (error) {
     console.error('Admin Get Bundle error:', error)
-    return NextResponse.json(
-      { success: false, error: 'বান্ডলের তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('বান্ডলের তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -47,10 +42,7 @@ export async function PUT(
 
     const existing = await db.contentBundle.findUnique({ where: { id } })
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('বান্ডল খুঁজে পাওয়া যায়নি', 404)
     }
 
     // If slug is being updated, check uniqueness
@@ -59,10 +51,7 @@ export async function PUT(
         where: { slug: updateData.slug },
       })
       if (slugExists) {
-        return NextResponse.json(
-          { success: false, error: 'এই স্লাগটি ইতিমধ্যে ব্যবহৃত হয়েছে' },
-          { status: 400 }
-        )
+        return apiError('এই স্লাগটি ইতিমধ্যে ব্যবহৃত হয়েছে', 400)
       }
     }
 
@@ -114,10 +103,7 @@ export async function PUT(
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Admin Update Bundle error:', error)
-    return NextResponse.json(
-      { success: false, error: 'বান্ডল আপডেট করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('বান্ডল আপডেট করতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -131,10 +117,7 @@ export async function DELETE(
 
     const existing = await db.contentBundle.findUnique({ where: { id } })
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('বান্ডল খুঁজে পাওয়া যায়নি', 404)
     }
 
     // BundleItem will be cascade deleted
@@ -147,9 +130,6 @@ export async function DELETE(
     })
   } catch (error) {
     console.error('Admin Delete Bundle error:', error)
-    return NextResponse.json(
-      { success: false, error: 'বান্ডল মুছে ফেলতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('বান্ডল মুছে ফেলতে সমস্যা হয়েছে', 500)
   }
 }

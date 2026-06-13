@@ -316,7 +316,7 @@ export async function POST(request: Request) {
             title,
             description: description || null,
             classId,
-            subjectIds: subjectIds ? JSON.stringify(subjectIds) : '[]',
+            subjectIds: subjectIds || [],
             price: price ?? 0,
             originalPrice: originalPrice ?? 0,
             isPremium: isPremium ?? true,
@@ -554,7 +554,7 @@ export async function PUT(request: Request) {
           if (updateData[field] !== undefined) data[field] = updateData[field]
         }
 
-        if (updateData.subjectIds !== undefined) data.subjectIds = JSON.stringify(updateData.subjectIds)
+        if (updateData.subjectIds !== undefined)       data.subjectIds = updateData.subjectIds
 
         const updated = await db.mCQExamPackage.update({
           where: { id },

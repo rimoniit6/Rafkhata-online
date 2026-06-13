@@ -28,7 +28,7 @@ interface NonCQEditData {
   type: string
   stem: string
   stemImage: string
-  config: string
+  config: Record<string, unknown>
   marks: number
 }
 
@@ -99,13 +99,13 @@ export function CQQuestionCreatePage({
 
   // Non-CQ question state
   const initEdit = isEditing && !isTypedEditData(editData) ? editData as NonCQEditData : null
-  const initConfig = initEdit ? (() => { try { return JSON.parse(initEdit.config || '{}') } catch { return {} } })() : {}
+  const initConfig = initEdit ? (initEdit.config || {}) : {}
   const [stem, setStem] = React.useState(initEdit?.stem || '')
   const [stemImageUrl, setStemImageUrl] = React.useState(initEdit?.stemImage || '')
-  const [mcqOptions, setMcqOptions] = React.useState<string[]>(initConfig.options || ['', ''])
+  const [mcqOptions, setMcqOptions] = React.useState<string[]>((initConfig.options as string[]) || ['', ''])
   const [mcqMarks, setMcqMarks] = React.useState(String(initEdit?.marks || 1))
   const [blanks, setBlanks] = React.useState<{ id: string; answer: string; marks: number }[]>(
-    initConfig.blanks || [{ id: 'b1', answer: '', marks: 1 }]
+    (initConfig.blanks as { id: string; answer: string; marks: number }[]) || [{ id: 'b1', answer: '', marks: 1 }]
   )
 
   // For non-CQ question edit — prevent switching type
@@ -167,16 +167,16 @@ export function CQQuestionCreatePage({
     }
 
     // Non-CQ question
-    let config = '{}'
+    let config: Record<string, unknown> = {}
     let totalMarks = parseFloat(mcqMarks) || 1
     if (questionType === 'mcq-single' || questionType === 'mcq-multiple') {
       const validOptions = mcqOptions.filter(o => o.trim())
-      config = JSON.stringify({ options: validOptions })
+      config = { options: validOptions }
       totalMarks = parseFloat(mcqMarks) || 1
     }
     if (questionType === 'fill-blanks') {
       const validBlanks = blanks.filter(b => b.answer.trim()).map(b => ({ id: b.id, answer: b.answer, marks: b.marks || 1 }))
-      config = JSON.stringify({ blanks: validBlanks })
+      config = { blanks: validBlanks }
       totalMarks = validBlanks.reduce((s, b) => s + (b.marks || 1), 0) || 1
     }
 

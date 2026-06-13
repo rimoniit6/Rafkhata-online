@@ -145,7 +145,7 @@ async function seedContent() {
           title: 'এসএসসি পদার্থবিজ্ঞান CQ প্র্যাকটিস',
           description: 'এসএসসি পদার্থবিজ্ঞানের সৃজনশীল প্রশ্ন প্র্যাকটিস সেট',
           classId: sscClass.id,
-          subjectIds: JSON.stringify([sscPhysics.id]),
+          subjectIds: [sscPhysics.id],
           price: 0,
           originalPrice: 0,
           isPremium: false,
@@ -196,7 +196,7 @@ async function seedContent() {
               marks: 5,
               order: q + 1,
               type: 'cq',
-              subMarks: JSON.stringify([1, 1, 1.5, 1.5]),
+              subMarks: [1, 1, 1.5, 1.5],
             },
           })
         }
@@ -216,7 +216,7 @@ async function seedContent() {
           title: 'এইচএসসি পদার্থবিজ্ঞান CQ মডেল টেস্ট',
           description: 'এইচএসসি পরীক্ষার্থীদের জন্য সম্পূর্ণ CQ মডেল টেস্ট',
           classId: hscClass.id,
-          subjectIds: JSON.stringify([hscPhysics.id]),
+          subjectIds: [hscPhysics.id],
           price: 99,
           originalPrice: 199,
           isPremium: true,
@@ -311,7 +311,7 @@ async function seedContent() {
               marks: 10,
               order: q + 1,
               type: 'cq',
-              subMarks: JSON.stringify([2, 2, 3, 3]),
+              subMarks: [2, 2, 3, 3],
             },
           })
         }
@@ -386,7 +386,7 @@ async function seedContent() {
         title: 'এসএসসি গণিত ফ্রি টেস্ট',
         description: 'বিনামূল্যে গণিত প্র্যাকটিস টেস্ট',
         classId: sscClass.id,
-        subjectIds: JSON.stringify([sscMath.id]),
+        subjectIds: [sscMath.id],
         price: 0,
         originalPrice: 0,
         isPremium: false,
@@ -534,7 +534,7 @@ async function seedContent() {
           title: 'এসএসসি রসায়ন মডেল টেস্ট',
           description: 'এসএসসি রসায়নের সম্পূর্ণ মডেল টেস্ট',
           classId: sscClass.id,
-          subjectIds: JSON.stringify([sscChemistry.id]),
+          subjectIds: [sscChemistry.id],
           price: 79,
           originalPrice: 149,
           isPremium: true,

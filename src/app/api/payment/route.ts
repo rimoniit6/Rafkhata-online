@@ -180,10 +180,7 @@ export async function POST(request: Request) {
           })
 
           if (approvedBundlePayment) {
-            return NextResponse.json(
-              { success: false, error: 'আপনি ইতিমধ্যে এই কন্টেন্ট সহ একটি বান্ডেল কিনেছেন', data: { alreadyPurchased: true, reason: 'bundle_purchase' } },
-              { status: 400 }
-            )
+            return apiError('আপনি ইতিমধ্যে এই কন্টেন্ট সহ একটি বান্ডেল কিনেছেন', 400, undefined, { alreadyPurchased: true, reason: 'bundle_purchase' })
           }
 
           const pendingBundlePayment = await db.payment.findFirst({
@@ -196,10 +193,7 @@ export async function POST(request: Request) {
           })
 
           if (pendingBundlePayment) {
-            return NextResponse.json(
-              { success: false, error: 'এই কন্টেন্ট সহ একটি বান্ডেলের পেমেন্ট ইতিমধ্যে অপেক্ষমাণ আছে', data: { pendingPayment: true, reason: 'bundle_payment_pending' } },
-              { status: 400 }
-            )
+            return apiError('এই কন্টেন্ট সহ একটি বান্ডেলের পেমেন্ট ইতিমধ্যে অপেক্ষমাণ আছে', 400, undefined, { pendingPayment: true, reason: 'bundle_payment_pending' })
           }
         }
       }
@@ -226,10 +220,7 @@ export async function POST(request: Request) {
           })
 
           if (activeSubscription) {
-            return NextResponse.json(
-              { success: false, error: 'আপনার সাবস্ক্রিপশনে এই কন্টেন্ট ইতিমধ্যে অন্তর্ভুক্ত', data: { alreadyPurchased: true, reason: 'active_subscription' } },
-              { status: 400 }
-            )
+            return apiError('আপনার সাবস্ক্রিপশনে এই কন্টেন্ট ইতিমধ্যে অন্তর্ভুক্ত', 400, undefined, { alreadyPurchased: true, reason: 'active_subscription' })
           }
         }
       }

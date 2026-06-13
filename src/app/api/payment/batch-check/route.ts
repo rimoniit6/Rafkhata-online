@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       const body = await request.json()
       const validation = batchCheckSchema.safeParse(body)
       if (!validation.success) {
-        return NextResponse.json({ success: false, error: 'অবৈধ অনুরোধ', code: 'VALIDATION_ERROR' }, { status: 400 })
+        return apiError('অবৈধ অনুরোধ', 400, 'VALIDATION_ERROR')
       }
       const { items } = validation.data
       const results = items.map(item => ({
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const validation = batchCheckSchema.safeParse(body)
     if (!validation.success) {
-      return NextResponse.json({ success: false, error: 'অবৈধ অনুরোধ', code: 'VALIDATION_ERROR' }, { status: 400 })
+      return apiError('অবৈধ অনুরোধ', 400, 'VALIDATION_ERROR')
     }
 
     const { items } = validation.data
@@ -359,6 +359,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Batch payment check error:', error)
-    return NextResponse.json({ success: false, error: 'পেমেন্ট যাচাই করতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('পেমেন্ট যাচাই করতে সমস্যা হয়েছে', 500)
   }
 }

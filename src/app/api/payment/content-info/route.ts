@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { getContentTypeLabels, getValidContentTypes } from '@/lib/content-type-labels'
 
@@ -11,25 +12,16 @@ export async function GET(request: Request) {
     const classLevel = searchParams.get('classLevel') // For package: which class to subscribe
 
     if (!contentType) {
-      return NextResponse.json(
-        { success: false, error: 'কন্টেন্ট টাইপ প্রয়োজন' },
-        { status: 400 }
-      )
+      return apiError('কন্টেন্ট টাইপ প্রয়োজন', 400)
     }
 
     const VALID_CONTENT_TYPES = await getValidContentTypes()
     if (!VALID_CONTENT_TYPES.includes(contentType)) {
-      return NextResponse.json(
-        { success: false, error: 'সঠিক কন্টেন্ট টাইপ দিন। সমর্থিত: ' + VALID_CONTENT_TYPES.join(', ') },
-        { status: 400 }
-      )
+      return apiError('সঠিক কন্টেন্ট টাইপ দিন। সমর্থিত: ' + VALID_CONTENT_TYPES.join(', '), 400)
     }
 
     if (!contentId) {
-      return NextResponse.json(
-        { success: false, error: 'কন্টেন্ট আইডি প্রয়োজন' },
-        { status: 400 }
-      )
+      return apiError('কন্টেন্ট আইডি প্রয়োজন', 400)
     }
 
     let title = ''
@@ -44,7 +36,7 @@ export async function GET(request: Request) {
           select: { question: true, price: true, isPremium: true },
         })
         if (!mcq) {
-          return NextResponse.json({ success: false, error: 'MCQ প্রশ্ন খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('MCQ প্রশ্ন খুঁজে পাওয়া যায়নি', 404)
         }
         title = mcq.question.length > 80 ? mcq.question.substring(0, 80) + '...' : mcq.question
         description = mcq.question.length > 80 ? mcq.question : undefined
@@ -59,7 +51,7 @@ export async function GET(request: Request) {
           select: { question: true, price: true, isPremium: true, board: true, year: true },
         })
         if (!mcq) {
-          return NextResponse.json({ success: false, error: 'বোর্ড MCQ প্রশ্ন খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('বোর্ড MCQ প্রশ্ন খুঁজে পাওয়া যায়নি', 404)
         }
         const boardLabel = mcq.board ? `${mcq.board} ` : ''
         const yearLabel = mcq.year ? `${mcq.year} ` : ''
@@ -76,7 +68,7 @@ export async function GET(request: Request) {
           select: { uddeepok: true, price: true, isPremium: true },
         })
         if (!cq) {
-          return NextResponse.json({ success: false, error: 'সৃজনশীল প্রশ্ন খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('সৃজনশীল প্রশ্ন খুঁজে পাওয়া যায়নি', 404)
         }
         title = cq.uddeepok.length > 80 ? cq.uddeepok.substring(0, 80) + '...' : cq.uddeepok
         description = cq.uddeepok.length > 80 ? cq.uddeepok : undefined
@@ -91,7 +83,7 @@ export async function GET(request: Request) {
           select: { uddeepok: true, price: true, isPremium: true, board: true, year: true },
         })
         if (!cq) {
-          return NextResponse.json({ success: false, error: 'বোর্ড সৃজনশীল প্রশ্ন খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('বোর্ড সৃজনশীল প্রশ্ন খুঁজে পাওয়া যায়নি', 404)
         }
         const boardLabel = cq.board ? `${cq.board} ` : ''
         const yearLabel = cq.year ? `${cq.year} ` : ''
@@ -108,7 +100,7 @@ export async function GET(request: Request) {
           select: { title: true, price: true, isPremium: true, duration: true },
         })
         if (!lecture) {
-          return NextResponse.json({ success: false, error: 'লেকচার খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('লেকচার খুঁজে পাওয়া যায়নি', 404)
         }
         title = lecture.title
         description = lecture.duration > 0 ? `${lecture.duration} মিনিটের প্রিমিয়াম লেকচার` : 'প্রিমিয়াম লেকচার'
@@ -123,7 +115,7 @@ export async function GET(request: Request) {
           select: { title: true, price: true, isPremium: true },
         })
         if (!suggestion) {
-          return NextResponse.json({ success: false, error: 'সাজেশন খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('সাজেশন খুঁজে পাওয়া যায়নি', 404)
         }
         title = suggestion.title
         description = `${suggestion.title} - প্রিমিয়াম সাজেশন`
@@ -138,7 +130,7 @@ export async function GET(request: Request) {
           select: { title: true, price: true, isPremium: true, description: true },
         })
         if (!exam) {
-          return NextResponse.json({ success: false, error: 'পরীক্ষা খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('পরীক্ষা খুঁজে পাওয়া যায়নি', 404)
         }
         title = exam.title
         description = exam.description || undefined
@@ -161,7 +153,7 @@ export async function GET(request: Request) {
           },
         })
         if (!pkg) {
-          return NextResponse.json({ success: false, error: 'প্যাকেজ খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('প্যাকেজ খুঁজে পাওয়া যায়নি', 404)
         }
 
         // For packages, classLevel must be provided if package.classLevel is null
@@ -229,7 +221,7 @@ export async function GET(request: Request) {
           include: { items: true },
         })
         if (!bundle) {
-          return NextResponse.json({ success: false, error: 'বান্ডেল খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('বান্ডেল খুঁজে পাওয়া যায়নি', 404)
         }
         title = bundle.title
         description = bundle.description || `এই বান্ডেলে ${bundle.items.length}টি প্রিমিয়াম কন্টেন্ট অন্তর্ভুক্ত`
@@ -263,7 +255,7 @@ export async function GET(request: Request) {
           select: { title: true, price: true, originalPrice: true, totalSets: true },
         })
         if (!pkg) {
-          return NextResponse.json({ success: false, error: 'MCQ এক্সাম প্যাকেজ খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('MCQ এক্সাম প্যাকেজ খুঁজে পাওয়া যায়নি', 404)
         }
         title = pkg.title
         description = `${pkg.totalSets}টি পরীক্ষা সেট সহ MCQ এক্সাম প্যাকেজ`
@@ -290,7 +282,7 @@ export async function GET(request: Request) {
           select: { title: true, price: true, originalPrice: true, totalSets: true },
         })
         if (!pkg) {
-          return NextResponse.json({ success: false, error: 'CQ এক্সাম প্যাকেজ খুঁজে পাওয়া যায়নি' }, { status: 404 })
+          return apiError('CQ এক্সাম প্যাকেজ খুঁজে পাওয়া যায়নি', 404)
         }
         title = pkg.title
         description = `${pkg.totalSets}টি সৃজনশীল পরীক্ষা সেট সহ CQ এক্সাম প্যাকেজ (আলাদা ক্রয়)`
@@ -326,9 +318,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Get content info error:', error)
-    return NextResponse.json(
-      { success: false, error: 'কন্টেন্টের তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('কন্টেন্টের তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }

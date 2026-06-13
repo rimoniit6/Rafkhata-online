@@ -285,7 +285,7 @@ export async function POST(request: Request) {
         const pkg = await db.cQExamPackage.create({
           data: {
             title, description, classId,
-            subjectIds: subjectIds ? JSON.stringify(subjectIds) : '[]',
+            subjectIds: subjectIds || [],
             price: price || 0, originalPrice: originalPrice || 0,
             thumbnail: thumbnail || null,
             isPremium: isPremium ?? true,
@@ -350,7 +350,7 @@ export async function POST(request: Request) {
             setId,
             cqId,
             marks: totalMarks,
-            subMarks: JSON.stringify(defaultSubMarks),
+            subMarks: defaultSubMarks,
             order: existingCount + cqIds.indexOf(cqId),
           }))
           await db.cQExamSetQuestion.createMany({ data })
@@ -383,7 +383,7 @@ export async function POST(request: Request) {
             marks: totalMarks,
             order: existingCount,
             type: 'typed',
-            subMarks: JSON.stringify(marksArr),
+            subMarks: marksArr,
             typedUddeepok: typedUddeepok || null,
             typedUddeepokImage: typedUddeepokImage || null,
             typedQuestion1,
@@ -418,7 +418,7 @@ export async function POST(request: Request) {
             order: existingCount,
             stem: stem || null,
             stemImage: stemImage || null,
-            config: config || '{}',
+            config: config || {},
           },
         })
         await recalculateSetTotals(setId)
@@ -452,9 +452,7 @@ export async function PUT(request: Request) {
         for (const key of allowed) {
           if (data[key] !== undefined) updateData[key] = data[key]
         }
-        if (updateData.subjectIds && typeof updateData.subjectIds !== 'string') {
-          updateData.subjectIds = JSON.stringify(updateData.subjectIds)
-        }
+
 
         const pkg = await db.cQExamPackage.update({ where: { id }, data: updateData })
         return apiResponse({ package: pkg })
@@ -946,7 +944,7 @@ export async function PUT(request: Request) {
         const updateData: Record<string, unknown> = {}
         if (stem !== undefined) updateData.stem = stem || null
         if (stemImage !== undefined) updateData.stemImage = stemImage || null
-        if (config !== undefined) updateData.config = config || '{}'
+        if (config !== undefined) updateData.config = config || {}
         if (marks !== undefined) updateData.marks = parseFloat(marks) || 0
 
         const question = await db.cQExamSetQuestion.update({
@@ -974,7 +972,7 @@ export async function PUT(request: Request) {
           where: { id: questionId },
           data: {
             marks: totalMarks,
-            subMarks: JSON.stringify(marksArr),
+            subMarks: marksArr,
             typedUddeepok: typedUddeepok || null,
             typedUddeepokImage: typedUddeepokImage || null,
             typedQuestion1,

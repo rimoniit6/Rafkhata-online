@@ -516,6 +516,8 @@ async function seedContent() {
     { key: 'homepage_faq_subtitle', value: 'আপনার প্রশ্নের উত্তর এখানে', group: 'homepage', label: 'FAQ উপশিরোনাম' },
     { key: 'homepage_testimonials_title', value: 'শিক্ষার্থীরা যা বলেন', group: 'homepage', label: 'টেস্টিমোনিয়াল শিরোনাম' },
     { key: 'homepage_testimonials_subtitle', value: 'প্ল্যাটফর্ম ব্যবহারকারীদের মতামত', group: 'homepage', label: 'টেস্টিমোনিয়াল উপশিরোনাম' },
+    { key: 'homepage_teachers_title', value: 'আমাদের শিক্ষকবৃন্দ', group: 'homepage', label: 'শিক্ষক শিরোনাম' },
+    { key: 'homepage_teachers_subtitle', value: 'অভিজ্ঞ শিক্ষকদের দ্বারা পরিচালিত', group: 'homepage', label: 'শিক্ষক উপশিরোনাম' },
     { key: 'homepage_stats_title', value: 'আমাদের অর্জন', group: 'homepage', label: 'পরিসংখ্যান শিরোনাম' },
     { key: 'homepage_stats_subtitle', value: 'সারা বাংলাদেশের শিক্ষার্থীদের সাথে', group: 'homepage', label: 'পরিসংখ্যান উপশিরোনাম' },
     { key: 'homepage_featured_title', value: 'ফিচার্ড কন্টেন্ট', group: 'homepage', label: 'ফিচার্ড শিরোনাম' },
@@ -524,6 +526,21 @@ async function seedContent() {
     { key: 'homepage_premium_subtitle', value: 'বান্ডেলে আকর্ষণীয় ছাড়ে পান!', group: 'homepage', label: 'প্রিমিয়াম উপশিরোনাম' },
     { key: 'logo', value: '', group: 'general', label: 'লোগো' },
     { key: 'favicon', value: '', group: 'general', label: 'ফেভিকন' },
+    // ── Per-page SEO metadata ──
+    { key: 'seo_page_home_title', value: 'শিক্ষা বাংলা - বাংলাদেশের সেরা শিক্ষা প্ল্যাটফর্ম', group: 'seo', label: 'SEO - হোম পেজ শিরোনাম' },
+    { key: 'seo_page_home_description', value: 'Class 6 থেকে HSC পর্যন্ত সকল বিষয়ের লেকচার, MCQ, সৃজনশীল প্রশ্ন ও বোর্ড প্রশ্ন। বাংলাদেশের সেরা অনলাইন শিক্ষা প্ল্যাটফর্ম।', group: 'seo', label: 'SEO - হোম পেজ বিবরণ' },
+    { key: 'seo_page_login_title', value: 'লগইন করুন - শিক্ষা বাংলা', group: 'seo', label: 'SEO - লগইন পেজ' },
+    { key: 'seo_page_login_description', value: 'আপনার শিক্ষা বাংলা অ্যাকাউন্টে লগইন করুন এবং পড়া শুরু করুন।', group: 'seo', label: 'SEO - লগইন বিবরণ' },
+    { key: 'seo_page_register_title', value: 'নিবন্ধন করুন - শিক্ষা বাংলা', group: 'seo', label: 'SEO - রেজিস্টার পেজ' },
+    { key: 'seo_page_register_description', value: 'নতুন অ্যাকাউন্ট খুলুন এবং বাংলাদেশের সেরা অনলাইন শিক্ষা প্ল্যাটফর্মে পড়া শুরু করুন।', group: 'seo', label: 'SEO - রেজিস্টার বিবরণ' },
+    { key: 'seo_page_class-list_title', value: 'ক্লাস সমূহ - শিক্ষা বাংলা', group: 'seo', label: 'SEO - ক্লাস লিস্ট' },
+    { key: 'seo_page_class-list_description', value: 'Class 6 থেকে HSC পর্যন্ত সকল ক্লাসের বিষয় ও কন্টেন্ট দেখুন।', group: 'seo', label: 'SEO - ক্লাস লিস্ট বিবরণ' },
+    { key: 'seo_page_board-questions_title', value: 'বোর্ড প্রশ্ন - শিক্ষা বাংলা', group: 'seo', label: 'SEO - বোর্ড প্রশ্ন' },
+    { key: 'seo_page_board-questions_description', value: 'পূর্বের বছরের বোর্ড পরীক্ষার প্রশ্ন দেখুন এবং প্র্যাকটিস করুন।', group: 'seo', label: 'SEO - বোর্ড প্রশ্ন বিবরণ' },
+    { key: 'seo_page_premium_title', value: 'প্রিমিয়াম - শিক্ষা বাংলা', group: 'seo', label: 'SEO - প্রিমিয়াম' },
+    { key: 'seo_page_premium_description', value: 'প্রিমিয়াম সাবস্ক্রিপশন ও বান্ডেল কিনুন এবং সব কন্টেন্ট আনলক করুন।', group: 'seo', label: 'SEO - প্রিমিয়াম বিবরণ' },
+    { key: 'seo_page_search_title', value: 'সার্চ ফলাফল - শিক্ষা বাংলা', group: 'seo', label: 'SEO - সার্চ' },
+    { key: 'seo_page_search_description', value: 'আপনার পছন্দের লেকচার, MCQ, সৃজনশীল প্রশ্ন ও অন্যান্য কন্টেন্ট খুঁজুন।', group: 'seo', label: 'SEO - সার্চ বিবরণ' },
   ]
   for (const s of siteSettings) {
     await db.siteSetting.upsert({ where: { key: s.key }, update: s, create: s })
@@ -581,6 +598,50 @@ async function seedContent() {
     await db.featuredContent.create({ data: { contentType: 'package', contentId: pkg.id, section: 'homepage', isActive: true, order: fo++ } })
   }
   console.log('✅ Featured content seeded')
+
+  // ── RBAC Permissions ──
+  const PERMISSIONS = [
+    { name: 'payment.approve', group: 'payment', description: 'পেমেন্ট অনুমোদন/অস্বীকার' },
+    { name: 'payment.view', group: 'payment', description: 'পেমেন্ট দেখুন' },
+    { name: 'content.manage', group: 'content', description: 'সমস্ত কন্টেন্ট পরিচালনা' },
+    { name: 'content.create', group: 'content', description: 'নতুন কন্টেন্ট তৈরি' },
+    { name: 'content.edit', group: 'content', description: 'কন্টেন্ট সম্পাদনা' },
+    { name: 'content.delete', group: 'content', description: 'কন্টেন্ট মুছুন' },
+    { name: 'users.manage', group: 'users', description: 'ব্যবহারকারী পরিচালনা' },
+    { name: 'users.view', group: 'users', description: 'ব্যবহারকারী দেখুন' },
+    { name: 'system.settings', group: 'system', description: 'সাইট সেটিংস পরিচালনা' },
+    { name: 'system.banners', group: 'system', description: 'ব্যানার পরিচালনা' },
+    { name: 'system.faqs', group: 'system', description: 'FAQ পরিচালনা' },
+    { name: 'system.testimonials', group: 'system', description: 'টেস্টিমোনিয়াল পরিচালনা' },
+    { name: 'system.notices', group: 'system', description: 'নোটিশ পরিচালনা' },
+    { name: 'system.navigation', group: 'system', description: 'নেভিগেশন পরিচালনা' },
+    { name: 'system.rbac', group: 'system', description: 'RBAC/পারমিশন পরিচালনা' },
+    { name: 'system.audit', group: 'system', description: 'অডিট লগ দেখুন' },
+    { name: 'exam.grade', group: 'exam', description: 'CQ উত্তর মূল্যায়ন' },
+    { name: 'exam.retake', group: 'exam', description: 'রিটেক অনুরোধ অনুমোদন/অস্বীকার' },
+  ]
+  const permIds: Record<string, string> = {}
+  for (const p of PERMISSIONS) {
+    const perm = await db.permission.upsert({
+      where: { name: p.name },
+      update: { group: p.group, description: p.description },
+      create: { name: p.name, group: p.group, description: p.description },
+    })
+    permIds[perm.name] = perm.id
+  }
+  for (const [name, id] of Object.entries(permIds)) {
+    await db.rolePermission.upsert({
+      where: { role_permissionId: { role: 'SUPER_ADMIN', permissionId: id } },
+      update: {}, create: { role: 'SUPER_ADMIN', permissionId: id },
+    })
+    if (name !== 'system.rbac') {
+      await db.rolePermission.upsert({
+        where: { role_permissionId: { role: 'ADMIN', permissionId: id } },
+        update: {}, create: { role: 'ADMIN', permissionId: id },
+      })
+    }
+  }
+  console.log('✅ RBAC permissions seeded')
 
   console.log('\n🎉 Seeding complete!')
 }

@@ -128,7 +128,7 @@ export const routeMeta: Record<string, PageMeta> = {
   },
 }
 
-export function getPageMeta(route: RoutePath, params?: Record<string, string>): PageMeta {
+export function getPageMeta(route: RoutePath, params?: Record<string, string>, overrides?: Partial<PageMeta>): PageMeta {
   const base = routeMeta[route]
   if (!base) {
     return {
@@ -161,7 +161,51 @@ export function getPageMeta(route: RoutePath, params?: Record<string, string>): 
     meta.title = `${params.chapterSlug} - অধ্যায় - ${SITE_NAME}`
   }
 
+  if (overrides) {
+    if (overrides.title) meta.title = overrides.title
+    if (overrides.description) meta.description = overrides.description
+    if (overrides.keywords) meta.keywords = overrides.keywords
+    if (overrides.ogImage) meta.ogImage = overrides.ogImage
+  }
+
   return meta
+}
+
+/**
+ * Server-only: fetch per-page SEO metadata from SiteSetting DB table.
+ * Falls back to hardcoded routeMeta if no DB entry exists.
+ */
+export async function getServerPageMeta(
+  route: string,
+  params?: Record<string, string>,
+): Promise<PageMeta> {
+  try {
+    const { db } = await import('@/lib/db')
+    const prefix = `seo_page_${route}_`
+    const settings = await db.siteSetting.findMany({
+      where: { key: { startsWith: prefix } },
+      select: { key: true, value: true },
+    })
+    const dbMeta: Record<string, string> = {}
+    for (const s of settings) {
+      const field = s.key.replace(prefix, '')
+      dbMeta[field] = s.value
+    }
+
+    if (dbMeta.title || dbMeta.description) {
+      const meta: PageMeta = {
+        title: dbMeta.title || '',
+        description: dbMeta.description || '',
+      }
+      if (dbMeta.keywords) meta.keywords = dbMeta.keywords
+      if (dbMeta.ogImage) meta.ogImage = dbMeta.ogImage
+      return getPageMeta(route as RoutePath, params, meta)
+    }
+  } catch {
+    // DB unavailable — fall through to hardcoded
+  }
+
+  return getPageMeta(route as RoutePath, params)
 }
 
 export function getSiteUrl() {

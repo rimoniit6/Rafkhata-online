@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     // Package detail with sets
     if (action === 'detail') {
       const id = searchParams.get('id')
-      if (!id) return NextResponse.json({ success: false, error: 'Package ID required' }, { status: 400 })
+      if (!id) return apiError('Package ID required', 400)
 
       const pkg = await db.cQExamPackage.findUnique({
         where: { id },
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
           _count: { select: { purchases: true } },
         },
       })
-      if (!pkg) return NextResponse.json({ success: false, error: 'Package not found' }, { status: 404 })
+      if (!pkg) return apiError('Package not found', 404)
 
       // Check if user has purchased - use authenticated user only
       let hasPurchased = false
@@ -116,14 +116,11 @@ export async function GET(request: Request) {
     if (action === 'check-purchase') {
       const packageId = searchParams.get('packageId')
       if (!packageId) {
-        return NextResponse.json({ success: false, error: 'Package ID required' }, { status: 400 })
+        return apiError('Package ID required', 400)
       }
 
       if (!userId) {
-        return NextResponse.json(
-          { success: false, error: 'ক্রয় অবস্থা দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-          { status: 401 }
-        )
+        return apiError('ক্রয় অবস্থা দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
       }
 
       const purchaseRecord = await db.cQExamPackagePurchase.findUnique({
@@ -165,7 +162,7 @@ export async function GET(request: Request) {
     // User's retake requests for a package - requires auth
     if (action === 'my-retake-requests') {
       const packageId = searchParams.get('packageId')
-      if (!userId || !packageId) return NextResponse.json({ success: false, error: 'Package ID required' }, { status: 400 })
+      if (!userId || !packageId) return apiError('Package ID required', 400)
 
       const requests = await db.cQExamRetakeRequest.findMany({
         where: {
@@ -184,9 +181,9 @@ export async function GET(request: Request) {
     // Get submission detail for user - requires auth
     if (action === 'my-submission') {
       const submissionId = searchParams.get('submissionId')
-      if (!submissionId) return NextResponse.json({ success: false, error: 'Submission ID required' }, { status: 400 })
+      if (!submissionId) return apiError('Submission ID required', 400)
 
-      if (!userId) return NextResponse.json({ success: false, error: 'লগইন প্রয়োজন', code: 'UNAUTHORIZED' }, { status: 401 })
+      if (!userId) return apiError('লগইন প্রয়োজন', 401, 'UNAUTHORIZED')
 
       const submission = await db.cQExamSubmission.findUnique({
         where: { id: submissionId },
@@ -209,11 +206,11 @@ export async function GET(request: Request) {
           },
         },
       })
-      if (!submission) return NextResponse.json({ success: false, error: 'Submission not found' }, { status: 404 })
+      if (!submission) return apiError('Submission not found', 404)
 
       // Verify submission belongs to authenticated user
       if (submission.userId !== userId) {
-        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 })
+        return apiError('Unauthorized', 403)
       }
 
       // If showAnnotatedImages is false, strip annotations from answer images
@@ -234,10 +231,10 @@ export async function GET(request: Request) {
     // Get set detail for user (requires auth + purchase for premium packages)
     if (action === 'set-detail') {
       const setId = searchParams.get('setId')
-      if (!setId) return NextResponse.json({ success: false, error: 'Set ID required' }, { status: 400 })
+      if (!setId) return apiError('Set ID required', 400)
 
       if (!userId) {
-        return NextResponse.json({ success: false, error: 'লগইন প্রয়োজন', code: 'UNAUTHORIZED' }, { status: 401 })
+        return apiError('লগইন প্রয়োজন', 401, 'UNAUTHORIZED')
       }
 
       const set = await db.cQExamSet.findUnique({
@@ -254,24 +251,24 @@ export async function GET(request: Request) {
           },
         },
       })
-      if (!set) return NextResponse.json({ success: false, error: 'Set not found' }, { status: 404 })
+      if (!set) return apiError('Set not found', 404)
 
       if (set.package.isPremium) {
         const purchase = await db.cQExamPackagePurchase.findUnique({
           where: { userId_packageId: { userId, packageId: set.package.id } },
         })
         if (!purchase?.isActive) {
-          return NextResponse.json({ success: false, error: 'আপনি এই প্যাকেজটি কিনেননি। প্রথমে প্যাকেজটি কিনুন।', code: 'NOT_PURCHASED' }, { status: 403 })
+          return apiError('আপনি এই প্যাকেজটি কিনেননি। প্রথমে প্যাকেজটি কিনুন।', 403, 'NOT_PURCHASED')
         }
       }
 
       return NextResponse.json({ success: true, data: { set } })
     }
 
-    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 })
+    return apiError('Unknown action', 400)
   } catch (error) {
     console.error('CQ Exam API error:', error)
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
+    return apiError('Internal server error', 500)
   }
 }
 
@@ -281,7 +278,7 @@ export async function POST(request: Request) {
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json({ success: false, error: 'লগইন প্রয়োজন', code: 'UNAUTHORIZED' }, { status: 401 })
+      return apiError('লগইন প্রয়োজন', 401, 'UNAUTHORIZED')
     }
     const userId = auth.user.id
 
@@ -291,7 +288,7 @@ export async function POST(request: Request) {
     // Start exam attempt
     if (action === 'start-exam') {
       const { setId } = body
-      if (!setId) return NextResponse.json({ success: false, error: 'Set ID required' }, { status: 400 })
+      if (!setId) return apiError('Set ID required', 400)
 
       // Get set details with package info
       const set = await db.cQExamSet.findUnique({
@@ -301,7 +298,7 @@ export async function POST(request: Request) {
           package: { select: { id: true, isPremium: true, price: true } },
         },
       })
-      if (!set) return NextResponse.json({ success: false, error: 'Set not found' }, { status: 404 })
+      if (!set) return apiError('Set not found', 404)
 
       // Check purchase for premium packages
       if (set.package.isPremium) {
@@ -309,7 +306,7 @@ export async function POST(request: Request) {
           where: { userId_packageId: { userId, packageId: set.package.id } },
         })
         if (!purchase?.isActive) {
-          return NextResponse.json({ success: false, error: 'আপনি এই প্যাকেজটি কিনেননি। প্রথমে প্যাকেজটি কিনুন।' }, { status: 403 })
+          return apiError('আপনি এই প্যাকেজটি কিনেননি। প্রথমে প্যাকেজটি কিনুন।', 403)
         }
       }
 
@@ -318,8 +315,8 @@ export async function POST(request: Request) {
         const qType = q.type || 'cq'
         if (qType === 'cq' || qType === 'typed') {
           let subMarks: number[] = []
-          if (q.subMarks) {
-            try { subMarks = JSON.parse(q.subMarks) } catch { subMarks = [] }
+          if (q.subMarks && Array.isArray(q.subMarks)) {
+            subMarks = q.subMarks as number[]
           }
           const ans = Array.from({ length: 4 }, (_, si) => ({
             questionId: q.id,
@@ -333,7 +330,7 @@ export async function POST(request: Request) {
         }
         if (qType === 'fill-blanks') {
           let blanks: { id: string; marks: number }[] = []
-          try { const cfg = JSON.parse(q.config || '{}'); blanks = cfg.blanks || [] } catch {}
+          const cfg = q.config || {}; blanks = (cfg as any).blanks || []
           return blanks.map((blank, si) => ({
             questionId: q.id,
             subIndex: si,
@@ -435,7 +432,7 @@ export async function POST(request: Request) {
     // Submit answer text
     if (action === 'save-answer') {
       const { answerId, answerText } = body
-      if (!answerId) return NextResponse.json({ success: false, error: 'Answer ID required' }, { status: 400 })
+      if (!answerId) return apiError('Answer ID required', 400)
 
       const answer = await db.cQExamAnswer.update({
         where: { id: answerId },
@@ -448,7 +445,7 @@ export async function POST(request: Request) {
     // Add image to an answer
     if (action === 'add-image') {
       const { answerId, imageUrl } = body
-      if (!answerId || !imageUrl) return NextResponse.json({ success: false, error: 'Answer ID and image URL required' }, { status: 400 })
+      if (!answerId || !imageUrl) return apiError('Answer ID and image URL required', 400)
 
       // Get the current max order for this answer
       const existingImages = await db.cQExamAnswerImage.findMany({
@@ -472,7 +469,7 @@ export async function POST(request: Request) {
     // Remove image from an answer
     if (action === 'remove-image') {
       const { imageId } = body
-      if (!imageId) return NextResponse.json({ success: false, error: 'Image ID required' }, { status: 400 })
+      if (!imageId) return apiError('Image ID required', 400)
 
       await db.cQExamAnswerImage.delete({
         where: { id: imageId },
@@ -484,7 +481,7 @@ export async function POST(request: Request) {
     // Request retake
     if (action === 'request-retake') {
       const { setId, reason } = body
-      if (!setId) return NextResponse.json({ success: false, error: 'Set ID required' }, { status: 400 })
+      if (!setId) return apiError('Set ID required', 400)
 
       // Check if already requested
       const existing = await db.cQExamRetakeRequest.findUnique({
@@ -492,10 +489,10 @@ export async function POST(request: Request) {
       })
       if (existing) {
         if (existing.status === 'pending') {
-          return NextResponse.json({ success: false, error: 'ইতিমধ্যে একটি অনুরোধ জমা দেওয়া হয়েছে' }, { status: 400 })
+          return apiError('ইতিমধ্যে একটি অনুরোধ জমা দেওয়া হয়েছে', 400)
         }
         if (existing.status === 'approved') {
-          return NextResponse.json({ success: false, error: 'ইতিমধ্যে পুনরায় পরীক্ষার অনুমতি দেওয়া হয়েছে' }, { status: 400 })
+          return apiError('ইতিমধ্যে পুনরায় পরীক্ষার অনুমতি দেওয়া হয়েছে', 400)
         }
         // If rejected, allow re-request
         await db.cQExamRetakeRequest.update({
@@ -520,7 +517,7 @@ export async function POST(request: Request) {
     // Submit exam
     if (action === 'submit-exam') {
       const { submissionId, timeTaken } = body
-      if (!submissionId) return NextResponse.json({ success: false, error: 'Submission ID required' }, { status: 400 })
+      if (!submissionId) return apiError('Submission ID required', 400)
 
       const submission = await db.cQExamSubmission.update({
         where: { id: submissionId },
@@ -534,9 +531,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, data: { submission, message: 'আপনার উত্তর জমা দেওয়া হয়েছে। শিক্ষক উত্তর মূল্যায়ন করে ফলাফল প্রকাশ করবেন।' } })
     }
 
-    return NextResponse.json({ success: false, error: 'Unknown action' }, { status: 400 })
+    return apiError('Unknown action', 400)
   } catch (error) {
     console.error('CQ Exam POST error:', error)
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 })
+    return apiError('Internal server error', 500)
   }
 }

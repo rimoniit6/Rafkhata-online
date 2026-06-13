@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 
@@ -7,10 +8,7 @@ export async function GET(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন', 401)
     }
 
     const userId = auth.user.id
@@ -19,18 +17,12 @@ export async function GET(request: Request) {
     const contentType = searchParams.get('contentType')
 
     if (!contentId || !contentType) {
-      return NextResponse.json(
-        { success: false, error: 'contentId এবং contentType আবশ্যক' },
-        { status: 400 }
-      )
+      return apiError('contentId এবং contentType আবশ্যক', 400)
     }
 
     const validContentTypes = ['mcq', 'cq', 'lecture']
     if (!validContentTypes.includes(contentType)) {
-      return NextResponse.json(
-        { success: false, error: 'contentType অবশ্যই mcq, cq, বা lecture হতে হবে' },
-        { status: 400 }
-      )
+      return apiError('contentType অবশ্যই mcq, cq, বা lecture হতে হবে', 400)
     }
 
     const bookmark = await db.bookmark.findUnique({
@@ -50,9 +42,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Check bookmark error:', error)
-    return NextResponse.json(
-      { success: false, error: 'বুকমার্ক যাচাই করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('বুকমার্ক যাচাই করতে সমস্যা হয়েছে', 500)
   }
 }

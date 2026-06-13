@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 
@@ -6,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
+      return apiError('অনুমতি নেই', 403)
     }
 
     const { searchParams } = new URL(request.url)
@@ -73,9 +74,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Admin Get Exam Results error:', error)
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার ফলাফল আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('পরীক্ষার ফলাফল আনতে সমস্যা হয়েছে', 500)
   }
 }

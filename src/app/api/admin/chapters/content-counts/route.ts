@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
@@ -117,9 +118,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Admin Chapters Content Counts error:', error)
-    return NextResponse.json(
-      { success: false, error: 'অধ্যায়ের কন্টেন্ট সংখ্যা আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('অধ্যায়ের কন্টেন্ট সংখ্যা আনতে সমস্যা হয়েছে', 500)
   }
 }

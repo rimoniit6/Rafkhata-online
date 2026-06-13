@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 
@@ -6,7 +7,7 @@ export async function GET(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json({ success: false, error: 'প্রমাণীকরণ প্রয়োজন' }, { status: 401 })
+      return apiError('প্রমাণীকরণ প্রয়োজন', 401)
     }
 
     const userId = auth.user.id
@@ -71,6 +72,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, data: result })
   } catch (error) {
     console.error('Recent lectures error:', error)
-    return NextResponse.json({ success: false, error: 'তথ্য আনতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }

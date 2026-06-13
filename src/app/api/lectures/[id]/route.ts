@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { checkContentAccess } from '@/lib/access-control'
@@ -38,10 +39,7 @@ export async function GET(
     })
 
     if (!lecture) {
-      return NextResponse.json(
-        { success: false, error: 'লেকচার খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('লেকচার খুঁজে পাওয়া যায়নি', 404)
     }
 
     if (lecture.isPremium) {
@@ -49,10 +47,7 @@ export async function GET(
       const userId = auth?.user.id
 
       if (!userId) {
-        return NextResponse.json(
-          { success: false, error: 'এই লেকচারটি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
-          { status: 401 }
-        )
+        return apiError('এই লেকচারটি দেখতে লগইন করুন', 401, 'PREMIUM_REQUIRES_AUTH')
       }
 
       const access = await checkContentAccess({
@@ -129,9 +124,6 @@ export async function GET(
     return NextResponse.json({ success: true, data: result })
   } catch (error) {
     console.error('Get lecture detail error:', error)
-    return NextResponse.json(
-      { success: false, error: 'লেকচারের বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('লেকচারের বিস্তারিত তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }

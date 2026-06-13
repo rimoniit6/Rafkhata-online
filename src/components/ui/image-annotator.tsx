@@ -5,7 +5,7 @@ import { Pencil, Square, Circle, Type, Undo, Redo, Trash2, Save, MousePointer } 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
-interface Annotation {
+export interface Annotation {
   id: string
   type: 'freehand' | 'rect' | 'circle' | 'text'
   points: { x: number; y: number }[]
@@ -16,8 +16,8 @@ interface Annotation {
 
 interface ImageAnnotatorProps {
   imageUrl: string
-  annotations?: string // JSON string of annotations
-  onSave?: (annotationsJson: string) => void
+  annotations?: Annotation[]
+  onSave?: (annotations: Annotation[]) => void
   readonly?: boolean
   className?: string
 }
@@ -38,9 +38,7 @@ export default function ImageAnnotator({
   const [imageLoaded, setImageLoaded] = useState(false)
   const [tool, setTool] = useState<'select' | 'freehand' | 'rect' | 'circle' | 'text'>('select')
   const [color, setColor] = useState(DEFAULT_COLOR)
-  const [annotations, setAnnotations] = useState<Annotation[]>(() => {
-    try { return initialAnnotations ? JSON.parse(initialAnnotations) : [] } catch { return [] }
-  })
+  const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations || [])
   const [history, setHistory] = useState<Annotation[][]>([])
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [isDrawing, setIsDrawing] = useState(false)
@@ -215,7 +213,7 @@ export default function ImageAnnotator({
   }
 
   const handleSave = () => {
-    onSave?.(JSON.stringify(annotations))
+    onSave?.(annotations)
   }
 
   const tools = [

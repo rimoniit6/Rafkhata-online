@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { apiLimiter, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit'
@@ -49,10 +50,7 @@ export async function GET(request: Request) {
     // Require authentication
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন।', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন।', 401, 'UNAUTHORIZED')
     }
 
     // Rate limiting
@@ -102,9 +100,6 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Get purchases error:', error)
-    return NextResponse.json(
-      { success: false, error: 'ক্রয়ের তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('ক্রয়ের তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }

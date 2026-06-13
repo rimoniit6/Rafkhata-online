@@ -119,7 +119,7 @@ export default function AdminMCQExamPackagesPage() {
                 setEditId(pkg.id); setPkgTitle(pkg.title); setPkgDescription(pkg.description || '');
                 setPkgClassId(pkg.classId); setPkgPrice(String(pkg.price)); setPkgOriginalPrice(String(pkg.originalPrice));
                 setPkgThumbnail(pkg.thumbnail || ''); setPkgIsActive(pkg.isActive); setPkgOrder(String(pkg.order));
-                setPkgStatus(pkg.status); try { setPkgSubjectIds(JSON.parse(pkg.subjectIds || '[]')) } catch { setPkgSubjectIds([]) }
+                setPkgStatus(pkg.status); try { setPkgSubjectIds(        pkg.subjectIds || []) } catch { setPkgSubjectIds([]) }
                 fetchSubjectsForClass(pkg.classId); setViewMode('editor');
               }}
               onDelete={(id) => setDeleteTarget({ type: 'package', id })}
@@ -149,7 +149,7 @@ export default function AdminMCQExamPackagesPage() {
                 setEditId(pkg.id); setPkgTitle(pkg.title); setPkgDescription(pkg.description || '');
                 setPkgClassId(pkg.classId); setPkgPrice(String(pkg.price)); setPkgOriginalPrice(String(pkg.originalPrice));
                 setPkgThumbnail(pkg.thumbnail || ''); setPkgIsActive(pkg.isActive); setPkgOrder(String(pkg.order));
-                setPkgStatus(pkg.status); try { setPkgSubjectIds(JSON.parse(pkg.subjectIds || '[]')) } catch { setPkgSubjectIds([]) }
+                setPkgStatus(pkg.status); try { setPkgSubjectIds(        pkg.subjectIds || []) } catch { setPkgSubjectIds([]) }
                 fetchSubjectsForClass(pkg.classId); setViewMode('editor');
               }}
               onOpenBulkCreate={() => setBulkCreateDialogOpen(true)}

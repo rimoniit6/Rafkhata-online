@@ -25,14 +25,8 @@ interface CQQuestionManagerProps {
 
 const bengaliLabels = ['ক', 'খ', 'গ', 'ঘ']
 
-function parseSubMarks(subMarks: string | null): number[] {
-  if (!subMarks) return []
-  try {
-    const parsed = JSON.parse(subMarks)
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return []
-  }
+function parseSubMarks(subMarks: number[] | null | undefined): number[] {
+  return Array.isArray(subMarks) ? subMarks : []
 }
 
 export function CQQuestionManager({
@@ -106,8 +100,7 @@ export function CQQuestionManager({
             const isNonCq = ['mcq-single', 'mcq-multiple', 'fill-blanks', 'written'].includes(questionType)
 
             if (isNonCq) {
-              let config: any = {}
-              try { config = JSON.parse(q.config || '{}') } catch {}
+              const config: any = q.config || {}
 
               const getTypeLabel = () => {
                 switch (questionType) {

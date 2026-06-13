@@ -36,17 +36,11 @@ export async function GET(request: NextRequest) {
       case 'my-retake-requests':
         return await handleMyRetakeRequests(searchParams, request)
       default:
-        return NextResponse.json(
-          { success: false, error: `Unknown action: ${action}` },
-          { status: 400 }
-        )
+        return apiError(`Unknown action: ${action}`, 400)
     }
   } catch (error) {
     console.error('MCQ Exam Packages API error:', error)
-    return NextResponse.json(
-      { success: false, error: 'সার্ভার ত্রুটি হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('সার্ভার ত্রুটি হয়েছে', 500)
   }
 }
 
@@ -67,17 +61,11 @@ export async function POST(request: NextRequest) {
       case 'request-retake':
         return await handleRequestRetake(body, request)
       default:
-        return NextResponse.json(
-          { success: false, error: `Unknown action: ${action}` },
-          { status: 400 }
-        )
+        return apiError(`Unknown action: ${action}`, 400)
     }
   } catch (error) {
     console.error('MCQ Exam Packages POST error:', error)
-    return NextResponse.json(
-      { success: false, error: 'সার্ভার ত্রুটি হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('সার্ভার ত্রুটি হয়েছে', 500)
   }
 }
 
@@ -148,7 +136,7 @@ async function handleList(searchParams: URLSearchParams) {
   const allSubjectIds = new Set<string>()
   for (const pkg of packages) {
     try {
-      const ids = JSON.parse(pkg.subjectIds || '[]') as string[]
+      const ids = (pkg.subjectIds || []) as string[]
       for (const id of ids) {
         if (id) allSubjectIds.add(id)
       }
@@ -171,7 +159,7 @@ async function handleList(searchParams: URLSearchParams) {
     // Parse subject IDs and resolve names
     let subjectIds: string[] = []
     try {
-      subjectIds = JSON.parse(pkg.subjectIds || '[]') as string[]
+      subjectIds = (pkg.subjectIds || []) as string[]
     } catch {
       subjectIds = []
     }
@@ -228,10 +216,7 @@ async function handleList(searchParams: URLSearchParams) {
 async function handleDetail(searchParams: URLSearchParams, request: NextRequest) {
   const id = searchParams.get('id')
   if (!id) {
-    return NextResponse.json(
-      { success: false, error: 'প্যাকেজ ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('প্যাকেজ ID প্রদান করুন', 400)
   }
 
   const pkg = await db.mCQExamPackage.findUnique({
@@ -269,10 +254,7 @@ async function handleDetail(searchParams: URLSearchParams, request: NextRequest)
   })
 
   if (!pkg || pkg.status !== 'published' || !pkg.isActive) {
-    return NextResponse.json(
-      { success: false, error: 'প্যাকেজ খুঁজে পাওয়া যায়নি' },
-      { status: 404 }
-    )
+    return apiError('প্যাকেজ খুঁজে পাওয়া যায়নি', 404)
   }
 
   // Check purchase status for authenticated users
@@ -312,19 +294,13 @@ async function handleDetail(searchParams: URLSearchParams, request: NextRequest)
 async function handleTakeExam(searchParams: URLSearchParams, request: NextRequest) {
   const setId = searchParams.get('setId')
   if (!setId) {
-    return NextResponse.json(
-      { success: false, error: 'সেট ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('সেট ID প্রদান করুন', 400)
   }
 
   // Require authentication
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষা দিতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('পরীক্ষা দিতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   // Get the exam set with package info
@@ -343,10 +319,7 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
   })
 
   if (!examSet || examSet.status !== 'published') {
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার সেট খুঁজে পাওয়া যায়নি' },
-      { status: 404 }
-    )
+    return apiError('পরীক্ষার সেট খুঁজে পাওয়া যায়নি', 404)
   }
 
   // Check purchase
@@ -360,10 +333,7 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
   })
 
   if (!purchaseRecord || !purchaseRecord.isActive) {
-    return NextResponse.json(
-      { success: false, error: 'আপনি এই প্যাকেজটি কিনেননি', code: 'NOT_PURCHASED' },
-      { status: 403 }
-    )
+    return apiError('আপনি এই প্যাকেজটি কিনেননি', 403, 'NOT_PURCHASED')
   }
 
   // Check scheduled date — lenient: exam available from scheduledDate 00:00 onwards
@@ -381,18 +351,7 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
   if (todayDhaka < scheduledDateOnly) {
     const diffMs = scheduledDateOnly.getTime() - todayDhaka.getTime()
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24))
-    return NextResponse.json(
-      {
-        success: false,
-        error: `পরীক্ষা এখনো শুরু হয়নি। ${diffDays} দিন পর পরীক্ষা শুরু হবে।`,
-        code: 'EXAM_NOT_YET_AVAILABLE',
-        data: {
-          scheduledDate: examSet.scheduledDate,
-          startTime: examSet.startTime,
-        },
-      },
-      { status: 400 }
-    )
+    return apiError(`পরীক্ষা এখনো শুরু হয়নি। ${diffDays} দিন পর পরীক্ষা শুরু হবে।`, 400, 'EXAM_NOT_YET_AVAILABLE', { scheduledDate: examSet.scheduledDate, startTime: examSet.startTime })
   }
 
   // Check if user already has a result for this set
@@ -596,7 +555,7 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
       setId: setId,
       status: 'in-progress',
       startedAt: new Date(),
-      answers: '{}',
+          answers: {},
       totalMarks: examSet.totalMarks,
       canRetake: hadCanRetake,
     },
@@ -665,19 +624,13 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
   }
 
   if (!setId || !resultId || !answers) {
-    return NextResponse.json(
-      { success: false, error: 'setId, resultId এবং answers প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('setId, resultId এবং answers প্রদান করুন', 400)
   }
 
   // Require authentication
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষা জমা দিতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('পরীক্ষা জমা দিতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   // Get the result and verify ownership
@@ -686,32 +639,20 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
   })
 
   if (!result) {
-    return NextResponse.json(
-      { success: false, error: 'ফলাফল খুঁজে পাওয়া যায়নি' },
-      { status: 404 }
-    )
+    return apiError('ফলাফল খুঁজে পাওয়া যায়নি', 404)
   }
 
   if (result.userId !== auth.user.id) {
-    return NextResponse.json(
-      { success: false, error: 'এই ফলাফল আপনার নয়', code: 'FORBIDDEN' },
-      { status: 403 }
-    )
+    return apiError('এই ফলাফল আপনার নয়', 403, 'FORBIDDEN')
   }
 
   if (result.status !== 'in-progress') {
-    return NextResponse.json(
-      { success: false, error: 'এই পরীক্ষা ইতিমধ্যে জমা দেওয়া হয়েছে', code: 'ALREADY_SUBMITTED' },
-      { status: 400 }
-    )
+    return apiError('এই পরীক্ষা ইতিমধ্যে জমা দেওয়া হয়েছে', 400, 'ALREADY_SUBMITTED')
   }
 
   // Verify the result belongs to the given setId
   if (result.setId !== setId) {
-    return NextResponse.json(
-      { success: false, error: 'সেট ID ফলাফলের সাথে মিলছে না' },
-      { status: 400 }
-    )
+    return apiError('সেট ID ফলাফলের সাথে মিলছে না', 400)
   }
 
   // Get the exam set for scoring info
@@ -720,10 +661,7 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
   })
 
   if (!examSet) {
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার সেট খুঁজে পাওয়া যায়নি' },
-      { status: 404 }
-    )
+    return apiError('পরীক্ষার সেট খুঁজে পাওয়া যায়নি', 404)
   }
 
   // Get all questions in the set with MCQ data
@@ -788,7 +726,7 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
     data: {
       status: 'completed',
       submittedAt: new Date(),
-      answers: JSON.stringify(answers),
+          answers: answers,
       totalCorrect,
       totalWrong,
       totalSkipped,
@@ -835,10 +773,7 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
 async function handleMyResults(searchParams: URLSearchParams, request: NextRequest) {
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'ফলাফল দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('ফলাফল দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10))
@@ -897,18 +832,12 @@ async function handleMyResults(searchParams: URLSearchParams, request: NextReque
 async function handleResultDetail(searchParams: URLSearchParams, request: NextRequest) {
   const resultId = searchParams.get('resultId')
   if (!resultId) {
-    return NextResponse.json(
-      { success: false, error: 'ফলাফল ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('ফলাফল ID প্রদান করুন', 400)
   }
 
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'ফলাফল দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('ফলাফল দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   const result = await db.mCQExamSetResult.findUnique({
@@ -942,17 +871,11 @@ async function handleResultDetail(searchParams: URLSearchParams, request: NextRe
   })
 
   if (!result) {
-    return NextResponse.json(
-      { success: false, error: 'ফলাফল খুঁজে পাওয়া যায়নি' },
-      { status: 404 }
-    )
+    return apiError('ফলাফল খুঁজে পাওয়া যায়নি', 404)
   }
 
   if (result.userId !== auth.user.id) {
-    return NextResponse.json(
-      { success: false, error: 'এই ফলাফল আপনার নয়', code: 'FORBIDDEN' },
-      { status: 403 }
-    )
+    return apiError('এই ফলাফল আপনার নয়', 403, 'FORBIDDEN')
   }
 
   // Get questions with correctAnswer and explanation
@@ -1022,18 +945,12 @@ async function handleResultDetail(searchParams: URLSearchParams, request: NextRe
 async function handleWeaknessAnalysis(searchParams: URLSearchParams, request: NextRequest) {
   const packageId = searchParams.get('packageId')
   if (!packageId) {
-    return NextResponse.json(
-      { success: false, error: 'প্যাকেজ ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('প্যাকেজ ID প্রদান করুন', 400)
   }
 
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'বিশ্লেষণ দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('বিশ্লেষণ দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   // Check purchase
@@ -1047,10 +964,7 @@ async function handleWeaknessAnalysis(searchParams: URLSearchParams, request: Ne
   })
 
   if (!purchaseRecord || !purchaseRecord.isActive) {
-    return NextResponse.json(
-      { success: false, error: 'আপনি এই প্যাকেজটি কিনেননি', code: 'NOT_PURCHASED' },
-      { status: 403 }
-    )
+    return apiError('আপনি এই প্যাকেজটি কিনেননি', 403, 'NOT_PURCHASED')
   }
 
   // Get all sets in this package
@@ -1117,7 +1031,7 @@ async function handleWeaknessAnalysis(searchParams: URLSearchParams, request: Ne
   const answerMap: Record<string, string> = {}
   for (const result of results) {
     try {
-      const parsed = JSON.parse(result.answers) as Record<string, string>
+      const parsed = result.answers as Record<string, string>
       for (const [mcqId, answer] of Object.entries(parsed)) {
         answerMap[mcqId] = answer
       }
@@ -1239,18 +1153,12 @@ async function handleWeaknessAnalysis(searchParams: URLSearchParams, request: Ne
 async function handleCheckPurchase(searchParams: URLSearchParams, request: NextRequest) {
   const packageId = searchParams.get('packageId')
   if (!packageId) {
-    return NextResponse.json(
-      { success: false, error: 'প্যাকেজ ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('প্যাকেজ ID প্রদান করুন', 400)
   }
 
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'ক্রয় অবস্থা দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('ক্রয় অবস্থা দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   const purchaseRecord = await db.mCQExamPackagePurchase.findUnique({
@@ -1296,19 +1204,13 @@ async function handleCheckPurchase(searchParams: URLSearchParams, request: NextR
 async function handleLeaderboard(searchParams: URLSearchParams, request: NextRequest) {
   const setId = searchParams.get('setId')
   if (!setId) {
-    return NextResponse.json(
-      { success: false, error: 'সেট ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('সেট ID প্রদান করুন', 400)
   }
 
   // Require authentication
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'লিডারবোর্ড দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('লিডারবোর্ড দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   // Verify the exam set exists and is published
@@ -1331,10 +1233,7 @@ async function handleLeaderboard(searchParams: URLSearchParams, request: NextReq
   })
 
   if (!examSet || examSet.package.status !== 'published' || !examSet.package.isActive) {
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার সেট খুঁজে পাওয়া যায়নি' },
-      { status: 404 }
-    )
+    return apiError('পরীক্ষার সেট খুঁজে পাওয়া যায়নি', 404)
   }
 
   // Get all completed results for this set, ordered by marksObtained descending
@@ -1452,19 +1351,13 @@ async function handleLeaderboard(searchParams: URLSearchParams, request: NextReq
 async function handleExamSetStatus(searchParams: URLSearchParams, request: NextRequest) {
   const packageId = searchParams.get('packageId')
   if (!packageId) {
-    return NextResponse.json(
-      { success: false, error: 'প্যাকেজ ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('প্যাকেজ ID প্রদান করুন', 400)
   }
 
   // Require authentication
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'পরীক্ষার অবস্থা দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('পরীক্ষার অবস্থা দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   // Get the package with its exam sets
@@ -1490,10 +1383,7 @@ async function handleExamSetStatus(searchParams: URLSearchParams, request: NextR
   })
 
   if (!pkg || pkg.status !== 'published' || !pkg.isActive) {
-    return NextResponse.json(
-      { success: false, error: 'প্যাকেজ খুঁজে পাওয়া যায়নি' },
-      { status: 404 }
-    )
+    return apiError('প্যাকেজ খুঁজে পাওয়া যায়নি', 404)
   }
 
   // Get all results for this user for these sets
@@ -1615,18 +1505,12 @@ async function handleExamSetStatus(searchParams: URLSearchParams, request: NextR
 async function handleCheckRetake(searchParams: URLSearchParams, request: NextRequest) {
   const setId = searchParams.get('setId')
   if (!setId) {
-    return NextResponse.json(
-      { success: false, error: 'সেট ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('সেট ID প্রদান করুন', 400)
   }
 
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'চেক করতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('চেক করতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   // Check exam set allowRetake
@@ -1665,18 +1549,12 @@ async function handleCheckRetake(searchParams: URLSearchParams, request: NextReq
 async function handleMyRetakeRequests(searchParams: URLSearchParams, request: NextRequest) {
   const packageId = searchParams.get('packageId')
   if (!packageId) {
-    return NextResponse.json(
-      { success: false, error: 'প্যাকেজ ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('প্যাকেজ ID প্রদান করুন', 400)
   }
 
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'অনুরোধ দেখতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('অনুরোধ দেখতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   const requests = await db.mCQExamRetakeRequest.findMany({
@@ -1701,18 +1579,12 @@ async function handleRequestRetake(body: Record<string, unknown>, request: NextR
   const { setId, reason } = body as { setId?: string; reason?: string }
 
   if (!setId) {
-    return NextResponse.json(
-      { success: false, error: 'সেট ID প্রদান করুন' },
-      { status: 400 }
-    )
+    return apiError('সেট ID প্রদান করুন', 400)
   }
 
   const auth = await requireAuth(request)
   if (!auth) {
-    return NextResponse.json(
-      { success: false, error: 'অনুরোধ করতে লগইন করুন', code: 'UNAUTHORIZED' },
-      { status: 401 }
-    )
+    return apiError('অনুরোধ করতে লগইন করুন', 401, 'UNAUTHORIZED')
   }
 
   // Check if already requested
@@ -1722,16 +1594,10 @@ async function handleRequestRetake(body: Record<string, unknown>, request: NextR
 
   if (existing) {
     if (existing.status === 'pending') {
-      return NextResponse.json(
-        { success: false, error: 'ইতিমধ্যে একটি অনুরোধ জমা দেওয়া হয়েছে' },
-        { status: 400 }
-      )
+      return apiError('ইতিমধ্যে একটি অনুরোধ জমা দেওয়া হয়েছে', 400)
     }
     if (existing.status === 'approved') {
-      return NextResponse.json(
-        { success: false, error: 'ইতিমধ্যে পুনরায় পরীক্ষার অনুমতি দেওয়া হয়েছে' },
-        { status: 400 }
-      )
+      return apiError('ইতিমধ্যে পুনরায় পরীক্ষার অনুমতি দেওয়া হয়েছে', 400)
     }
     // If rejected, allow re-request
     const updated = await db.mCQExamRetakeRequest.update({

@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { generateCsrfToken, setCsrfCookie } from '@/lib/csrf'
 
@@ -15,9 +16,6 @@ export async function GET() {
       }
     )
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'CSRF টোকেন জেনারেট করতে ব্যর্থ' },
-      { status: 500 }
-    )
+    return apiError('CSRF টোকেন জেনারেট করতে ব্যর্থ', 500)
   }
 }

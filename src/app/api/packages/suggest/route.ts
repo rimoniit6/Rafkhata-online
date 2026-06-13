@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -46,6 +47,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ success: true, data: { packages: packagesWithCounts } })
   } catch (error) {
     console.error('Suggest packages error:', error)
-    return NextResponse.json({ success: false, error: 'প্যাকেজ সাজেশন লোড করতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('প্যাকেজ সাজেশন লোড করতে সমস্যা হয়েছে', 500)
   }
 }

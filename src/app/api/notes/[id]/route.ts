@@ -11,36 +11,24 @@ export async function GET(
   try {
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', 401)
     }
 
     const { id } = await params
     const note = await db.note.findUnique({ where: { id } })
 
     if (!note) {
-      return NextResponse.json(
-        { success: false, error: 'নোট খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('নোট খুঁজে পাওয়া যায়নি', 404)
     }
 
     if (note.userId !== auth.user.id) {
-      return NextResponse.json(
-        { success: false, error: 'এই নোট দেখার অনুমতি নেই' },
-        { status: 403 }
-      )
+      return apiError('এই নোট দেখার অনুমতি নেই', 403)
     }
 
     return NextResponse.json({ success: true, data: note })
   } catch (error) {
     console.error('Get Note error:', error)
-    return NextResponse.json(
-      { success: false, error: 'নোট এর তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('নোট এর তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -54,37 +42,25 @@ export async function PUT(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', 401)
     }
 
     const { id } = await params
     const note = await db.note.findUnique({ where: { id } })
 
     if (!note) {
-      return NextResponse.json(
-        { success: false, error: 'নোট খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('নোট খুঁজে পাওয়া যায়নি', 404)
     }
 
     if (note.userId !== auth.user.id) {
-      return NextResponse.json(
-        { success: false, error: 'এই নোট সম্পাদনার অনুমতি নেই' },
-        { status: 403 }
-      )
+      return apiError('এই নোট সম্পাদনার অনুমতি নেই', 403)
     }
 
     const body = await request.json()
     const { content } = body
 
     if (!content || !content.trim()) {
-      return NextResponse.json(
-        { success: false, error: 'নোটের বিষয়বস্তু আবশ্যক' },
-        { status: 400 }
-      )
+      return apiError('নোটের বিষয়বস্তু আবশ্যক', 400)
     }
 
     const updated = await db.note.update({
@@ -95,10 +71,7 @@ export async function PUT(
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Update Note error:', error)
-    return NextResponse.json(
-      { success: false, error: 'নোট আপডেট করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('নোট আপডেট করতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -112,28 +85,19 @@ export async function DELETE(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।', 401)
     }
 
     const { id } = await params
     const note = await db.note.findUnique({ where: { id } })
 
     if (!note) {
-      return NextResponse.json(
-        { success: false, error: 'নোট খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('নোট খুঁজে পাওয়া যায়নি', 404)
     }
 
     // Owner or admin can delete
     if (note.userId !== auth.user.id && !auth.isAdmin) {
-      return NextResponse.json(
-        { success: false, error: 'এই নোট মুছার অনুমতি নেই' },
-        { status: 403 }
-      )
+      return apiError('এই নোট মুছার অনুমতি নেই', 403)
     }
 
     await db.note.delete({ where: { id } })
@@ -141,9 +105,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, data: { id }, message: 'নোট সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     console.error('Delete Note error:', error)
-    return NextResponse.json(
-      { success: false, error: 'নোট মুছে ফেলতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('নোট মুছে ফেলতে সমস্যা হয়েছে', 500)
   }
 }

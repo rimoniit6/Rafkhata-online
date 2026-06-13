@@ -478,7 +478,7 @@ export function useCQExamPackages() {
     questionType: string
     stem: string
     stemImage: string
-    config: string
+    config: Record<string, unknown>
     marks: number
   }) => {
     if (!selectedSetId) return
@@ -506,7 +506,7 @@ export function useCQExamPackages() {
     questionId: string
     stem?: string
     stemImage?: string
-    config?: string
+    config?: Record<string, unknown>
     marks?: number
   }) => {
     setSaving(true)
@@ -771,7 +771,7 @@ export function useCQExamPackages() {
     }
   }
 
-  const handleSaveAnnotation = async (imageId: string, annotations: string) => {
+  const handleSaveAnnotation = async (imageId: string, annotations: unknown) => {
     try {
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method: 'PUT',

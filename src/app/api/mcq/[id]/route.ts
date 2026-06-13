@@ -60,10 +60,7 @@ export async function GET(
     })
 
     if (!mcq) {
-      return NextResponse.json(
-        { success: false, error: 'MCQ খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('MCQ খুঁজে পাওয়া যায়নি', 404)
     }
 
     if (mcq.isPremium) {
@@ -71,10 +68,7 @@ export async function GET(
       const userId = auth?.user.id
 
       if (!userId) {
-        return NextResponse.json(
-          { success: false, error: 'এই MCQ টি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
-          { status: 401 }
-        )
+        return apiError('এই MCQ টি দেখতে লগইন করুন', 401, 'PREMIUM_REQUIRES_AUTH')
       }
 
       const access = await checkContentAccess({
@@ -103,10 +97,7 @@ export async function GET(
     return NextResponse.json({ success: true, data: transformMCQ(mcq) })
   } catch (error) {
     console.error('Get MCQ detail error:', error)
-    return NextResponse.json(
-      { success: false, error: 'MCQ এর বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('MCQ এর বিস্তারিত তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -119,7 +110,7 @@ export async function PUT(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth || !auth.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ success: false, error: 'MCQ আপডেট করার অনুমতি নেই' }, { status: 403 })
+      return apiError('MCQ আপডেট করার অনুমতি নেই', 403)
     }
 
     const { id } = await props.params
@@ -128,10 +119,7 @@ export async function PUT(
     const existingMcq = await db.mCQ.findUnique({ where: { id } })
 
     if (!existingMcq) {
-      return NextResponse.json(
-        { success: false, error: 'MCQ খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('MCQ খুঁজে পাওয়া যায়নি', 404)
     }
 
     const mcq = await db.mCQ.update({
@@ -163,10 +151,7 @@ export async function PUT(
     return NextResponse.json({ success: true, data: { message: 'MCQ আপডেট হয়েছে', mcq: transformMCQ(mcq) } })
   } catch (error) {
     console.error('Update MCQ error:', error)
-    return NextResponse.json(
-      { success: false, error: 'MCQ আপডেট করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('MCQ আপডেট করতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -179,7 +164,7 @@ export async function DELETE(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth || !auth.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ success: false, error: 'MCQ মুছে ফেলার অনুমতি নেই' }, { status: 403 })
+      return apiError('MCQ মুছে ফেলার অনুমতি নেই', 403)
     }
 
     const { id } = await props.params
@@ -187,10 +172,7 @@ export async function DELETE(
     const existingMcq = await db.mCQ.findUnique({ where: { id } })
 
     if (!existingMcq) {
-      return NextResponse.json(
-        { success: false, error: 'MCQ খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('MCQ খুঁজে পাওয়া যায়নি', 404)
     }
 
     await db.mCQ.update({
@@ -201,9 +183,6 @@ export async function DELETE(
     return NextResponse.json({ success: true, data: { message: 'MCQ সফলভাবে মুছে ফেলা হয়েছে' } })
   } catch (error) {
     console.error('Delete MCQ error:', error)
-    return NextResponse.json(
-      { success: false, error: 'MCQ মুছে ফেলতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('MCQ মুছে ফেলতে সমস্যা হয়েছে', 500)
   }
 }

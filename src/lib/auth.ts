@@ -70,6 +70,52 @@ export function assertRole(user: { role: Role }, ...roles: Role[]): void {
   }
 }
 
+/**
+ * Check whether a user's role has a specific permission.
+ * SUPER_ADMIN always passes all permission checks without DB lookup.
+ */
+let permissionCache: Map<string, Set<string>> | null = null
+let permissionCacheTime = 0
+const PERMISSION_CACHE_TTL = 60_000 // 1 minute
+
+async function getPermissionsForRole(role: Role): Promise<Set<string>> {
+  if (role === 'SUPER_ADMIN') return new Set(['*']) // super admin has all
+  const now = Date.now()
+  if (!permissionCache || now - permissionCacheTime > PERMISSION_CACHE_TTL) {
+    const rows = await db.rolePermission.findMany({
+      where: { role },
+      include: { permission: { select: { name: true } } },
+    })
+    const perms = new Set(rows.map(r => r.permission.name))
+    permissionCache = new Map([[role, perms]])
+    permissionCacheTime = now
+    return perms
+  }
+  return permissionCache.get(role) ?? new Set()
+}
+
+export function invalidatePermissionCache() {
+  permissionCache = null
+  permissionCacheTime = 0
+}
+
+/**
+ * Require that the authenticated user has a specific permission.
+ * SUPER_ADMIN passes all checks without needing explicit RolePermission entries.
+ */
+export async function requirePermission(
+  request: Request | undefined,
+  permissionName: string,
+): Promise<AuthResult> {
+  const auth = await requireAuth(request)
+  if (auth.user.role === 'SUPER_ADMIN') return auth
+  const perms = await getPermissionsForRole(auth.user.role)
+  if (!perms.has(permissionName)) {
+    throw new AuthorizationError('এই কাজের জন্য অনুমতি নেই।')
+  }
+  return auth
+}
+
 export const RoleLabel: Record<Role, string> = {
   SUPER_ADMIN: 'সুপার অ্যাডমিন',
   ADMIN: 'অ্যাডমিন',

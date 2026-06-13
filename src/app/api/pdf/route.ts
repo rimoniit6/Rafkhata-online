@@ -1,3 +1,4 @@
+import { apiError } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { apiLimiter, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit'
@@ -54,10 +55,7 @@ export async function GET(request: NextRequest) {
     // Require authentication
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন।', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন।', 401, 'UNAUTHORIZED')
     }
 
     // Rate limiting
@@ -74,7 +72,7 @@ export async function GET(request: NextRequest) {
     const filename = request.nextUrl.searchParams.get('filename') || 'document.pdf'
 
     if (!url) {
-      return NextResponse.json({ success: false, error: 'URL parameter is required' }, { status: 400 })
+      return apiError('URL parameter is required', 400)
     }
 
     // Validate URL format
@@ -82,16 +80,16 @@ export async function GET(request: NextRequest) {
     try {
       parsedUrl = new URL(url)
     } catch {
-      return NextResponse.json({ success: false, error: 'Invalid URL format' }, { status: 400 })
+      return apiError('Invalid URL format', 400)
     }
 
     if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
-      return NextResponse.json({ success: false, error: 'Invalid URL protocol' }, { status: 400 })
+      return apiError('Invalid URL protocol', 400)
     }
 
     // SSRF protection: block internal/private URLs
     if (!isUrlSafe(parsedUrl)) {
-      return NextResponse.json({ success: false, error: 'Access to this URL is not allowed' }, { status: 403 })
+      return apiError('Access to this URL is not allowed', 403)
     }
 
     const response = await fetch(url, {
@@ -112,20 +110,14 @@ export async function GET(request: NextRequest) {
     const contentType = response.headers.get('content-type') || ''
     const allowedContentTypes = ['application/pdf', 'image/', 'text/html', 'text/plain']
     if (!allowedContentTypes.some(t => contentType.startsWith(t)) && contentType !== 'application/octet-stream') {
-      return NextResponse.json(
-        { success: false, error: 'Invalid content type' },
-        { status: 400 }
-      )
+      return apiError('Invalid content type', 400)
     }
 
     const buffer = await response.arrayBuffer()
 
     // Limit response size to 50MB
     if (buffer.byteLength > 50 * 1024 * 1024) {
-      return NextResponse.json(
-        { success: false, error: 'File too large' },
-        { status: 400 }
-      )
+      return apiError('File too large', 400)
     }
 
     return new NextResponse(buffer, {
@@ -139,9 +131,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('PDF proxy error:', error)
-    return NextResponse.json(
-      { success: false, error: 'Failed to download PDF.' },
-      { status: 500 }
-    )
+    return apiError('Failed to download PDF.', 500)
   }
 }

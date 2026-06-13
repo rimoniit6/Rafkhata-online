@@ -56,8 +56,10 @@ export async function GET() {
     homepageStatsSubtitle: '',
     homepageFeaturedTitle: '',
     homepageFeaturedSubtitle: '',
-    homepagePremiumTitle: '',
-    homepagePremiumSubtitle: '',
+        homepagePremiumTitle: '',
+        homepagePremiumSubtitle: '',
+        homepageTeachersTitle: '',
+        homepageTeachersSubtitle: '',
     // Admin-controllable empty state messages
     messages: {
       contentComingSoon: 'কন্টেন্ট শীঘ্রই আসবে',
@@ -130,6 +132,8 @@ export async function GET() {
         homepageFeaturedSubtitle: config.homepage_featured_subtitle || '',
         homepagePremiumTitle: config.homepage_premium_title || '',
         homepagePremiumSubtitle: config.homepage_premium_subtitle || '',
+        homepageTeachersTitle: config.homepage_teachers_title || '',
+        homepageTeachersSubtitle: config.homepage_teachers_subtitle || '',
         // Admin-controllable empty state messages (from SiteSetting keys starting with 'msg')
         messages: {
           contentComingSoon: config.msg_contentComingSoon || config.msgContentComingSoon || defaultConfig.messages.contentComingSoon,

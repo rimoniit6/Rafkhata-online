@@ -20,10 +20,7 @@ export async function POST(request: Request) {
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'প্রমাণীকরণ প্রয়োজন' },
-        { status: 401 }
-      )
+      return apiError('প্রমাণীকরণ প্রয়োজন', 401)
     }
 
     const userId = auth.user.id
@@ -31,10 +28,7 @@ export async function POST(request: Request) {
     const validation = batchCheckSchema.safeParse(body)
 
     if (!validation.success) {
-      return NextResponse.json(
-        { success: false, error: 'অবৈধ অনুরোধ', details: validation.error.issues },
-        { status: 400 }
-      )
+      return apiError('অবৈধ অনুরোধ', 400, undefined, validation.error.issues)
     }
 
     const { items } = validation.data
@@ -44,10 +38,7 @@ export async function POST(request: Request) {
       (item) => !VALID_CONTENT_TYPES.includes(item.contentType)
     )
     if (invalidTypes.length > 0) {
-      return NextResponse.json(
-        { success: false, error: 'contentType অবশ্যই mcq, cq, বা lecture হতে হবে' },
-        { status: 400 }
-      )
+      return apiError('contentType অবশ্যই mcq, cq, বা lecture হতে হবে', 400)
     }
 
     // Build OR conditions for a single query
@@ -89,9 +80,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('Batch check bookmarks error:', error)
-    return NextResponse.json(
-      { success: false, error: 'বুকমার্ক যাচাই করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('বুকমার্ক যাচাই করতে সমস্যা হয়েছে', 500)
   }
 }

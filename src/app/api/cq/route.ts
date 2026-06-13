@@ -342,7 +342,7 @@ export async function POST(request: Request) {
     // Require admin auth for creating CQs
     const auth = await verifyAuth(request)
     if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ success: false, error: 'সৃজনশীল প্রশ্ন তৈরি করার অনুমতি নেই' }, { status: 403 })
+      return apiError('সৃজনশীল প্রশ্ন তৈরি করার অনুমতি নেই', 403)
     }
 
     const body = await request.json()
@@ -377,10 +377,7 @@ export async function POST(request: Request) {
     } = body
 
     if (!uddeepok || !question1 || !chapterId || !classLevel || !subjectId) {
-      return NextResponse.json(
-        { success: false, error: 'প্রয়োজনীয় ফিল্ড পূরণ করুন' },
-        { status: 400 }
-      )
+      return apiError('প্রয়োজনীয় ফিল্ড পূরণ করুন', 400)
     }
 
     const cq = await db.cQ.create({
@@ -421,9 +418,6 @@ export async function POST(request: Request) {
     )
   } catch (error) {
     console.error('Create CQ error:', error)
-    return NextResponse.json(
-      { success: false, error: 'সৃজনশীল প্রশ্ন তৈরি করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('সৃজনশীল প্রশ্ন তৈরি করতে সমস্যা হয়েছে', 500)
   }
 }

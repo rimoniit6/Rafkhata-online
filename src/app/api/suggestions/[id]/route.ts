@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 
@@ -14,10 +15,7 @@ export async function GET(
     })
 
     if (!suggestion) {
-      return NextResponse.json(
-        { success: false, error: 'সাজেশন খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('সাজেশন খুঁজে পাওয়া যায়নি', 404)
     }
 
     // Increment view count
@@ -98,9 +96,6 @@ export async function GET(
     return NextResponse.json({ success: true, ...base, content: suggestion.content })
   } catch (error) {
     console.error('Get Suggestion detail error:', error)
-    return NextResponse.json(
-      { success: false, error: 'সাজেশনের বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('সাজেশনের বিস্তারিত তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }

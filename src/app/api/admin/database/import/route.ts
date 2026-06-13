@@ -63,15 +63,13 @@ export async function POST(request: NextRequest) {
   try {
     const auth = await requireSuperAdmin(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'সুপার অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
-        { status: 403 }
-      )
+      return apiError('সুপার অ্যাডমিন অনুমতি প্রয়োজন।', 403, 'FORBIDDEN')
     }
 
     const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error
 
+    // Increase timeout for the import
     const body = await request.json()
     const { data } = body
 
@@ -135,6 +133,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: { message: 'ডাটাবেজ ইমপোর্ট সম্পন্ন হয়েছে', results } })
   } catch (error) {
+    console.error('[DB Import] Error details:', error instanceof Error ? { message: error.message, stack: error.stack, name: error.name } : error)
     return handleApiError(error, 'Database import error')
   }
 }

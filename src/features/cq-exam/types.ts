@@ -4,7 +4,7 @@ export interface CQExamPackageRecord {
   description: string | null
   classId: string
   class: { id: string; name: string; slug: string }
-  subjectIds: string
+  subjectIds: string[]
   price: number
   originalPrice: number
   isPremium: boolean
@@ -61,10 +61,10 @@ export interface CQExamSetQuestionRecord {
   marks: number
   order: number
   type: string
-  subMarks: string | null
+  subMarks: number[] | null
   stem: string | null
   stemImage: string | null
-  config: string | null
+  config: Record<string, unknown> | null
   typedUddeepok: string | null
   typedUddeepokImage: string | null
   typedQuestion1: string | null
@@ -153,7 +153,7 @@ export interface CQExamAnswerImageRecord {
   id: string
   answerId: string
   imageUrl: string
-  annotations: string | null
+  annotations: any[] | null
   order: number
 }
 

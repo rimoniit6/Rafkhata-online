@@ -23,10 +23,10 @@ export default function TeacherModeratorsSection() {
     <section className="py-16 sm:py-20 bg-gradient-to-b from-transparent via-emerald-50/30 to-transparent dark:via-emerald-950/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3" suppressHydrationWarning>
             {config?.homepageTeachersTitle || 'আমাদের শিক্ষক ও মডারেটর'}
           </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto" suppressHydrationWarning>
             {config?.homepageTeachersSubtitle || 'যারা আছেন আপনার পাশে'}
           </p>
         </div>

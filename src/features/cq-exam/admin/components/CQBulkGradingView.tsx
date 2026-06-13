@@ -245,12 +245,12 @@ export function CQBulkGradingView({ saving, set: setData, bulkSubmissions, onBul
     return ids
   }, [bulkSubmissions])
 
-  const handleAnnotationSave = useCallback(async (imageId: string, annotationsJson: string) => {
+  const handleAnnotationSave = useCallback(async (imageId: string, annotations: unknown) => {
     try {
       await fetch('/api/admin/cq-exam-packages', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'save-annotation', imageId, annotations: annotationsJson }),
+        body: JSON.stringify({ action: 'save-annotation', imageId, annotations }),
       })
       setAnnotatingImage(null)
     } catch {

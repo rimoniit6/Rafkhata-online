@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 
 /**
@@ -16,10 +17,7 @@ export async function GET() {
     // Validate database connection
     if (!db) {
       console.error('[/api/hierarchy/metadata] Database client is not available')
-      return NextResponse.json(
-        { success: false, error: 'ডাটাবেজ সংযোগ পাওয়া যায়নি' },
-        { status: 500 }
-      )
+      return apiError('ডাটাবেজ সংযোগ পাওয়া যায়নি', 500)
     }
 
     // Fetch all data in parallel
@@ -127,9 +125,6 @@ export async function GET() {
       ? 'ডাটাবেজ সংযোগে সমস্যা হয়েছে, পরে আবার চেষ্টা করুন'
       : 'মেটাডাটা লোড করতে সমস্যা হয়েছে'
 
-    return NextResponse.json(
-      { success: false, error: errorMessage },
-      { status: 500 }
-    )
+    return apiError(errorMessage, 500)
   }
 }

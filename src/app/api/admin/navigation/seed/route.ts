@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { requireSuperAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireSuperAdmin(request)
     if (!auth) {
-      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
+      return apiError('অনুমতি নেই', 403)
     }
 
     let created = 0
@@ -67,9 +68,6 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     console.error('[Admin Navigation Seed] POST error:', error)
-    return NextResponse.json(
-      { success: false, error: 'নেভিগেশন seed করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('নেভিগেশন seed করতে সমস্যা হয়েছে', 500)
   }
 }

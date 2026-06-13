@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 
 // GET /api/board-questions/filters?classLevel=ssc&year=2024
@@ -124,6 +125,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Board questions filters error:', error)
-    return NextResponse.json({ success: false, error: 'ফিল্টার অপশন লোড করতে সমস্যা হয়েছে' }, { status: 500 })
+    return apiError('ফিল্টার অপশন লোড করতে সমস্যা হয়েছে', 500)
   }
 }

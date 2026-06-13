@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { getContentTypeLabels } from '@/lib/content-type-labels'
@@ -7,10 +8,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
-        { status: 403 }
-      )
+      return apiError('অ্যাডমিন অনুমতি প্রয়োজন।', 403, 'FORBIDDEN')
     }
 
     const { searchParams } = new URL(request.url)
@@ -107,10 +105,7 @@ export async function GET(request: Request) {
     })
   } catch (error) {
     console.error('Admin Content Purchases GET error:', error)
-    return NextResponse.json(
-      { success: false, error: 'কন্টেন্ট ক্রয়ের তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('কন্টেন্ট ক্রয়ের তথ্য আনতে সমস্যা হয়েছে', 500)
   }
 }
 
@@ -118,20 +113,14 @@ export async function PATCH(request: Request) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json(
-        { success: false, error: 'অ্যাডমিন অনুমতি প্রয়োজন।', code: 'FORBIDDEN' },
-        { status: 403 }
-      )
+      return apiError('অ্যাডমিন অনুমতি প্রয়োজন।', 403, 'FORBIDDEN')
     }
 
     const body = await request.json()
     const { id, isActive, reason } = body
 
     if (!id || isActive === undefined) {
-      return NextResponse.json(
-        { success: false, error: 'আইডি এবং isActive প্রয়োজন' },
-        { status: 400 }
-      )
+      return apiError('আইডি এবং isActive প্রয়োজন', 400)
     }
 
     const existing = await db.payment.findUnique({
@@ -140,17 +129,11 @@ export async function PATCH(request: Request) {
     })
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'পেমেন্ট খুঁজে পাওয়া যায়নি' },
-        { status: 404 }
-      )
+      return apiError('পেমেন্ট খুঁজে পাওয়া যায়নি', 404)
     }
 
     if (existing.status !== 'approved') {
-      return NextResponse.json(
-        { success: false, error: 'শুধুমাত্র অনুমোদিত পেমেন্টের অ্যাক্সেস পরিবর্তন করা যায়' },
-        { status: 400 }
-      )
+      return apiError('শুধুমাত্র অনুমোদিত পেমেন্টের অ্যাক্সেস পরিবর্তন করা যায়', 400)
     }
 
     // Update Payment.isActive
@@ -255,9 +238,6 @@ export async function PATCH(request: Request) {
     })
   } catch (error) {
     console.error('Admin Content Purchases PATCH error:', error)
-    return NextResponse.json(
-      { success: false, error: 'কন্টেন্ট ক্রয় আপডেট করতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return apiError('কন্টেন্ট ক্রয় আপডেট করতে সমস্যা হয়েছে', 500)
   }
 }

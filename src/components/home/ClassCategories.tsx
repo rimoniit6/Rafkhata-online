@@ -45,14 +45,14 @@ export default function ClassCategories() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold mb-4" suppressHydrationWarning>
             <Sparkles className="w-3.5 h-3.5" />
             {config?.homepageClassesBadge || 'শিক্ষা যাত্রা'}
           </div>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-3" suppressHydrationWarning>
             {config?.homepageClassesTitle || 'আপনার ক্লাস বেছে নিন'}
           </h2>
-          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto" suppressHydrationWarning>
             {config?.homepageClassesSubtitle || 'আপনার শ্রেণি অনুযায়ী সকল বিষয় ও কন্টেন্ট দেখুন'}
           </p>
         </div>

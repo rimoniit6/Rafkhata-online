@@ -115,14 +115,7 @@ export default function AdminExamResultsPage() {
   useEffect(() => { fetchExams() }, [fetchExams])
   useEffect(() => { fetchResults() }, [fetchResults])
 
-  // Parse answers JSON for detail view
-  const parseAnswers = (answersStr: string) => {
-    try {
-      return JSON.parse(answersStr)
-    } catch {
-      return answersStr
-    }
-  }
+  const parseAnswers = (answers: unknown) => answers
 
   const selection = useTableSelection(results)
 

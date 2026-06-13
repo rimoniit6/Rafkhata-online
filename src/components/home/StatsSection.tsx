@@ -91,10 +91,10 @@ export default function StatsSection() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-10 sm:mb-12 animate-fade-in-up">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3" suppressHydrationWarning>
             {config?.homepageStatsTitle || 'আমাদের অর্জন'}
           </h2>
-          <p className="text-white/80 text-lg max-w-xl mx-auto">
+          <p className="text-white/80 text-lg max-w-xl mx-auto" suppressHydrationWarning>
             {config?.homepageStatsSubtitle || config?.statsSubtitle || 'সারা বাংলাদেশের শিক্ষার্থীদের সাথে আমরা এগিয়ে যাচ্ছি'}
           </p>
         </div>
