@@ -142,27 +142,28 @@ export default function PaymentPage() {
       if (classLevel) url += `&classLevel=${encodeURIComponent(classLevel)}`
       const res = await fetch(url)
       if (!res.ok) {
-        const data = await res.json().catch(() => null)
-        throw new Error(data?.error || 'কন্টেন্টের তথ্য আনতে সমস্যা হয়েছে')
+        const errData = await res.json().catch(() => null)
+        throw new Error(errData?.error || 'কন্টেন্টের তথ্য আনতে সমস্যা হয়েছে')
       }
-      const data = await res.json()
+      const json = await res.json()
+      const d = json.data || json
       setContentInfo({
-        contentType: data.contentType || cType,
-        contentId: data.contentId || cId,
-        title: data.title || getLabel(cType) || cType,
-        price: data.price || 0,
-        type: data.contentTypeLabel || getLabel(cType) || cType,
-        description: data.description || undefined,
-        isPremium: data.isPremium,
-        originalPrice: data.originalPrice,
-        itemCount: data.itemCount,
-        duration: data.duration,
-        durationLabel: data.durationLabel,
-        classLevel: data.classLevel || classLevel,
-        mcqCount: data.mcqCount,
-        cqCount: data.cqCount,
-        lectureCount: data.lectureCount,
-        totalContent: data.totalContent,
+        contentType: d.contentType || cType,
+        contentId: d.contentId || cId,
+        title: d.title || getLabel(cType) || cType,
+        price: d.price || 0,
+        type: d.contentTypeLabel || getLabel(cType) || cType,
+        description: d.description || undefined,
+        isPremium: d.isPremium,
+        originalPrice: d.originalPrice,
+        itemCount: d.itemCount,
+        duration: d.duration,
+        durationLabel: d.durationLabel,
+        classLevel: d.classLevel || classLevel,
+        mcqCount: d.mcqCount,
+        cqCount: d.cqCount,
+        lectureCount: d.lectureCount,
+        totalContent: d.totalContent,
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'কন্টেন্টের তথ্য আনতে সমস্যা হয়েছে')
