@@ -12,7 +12,7 @@ export async function GET(
     const auth = await verifyAuth(request)
     if (!auth) {
       return NextResponse.json(
-        { error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
+        { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
         { status: 401 }
       )
     }
@@ -22,23 +22,23 @@ export async function GET(
 
     if (!note) {
       return NextResponse.json(
-        { error: 'নোট খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'নোট খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
 
     if (note.userId !== auth.user.id) {
       return NextResponse.json(
-        { error: 'এই নোট দেখার অনুমতি নেই' },
+        { success: false, error: 'এই নোট দেখার অনুমতি নেই' },
         { status: 403 }
       )
     }
 
-    return NextResponse.json({ data: note })
+    return NextResponse.json({ success: true, data: note })
   } catch (error) {
     console.error('Get Note error:', error)
     return NextResponse.json(
-      { error: 'নোট এর তথ্য আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'নোট এর তথ্য আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -55,7 +55,7 @@ export async function PUT(
     const auth = await verifyAuth(request)
     if (!auth) {
       return NextResponse.json(
-        { error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
+        { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
         { status: 401 }
       )
     }
@@ -65,14 +65,14 @@ export async function PUT(
 
     if (!note) {
       return NextResponse.json(
-        { error: 'নোট খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'নোট খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
 
     if (note.userId !== auth.user.id) {
       return NextResponse.json(
-        { error: 'এই নোট সম্পাদনার অনুমতি নেই' },
+        { success: false, error: 'এই নোট সম্পাদনার অনুমতি নেই' },
         { status: 403 }
       )
     }
@@ -82,7 +82,7 @@ export async function PUT(
 
     if (!content || !content.trim()) {
       return NextResponse.json(
-        { error: 'নোটের বিষয়বস্তু আবশ্যক' },
+        { success: false, error: 'নোটের বিষয়বস্তু আবশ্যক' },
         { status: 400 }
       )
     }
@@ -92,11 +92,11 @@ export async function PUT(
       data: { content: content.trim() },
     })
 
-    return NextResponse.json({ data: updated })
+    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Update Note error:', error)
     return NextResponse.json(
-      { error: 'নোট আপডেট করতে সমস্যা হয়েছে' },
+      { success: false, error: 'নোট আপডেট করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -113,7 +113,7 @@ export async function DELETE(
     const auth = await verifyAuth(request)
     if (!auth) {
       return NextResponse.json(
-        { error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
+        { success: false, error: 'প্রমাণীকরণ প্রয়োজন। অনুগ্রহ করে লগইন করুন।' },
         { status: 401 }
       )
     }
@@ -123,7 +123,7 @@ export async function DELETE(
 
     if (!note) {
       return NextResponse.json(
-        { error: 'নোট খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'নোট খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -131,18 +131,18 @@ export async function DELETE(
     // Owner or admin can delete
     if (note.userId !== auth.user.id && !auth.isAdmin) {
       return NextResponse.json(
-        { error: 'এই নোট মুছার অনুমতি নেই' },
+        { success: false, error: 'এই নোট মুছার অনুমতি নেই' },
         { status: 403 }
       )
     }
 
     await db.note.delete({ where: { id } })
 
-    return NextResponse.json({ data: { id }, message: 'নোট সফলভাবে মুছে ফেলা হয়েছে' })
+    return NextResponse.json({ success: true, data: { id }, message: 'নোট সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     console.error('Delete Note error:', error)
     return NextResponse.json(
-      { error: 'নোট মুছে ফেলতে সমস্যা হয়েছে' },
+      { success: false, error: 'নোট মুছে ফেলতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

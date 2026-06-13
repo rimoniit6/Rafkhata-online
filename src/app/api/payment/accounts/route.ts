@@ -37,15 +37,18 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ accounts })
+    return NextResponse.json({ success: true, data: { accounts } })
   } catch (error) {
     console.error('Get payment accounts error:', error)
     // Return fallback accounts even on error
     return NextResponse.json({
-      accounts: {
-        bkash: '017XXXXXXXX',
-        nagad: '018XXXXXXXX',
-        rocket: '016XXXXXXXX',
+      success: true,
+      data: {
+        accounts: {
+          bkash: '017XXXXXXXX',
+          nagad: '018XXXXXXXX',
+          rocket: '016XXXXXXXX',
+        },
       },
     })
   }

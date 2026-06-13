@@ -9,11 +9,11 @@ export async function GET() {
       orderBy: { order: 'asc' },
     })
 
-    return NextResponse.json({ testimonials }, { headers: cacheHeaders.public.long })
+    return NextResponse.json({ success: true, data: { testimonials } }, { headers: cacheHeaders.public.long })
   } catch (error) {
     console.error('Get testimonials error:', error)
     return NextResponse.json(
-      { error: 'টেস্টিমোনিয়াল আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'টেস্টিমোনিয়াল আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

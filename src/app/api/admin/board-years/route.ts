@@ -16,11 +16,11 @@ export async function GET(request: Request) {
       orderBy: [{ year: 'desc' }, { board: 'asc' }],
     })
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Admin Get BoardYears error:', error)
     return NextResponse.json(
-      { error: 'বোর্ড সাল এর তথ্য আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'বোর্ড সাল এর তথ্য আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
     if (!board || !year) {
       return NextResponse.json(
-        { error: 'বোর্ড এবং সাল আবশ্যক' },
+        { success: false, error: 'বোর্ড এবং সাল আবশ্যক' },
         { status: 400 }
       )
     }
@@ -46,11 +46,11 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json({ data }, { status: 201 })
+    return NextResponse.json({ success: true, data }, { status: 201 })
   } catch (error) {
     console.error('Admin Create BoardYear error:', error)
     return NextResponse.json(
-      { error: 'বোর্ড সাল তৈরি করতে সমস্যা হয়েছে' },
+      { success: false, error: 'বোর্ড সাল তৈরি করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -90,11 +90,11 @@ export async function PUT(request: Request) {
       data,
     })
 
-    return NextResponse.json({ data: updated })
+    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Admin Update BoardYear error:', error)
     return NextResponse.json(
-      { error: 'বোর্ড সাল আপডেট করতে সমস্যা হয়েছে' },
+      { success: false, error: 'বোর্ড সাল আপডেট করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -115,10 +115,9 @@ export async function DELETE(request: Request) {
         // No body provided
       }
     }
-
     if (!id) {
       return NextResponse.json(
-        { error: 'বোর্ড সাল ID আবশ্যক' },
+        { success: false, error: 'বোর্ড সাল ID আবশ্যক' },
         { status: 400 }
       )
     }
@@ -126,18 +125,18 @@ export async function DELETE(request: Request) {
     const existing = await db.boardYear.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json(
-        { error: 'বোর্ড সাল খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'বোর্ড সাল খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
 
     await db.boardYear.delete({ where: { id } })
 
-    return NextResponse.json({ data: { id }, message: 'বোর্ড সাল সফলভাবে মুছে ফেলা হয়েছে' })
+    return NextResponse.json({ success: true, data: { id }, message: 'বোর্ড সাল সফলভাবে মুছে ফেলা হয়েছে' })
   } catch (error) {
     console.error('Admin Delete BoardYear error:', error)
     return NextResponse.json(
-      { error: 'বোর্ড সাল মুছে ফেলতে সমস্যা হয়েছে' },
+      { success: false, error: 'বোর্ড সাল মুছে ফেলতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

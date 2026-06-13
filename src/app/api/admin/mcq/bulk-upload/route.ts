@@ -47,11 +47,11 @@ export async function POST(request: Request) {
     const subjectId = formData.get('subjectId') as string
 
     if (!file) {
-      return NextResponse.json({ error: 'Excel ফাইল আপলোড করুন' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Excel ফাইল আপলোড করুন' }, { status: 400 })
     }
 
     if (!classLevel) {
-      return NextResponse.json({ error: 'ক্লাস নির্বাচন আবশ্যক' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'ক্লাস নির্বাচন আবশ্যক' }, { status: 400 })
     }
 
     // Parse Excel file
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' })
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'Excel ফাইলে কোনো ডাটা নেই' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Excel ফাইলে কোনো ডাটা নেই' }, { status: 400 })
     }
 
     // Resolve subjectId — if "all" or not provided, look up from subject name
@@ -179,13 +179,16 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      message: `${results.success}টি প্রশ্ন সফলভাবে যোগ হয়েছে${results.failed > 0 ? `, ${results.failed}টি ব্যর্থ` : ''}`,
-      ...results,
+      success: true,
+      data: {
+        message: `${results.success}টি প্রশ্ন সফলভাবে যোগ হয়েছে${results.failed > 0 ? `, ${results.failed}টি ব্যর্থ` : ''}`,
+        ...results,
+      },
     })
   } catch (error) {
     console.error('Bulk upload error:', error)
     return NextResponse.json(
-      { error: 'Excel ফাইল প্রসেস করতে সমস্যা হয়েছে' },
+      { success: false, error: 'Excel ফাইল প্রসেস করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -301,7 +304,7 @@ export async function GET() {
   } catch (error) {
     console.error('Template download error:', error)
     return NextResponse.json(
-      { error: 'টেমপ্লেট তৈরি করতে সমস্যা হয়েছে' },
+      { success: false, error: 'টেমপ্লেট তৈরি করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

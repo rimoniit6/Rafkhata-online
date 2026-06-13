@@ -3,6 +3,7 @@ import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { checkContentAccess } from '@/lib/access-control'
 import { apiError, withCsrf } from '@/lib/api-utils'
+import { handleApiError } from '@/lib/errors'
 
 function transformCQ(cq: {
   id: string
@@ -117,7 +118,7 @@ export async function GET(
 
     if (!cq) {
       return NextResponse.json(
-        { error: 'CQ খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'CQ খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -128,7 +129,7 @@ export async function GET(
 
       if (!userId) {
         return NextResponse.json(
-          { error: 'এই CQ টি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
+          { success: false, error: 'এই CQ টি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
           { status: 401 }
         )
       }
@@ -141,28 +142,27 @@ export async function GET(
 
       if (!access.hasAccess) {
         return NextResponse.json({
-          id: cq.id,
-          uddeepok: cq.uddeepok,
-          isPremium: true,
-          price: cq.price,
-          chapterId: cq.chapterId,
-          chapterName: cq.chapter?.name || '',
-          subjectName: cq.chapter?.subject?.name || '',
-          className: cq.chapter?.subject?.class?.name || '',
-          classSlug: cq.chapter?.subject?.class?.slug || '',
-          hasAccess: false,
-          pendingPayment: access.pendingPayment,
+          success: true,
+          data: {
+            id: cq.id,
+            uddeepok: cq.uddeepok,
+            isPremium: true,
+            price: cq.price,
+            chapterId: cq.chapterId,
+            chapterName: cq.chapter?.name || '',
+            subjectName: cq.chapter?.subject?.name || '',
+            className: cq.chapter?.subject?.class?.name || '',
+            classSlug: cq.chapter?.subject?.class?.slug || '',
+            hasAccess: false,
+            pendingPayment: access.pendingPayment,
+          },
         })
       }
     }
 
-    return NextResponse.json(transformCQ(cq))
+    return NextResponse.json({ success: true, data: transformCQ(cq) })
   } catch (error) {
-    console.error('Get CQ detail error:', error)
-    return NextResponse.json(
-      { error: 'CQ এর বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return handleApiError(error, 'Get CQ detail error')
   }
 }
 
@@ -175,7 +175,7 @@ export async function PUT(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ error: 'CQ আপডেট করার অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'CQ আপডেট করার অনুমতি নেই' }, { status: 403 })
     }
 
     const { id } = await props.params
@@ -185,7 +185,7 @@ export async function PUT(
 
     if (!existingCq) {
       return NextResponse.json(
-        { error: 'CQ খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'CQ খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -221,11 +221,11 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json({ message: 'CQ আপডেট হয়েছে', cq })
+    return NextResponse.json({ success: true, data: { message: 'CQ আপডেট হয়েছে', cq } })
   } catch (error) {
     console.error('Update CQ error:', error)
     return NextResponse.json(
-      { error: 'CQ আপডেট করতে সমস্যা হয়েছে' },
+      { success: false, error: 'CQ আপডেট করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -240,7 +240,7 @@ export async function DELETE(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ error: 'CQ মুছে ফেলার অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'CQ মুছে ফেলার অনুমতি নেই' }, { status: 403 })
     }
 
     const { id } = await props.params
@@ -249,7 +249,7 @@ export async function DELETE(
 
     if (!existingCq) {
       return NextResponse.json(
-        { error: 'CQ খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'CQ খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -259,11 +259,11 @@ export async function DELETE(
       data: { isActive: false },
     })
 
-    return NextResponse.json({ message: 'CQ সফলভাবে মুছে ফেলা হয়েছে' })
+    return NextResponse.json({ success: true, data: { message: 'CQ সফলভাবে মুছে ফেলা হয়েছে' } })
   } catch (error) {
     console.error('Delete CQ error:', error)
     return NextResponse.json(
-      { error: 'CQ মুছে ফেলতে সমস্যা হয়েছে' },
+      { success: false, error: 'CQ মুছে ফেলতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

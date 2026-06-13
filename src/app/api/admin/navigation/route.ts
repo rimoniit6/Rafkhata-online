@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     const items = await db.navigation.findMany({
@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('[Admin Navigation] GET error:', error)
     return NextResponse.json(
-      { error: 'নেভিগেশন আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'নেভিগেশন আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -29,15 +29,13 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     const body = await request.json()
     const { label, route, icon, location, order, isAuthOnly, isAdminOnly, isActive } = body
 
-    if (!label || !route) {
-      return NextResponse.json(
-        { error: 'label ও route আবশ্যক' },
+    if (!label || !route) {      return NextResponse.json({ success: false, error: 'label ও route আবশ্যক' },
         { status: 400 }
       )
     }
@@ -59,7 +57,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[Admin Navigation] POST error:', error)
     return NextResponse.json(
-      { error: 'নেভিগেশন তৈরি করতে সমস্যা হয়েছে' },
+      { success: false, error: 'নেভিগেশন তৈরি করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -70,14 +68,14 @@ export async function PUT(request: Request) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     const body = await request.json()
     const { id, ...updates } = body
 
     if (!id) {
-      return NextResponse.json({ error: 'id আবশ্যক' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'id আবশ্যক' }, { status: 400 })
     }
 
     const item = await db.navigation.update({
@@ -89,7 +87,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     console.error('[Admin Navigation] PUT error:', error)
     return NextResponse.json(
-      { error: 'নেভিগেশন আপডেট করতে সমস্যা হয়েছে' },
+      { success: false, error: 'নেভিগেশন আপডেট করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -100,14 +98,14 @@ export async function DELETE(request: Request) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'id আবশ্যক' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'id আবশ্যক' }, { status: 400 })
     }
 
     const item = await db.navigation.update({
@@ -119,7 +117,7 @@ export async function DELETE(request: Request) {
   } catch (error) {
     console.error('[Admin Navigation] DELETE error:', error)
     return NextResponse.json(
-      { error: 'নেভিগেশন মুছতে সমস্যা হয়েছে' },
+      { success: false, error: 'নেভিগেশন মুছতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

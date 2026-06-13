@@ -62,7 +62,7 @@ export async function POST(request: Request) {
     const auth = await requireAdmin(request)
     if (!auth) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
+        { success: false, error: 'Unauthorized. Admin access required.' },
         { status: 401 }
       )
     }
@@ -75,10 +75,10 @@ export async function POST(request: Request) {
 
     // Validate required fields
     if (!file) {
-      return NextResponse.json({ error: 'Excel ফাইল আপলোড করুন' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Excel ফাইল আপলোড করুন' }, { status: 400 })
     }
     if (!setId) {
-      return NextResponse.json({ error: 'এক্সাম সেট ID আবশ্যক' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'এক্সাম সেট ID আবশ্যক' }, { status: 400 })
     }
 
     // Validate exam set exists and get marksPerQ
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       },
     })
     if (!examSet) {
-      return NextResponse.json({ error: 'এক্সাম সেট পাওয়া যায়নি' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'এক্সাম সেট পাওয়া যায়নি' }, { status: 404 })
     }
 
     // Parse Excel file
@@ -100,11 +100,11 @@ export async function POST(request: Request) {
     const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' })
 
     if (rows.length === 0) {
-      return NextResponse.json({ error: 'Excel ফাইলে কোনো ডাটা নেই' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'Excel ফাইলে কোনো ডাটা নেই' }, { status: 400 })
     }
 
     if (rows.length > 500) {
-      return NextResponse.json({ error: 'একবারে সর্বোচ্চ ৫০০টি প্রশ্ন আপলোড করা যাবে' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'একবারে সর্বোচ্চ ৫০০টি প্রশ্ন আপলোড করা যাবে' }, { status: 400 })
     }
 
     // Resolve subjectId
@@ -258,14 +258,17 @@ export async function POST(request: Request) {
     await recalculateSetTotals(setId)
 
     return NextResponse.json({
-      message: `${results.success}টি প্রশ্ন সফলভাবে আপলোড ও সেটে যোগ হয়েছে${results.failed > 0 ? `, ${results.failed}টি ব্যর্থ` : ''}`,
-      ...results,
-      totalInSet: (await db.mCQExamSetQuestion.count({ where: { setId } })),
+      success: true,
+      data: {
+        message: `${results.success}টি প্রশ্ন সফলভাবে আপলোড ও সেটে যোগ হয়েছে${results.failed > 0 ? `, ${results.failed}টি ব্যর্থ` : ''}`,
+        ...results,
+        totalInSet: (await db.mCQExamSetQuestion.count({ where: { setId } })),
+      },
     })
   } catch (error) {
     console.error('Bulk upload questions error:', error)
     return NextResponse.json(
-      { error: 'Excel ফাইল প্রসেস করতে সমস্যা হয়েছে' },
+      { success: false, error: 'Excel ফাইল প্রসেস করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -277,7 +280,7 @@ export async function GET(request: Request) {
     const auth = await requireAdmin(request)
     if (!auth) {
       return NextResponse.json(
-        { error: 'Unauthorized. Admin access required.' },
+        { success: false, error: 'Unauthorized. Admin access required.' },
         { status: 401 }
       )
     }
@@ -381,7 +384,7 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Template download error:', error)
     return NextResponse.json(
-      { error: 'টেমপ্লেট তৈরি করতে সমস্যা হয়েছে' },
+      { success: false, error: 'টেমপ্লেট তৈরি করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

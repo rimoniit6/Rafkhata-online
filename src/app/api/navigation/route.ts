@@ -9,7 +9,7 @@ export async function GET() {
       orderBy: { order: 'asc' },
     })
 
-    return NextResponse.json({ items })
+    return NextResponse.json({ success: true, data: { items } })
   } catch (error) {
     return handleApiError(error, 'Get navigation error')
   }

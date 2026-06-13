@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     const inactivePurchases = totalPurchases - activePurchases
 
     return NextResponse.json({
+      success: true,
       data: purchases,
       pagination: {
         page,
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Admin Get MCQ Exam Purchases error:', error)
     return NextResponse.json(
-      { error: 'MCQ এক্সাম প্যাকেজ ক্রয়ের তথ্য আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'MCQ এক্সাম প্যাকেজ ক্রয়ের তথ্য আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -74,19 +75,19 @@ export async function DELETE(request: NextRequest) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 
     if (!id) {
-      return NextResponse.json({ error: 'ক্রয়ের ID প্রদান করুন' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'ক্রয়ের ID প্রদান করুন' }, { status: 400 })
     }
 
     const existing = await db.mCQExamPackagePurchase.findUnique({ where: { id } })
     if (!existing) {
-      return NextResponse.json({ error: 'ক্রয়ের তথ্য পাওয়া যায়নি' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'ক্রয়ের তথ্য পাওয়া যায়নি' }, { status: 404 })
     }
 
     // Deactivate instead of delete
@@ -95,11 +96,11 @@ export async function DELETE(request: NextRequest) {
       data: { isActive: false },
     })
 
-    return NextResponse.json({ message: 'ক্রয় নিষ্ক্রিয় করা হয়েছে' })
+    return NextResponse.json({ success: true, data: { message: 'ক্রয় নিষ্ক্রিয় করা হয়েছে' } })
   } catch (error) {
     console.error('Admin Deactivate MCQ Exam Purchase error:', error)
     return NextResponse.json(
-      { error: 'ক্রয় নিষ্ক্রিয় করতে সমস্যা হয়েছে' },
+      { success: false, error: 'ক্রয় নিষ্ক্রিয় করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

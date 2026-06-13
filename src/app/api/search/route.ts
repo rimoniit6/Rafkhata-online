@@ -1,10 +1,14 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
-import { apiError } from '@/lib/api-utils'
+import { apiError, applyRateLimit } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { apiLimiter } from '@/lib/rate-limit'
 
 export async function GET(request: Request) {
   try {
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
     const { searchParams } = new URL(request.url)
     const q = searchParams.get('q')
     const type = searchParams.get('type')
@@ -112,7 +116,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.json({ query: searchQuery, results, total: totalResults })
+    return NextResponse.json({ success: true, data: { query: searchQuery, results, total: totalResults } })
   } catch (error) {
     return handleApiError(error, 'Search error')
   }

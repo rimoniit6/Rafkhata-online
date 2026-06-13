@@ -10,7 +10,7 @@ export async function GET() {
     })
 
     if (featuredItems.length === 0) {
-      return NextResponse.json({ items: [] })
+      return NextResponse.json({ success: true, data: { items: [] } })
     }
 
     // Resolve each featured item to actual content
@@ -265,7 +265,7 @@ export async function GET() {
       }
     }
 
-    return NextResponse.json({ items })
+    return NextResponse.json({ success: true, data: { items } })
   } catch (error) {
     console.error('Get featured content error:', error)
     return NextResponse.json(

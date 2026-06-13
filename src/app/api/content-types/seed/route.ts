@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
     // Require super_admin auth for seeding content types
     const auth = await verifyAuth(request)
     if (!auth || !auth.user || auth.user.role !== 'SUPER_ADMIN') {
-      return NextResponse.json({ error: 'কন্টেন্ট টাইপ seed করার অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'কন্টেন্ট টাইপ seed করার অনুমতি নেই' }, { status: 403 })
     }
 
     let created = 0
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Seed content types error:', error)
     return NextResponse.json(
-      { error: 'কন্টেন্ট টাইপ seed করতে সমস্যা হয়েছে' },
+      { success: false, error: 'কন্টেন্ট টাইপ seed করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

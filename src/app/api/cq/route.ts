@@ -1,7 +1,9 @@
 import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
-import { apiError, withCsrf } from '@/lib/api-utils'
+import { apiError, withCsrf, applyRateLimit } from '@/lib/api-utils'
+import { handleApiError } from '@/lib/errors'
+import { apiLimiter } from '@/lib/rate-limit'
 
 // Transform raw CQ Prisma object to frontend-expected format
 function transformCQ(cq: {
@@ -129,6 +131,9 @@ function transformCQList(cq: {
 
 export async function GET(request: Request) {
   try {
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
     const { searchParams } = new URL(request.url)
     const chapterId = searchParams.get('chapterId')
     const classLevel = searchParams.get('classLevel')
@@ -209,10 +214,13 @@ export async function GET(request: Request) {
       const totalPages = Math.ceil(total / listLimit)
 
       return NextResponse.json({
-        cqs: list,
-        total,
-        freeCount,
-        premiumCount,
+        success: true,
+        data: {
+          cqs: list,
+          total,
+          freeCount,
+          premiumCount,
+        },
         pagination: {
           page: listPage,
           limit: listLimit,
@@ -313,7 +321,8 @@ export async function GET(request: Request) {
     })
 
     return NextResponse.json({
-      cqs: transformedCqs,
+      success: true,
+      data: { cqs: transformedCqs },
       pagination: {
         page,
         limit,
@@ -322,11 +331,7 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
-    console.error('Get CQs error:', error)
-    return NextResponse.json(
-      { error: 'সৃজনশীল প্রশ্নের তথ্য আনতে সমস্যা হয়েছে' },
-      { status: 500 }
-    )
+    return handleApiError(error, 'Get CQs error')
   }
 }
 
@@ -337,7 +342,7 @@ export async function POST(request: Request) {
     // Require admin auth for creating CQs
     const auth = await verifyAuth(request)
     if (!auth?.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ error: 'সৃজনশীল প্রশ্ন তৈরি করার অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'সৃজনশীল প্রশ্ন তৈরি করার অনুমতি নেই' }, { status: 403 })
     }
 
     const body = await request.json()
@@ -373,7 +378,7 @@ export async function POST(request: Request) {
 
     if (!uddeepok || !question1 || !chapterId || !classLevel || !subjectId) {
       return NextResponse.json(
-        { error: 'প্রয়োজনীয় ফিল্ড পূরণ করুন' },
+        { success: false, error: 'প্রয়োজনীয় ফিল্ড পূরণ করুন' },
         { status: 400 }
       )
     }
@@ -411,13 +416,13 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(
-      { message: 'সৃজনশীল প্রশ্ন সফলভাবে তৈরি হয়েছে', cq },
+      { success: true, data: { message: 'সৃজনশীল প্রশ্ন সফলভাবে তৈরি হয়েছে', cq } },
       { status: 201 }
     )
   } catch (error) {
     console.error('Create CQ error:', error)
     return NextResponse.json(
-      { error: 'সৃজনশীল প্রশ্ন তৈরি করতে সমস্যা হয়েছে' },
+      { success: false, error: 'সৃজনশীল প্রশ্ন তৈরি করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

@@ -19,11 +19,14 @@ export async function GET() {
     ])
 
     return NextResponse.json({
-      students: totalUsers,
-      mcqs: totalMcqs,
-      lectures: totalLectures,
-      cqs: totalCqs,
-      exams: totalExams,
+      success: true,
+      data: {
+        students: totalUsers,
+        mcqs: totalMcqs,
+        lectures: totalLectures,
+        cqs: totalCqs,
+        exams: totalExams,
+      },
     })
   } catch (error) {
     return handleApiError(error, 'Get public stats error')

@@ -67,7 +67,9 @@ async function fetchContentTypes(): Promise<ContentTypeItem[]> {
   fetchPromise = fetch('/api/content-types')
     .then(r => r.json())
     .then(j => {
-      const data = Array.isArray(j.data) ? j.data : []
+      // Handle { success, data } envelope
+      const items = j.success === true && j.data ? j.data : j
+      const data = Array.isArray(items) ? items : (Array.isArray(items.data) ? items.data : [])
       cachedContentTypes = data
       cacheTimestamp = Date.now()
       return data

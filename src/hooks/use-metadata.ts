@@ -148,13 +148,12 @@ export function useClasses() {
 }
 
 export function useBoards() {
-  const { data: boards = [], isLoading, error } = useQuery({
+  const { data: boards = [], isLoading, error } = useQuery<MetadataBoard[]>({
     queryKey: queryKeys.boards,
     queryFn: async () => {
-      const json = await fetchJSON<{ data?: MetadataBoard[] }>('/api/boards')
-      return Array.isArray(json.data) ? json.data : []
+      const result = await fetchJSON<MetadataBoard[] | { data?: MetadataBoard[] }>('/api/boards')
+      return Array.isArray(result) ? result : (Array.isArray((result as any).data) ? (result as any).data : [])
     },
-    select: (data) => data,
   })
 
   const labelMap = useMemo(() => Object.fromEntries(boards.map((b) => [b.slug, b.name])), [boards])
@@ -164,13 +163,12 @@ export function useBoards() {
 }
 
 export function useYears() {
-  const { data: years = [], isLoading, error } = useQuery({
+  const { data: years = [], isLoading, error } = useQuery<MetadataYear[]>({
     queryKey: queryKeys.years,
     queryFn: async () => {
-      const json = await fetchJSON<{ data?: MetadataYear[] }>('/api/years')
-      return Array.isArray(json.data) ? json.data : []
+      const result = await fetchJSON<MetadataYear[] | { data?: MetadataYear[] }>('/api/years')
+      return Array.isArray(result) ? result : (Array.isArray((result as any).data) ? (result as any).data : [])
     },
-    select: (data) => data,
   })
 
   const options = useMemo(() => years.map((y) => ({ value: y.year, label: y.year })), [years])

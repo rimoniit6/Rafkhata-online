@@ -169,9 +169,12 @@ export async function GET(request: NextRequest) {
     )
 
     return NextResponse.json({
-      bundles: activeBundles,
-      packages: packagesWithCounts,
-      hasBundles: activeBundles.length > 0,
+      success: true,
+      data: {
+        bundles: activeBundles,
+        packages: packagesWithCounts,
+        hasBundles: activeBundles.length > 0,
+      },
     })
   } catch (error) {
     console.error('Bundles-for content error:', error)

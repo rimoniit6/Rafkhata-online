@@ -8,11 +8,11 @@ export async function GET() {
       orderBy: { order: 'asc' },
     })
 
-    return NextResponse.json({ teachers })
+    return NextResponse.json({ success: true, data: { teachers } })
   } catch (error) {
     console.error('Get teacher-moderators error:', error)
     return NextResponse.json(
-      { error: 'টিচার/মডারেটর আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'টিচার/মডারেটর আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

@@ -1,8 +1,9 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
-import { apiError, withCsrf } from '@/lib/api-utils'
+import { apiError, withCsrf, applyRateLimit } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { apiLimiter } from '@/lib/rate-limit'
 
 // Transform raw MCQ Prisma object to frontend-expected format
 function transformMCQ(mcq: {
@@ -90,6 +91,9 @@ function transformMCQList(mcq: {
 
 export async function GET(request: Request) {
   try {
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
     const { searchParams } = new URL(request.url)
     const chapterId = searchParams.get('chapterId')
     const classLevel = searchParams.get('classLevel')
@@ -152,12 +156,15 @@ export async function GET(request: Request) {
       const totalPages = Math.ceil(total / listLimit)
 
       return NextResponse.json({
-        questions,
-        total,
-        freeCount,
-        premiumCount,
-        boardCount,
-        practiceCount,
+        success: true,
+        data: {
+          questions,
+          total,
+          freeCount,
+          premiumCount,
+          boardCount,
+          practiceCount,
+        },
         pagination: {
           page: listPage,
           limit: listLimit,
@@ -189,9 +196,12 @@ export async function GET(request: Request) {
       }))
 
       return NextResponse.json({
-        questions: examMcqs,
-        total: examMcqs.length,
-        mode: 'exam',
+        success: true,
+        data: {
+          questions: examMcqs,
+          total: examMcqs.length,
+          mode: 'exam',
+        },
       })
     }
 
@@ -258,7 +268,8 @@ export async function GET(request: Request) {
     })
 
     return NextResponse.json({
-      questions,
+      success: true,
+      data: { questions },
       pagination: {
         page,
         limit,

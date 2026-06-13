@@ -91,8 +91,10 @@ export function useNavigation() {
         if (!res.ok) throw new Error('Failed to fetch navigation')
         return res.json()
       })
-      .then((data) => {
-        const navItems = data.items || []
+      .then((json) => {
+        // Handle { success, data } envelope
+        const rawData = json.success === true && json.data ? json.data : json
+        const navItems = rawData.items || []
         if (navItems.length > 0) {
           setItems(navItems)
         }

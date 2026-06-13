@@ -16,9 +16,9 @@ export async function GET(request: Request) {
       orderBy: [{ year: 'desc' }, { board: 'asc' }],
     })
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Public Get BoardYears error:', error)
-    return NextResponse.json({ error: 'বোর্ড সাল আনতে সমস্যা হয়েছে' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'বোর্ড সাল আনতে সমস্যা হয়েছে' }, { status: 500 })
   }
 }

@@ -181,16 +181,16 @@ export async function GET(request: Request) {
 
       default:
         return NextResponse.json(
-          { error: `অবৈধ কন্টেন্ট টাইপ: ${type}` },
+          { success: false, error: `অবৈধ কন্টেন্ট টাইপ: ${type}` },
           { status: 400 }
         )
     }
 
-    return NextResponse.json({ data: items })
+    return NextResponse.json({ success: true, data: items })
   } catch (error) {
     console.error('Admin Search Content error:', error)
     return NextResponse.json(
-      { error: 'কন্টেন্ট খুঁজতে সমস্যা হয়েছে' },
+      { success: false, error: 'কন্টেন্ট খুঁজতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

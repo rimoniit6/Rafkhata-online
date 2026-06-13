@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     const { searchParams } = new URL(request.url)
@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
       : 0
 
     return NextResponse.json({
+      success: true,
       data: results,
       pagination: {
         page,
@@ -73,7 +74,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Admin Get Exam Results error:', error)
     return NextResponse.json(
-      { error: 'পরীক্ষার ফলাফল আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'পরীক্ষার ফলাফল আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

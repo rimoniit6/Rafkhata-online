@@ -39,7 +39,7 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json({ plans: parsedPlans })
+    return NextResponse.json({ success: true, data: { plans: parsedPlans } })
   } catch (error) {
     console.error('Get plans error:', error)
     return NextResponse.json(

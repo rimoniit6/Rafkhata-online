@@ -113,13 +113,16 @@ export async function GET(request: NextRequest) {
       : []
 
     return NextResponse.json({
-      boards,
-      years,
-      classLevels,
-      subjects,
+      success: true,
+      data: {
+        boards,
+        years,
+        classLevels,
+        subjects,
+      },
     })
   } catch (error) {
     console.error('Board questions filters error:', error)
-    return NextResponse.json({ error: 'ফিল্টার অপশন লোড করতে সমস্যা হয়েছে' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'ফিল্টার অপশন লোড করতে সমস্যা হয়েছে' }, { status: 500 })
   }
 }

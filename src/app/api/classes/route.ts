@@ -1,15 +1,19 @@
 import { Prisma } from '@prisma/client'
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
-import { apiError } from '@/lib/api-utils'
+import { apiError, applyRateLimit } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { apiLimiter } from '@/lib/rate-limit'
 import { FALLBACK_SLUG_GRADIENTS } from '@/lib/hierarchy-labels'
 
 const CACHE_TTL = 300 // 5 minutes
 
-export async function GET() {
+export async function GET(request: Request) {
   const start = performance.now()
   try {
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
     if (!db) {
       return apiError('ডাটাবেজ সংযোগ পাওয়া যায়নি', 500, 'DB_CONNECTION_ERROR')
     }
@@ -129,7 +133,7 @@ export async function GET() {
     console.log(`[PERF] /api/classes completed in ${duration.toFixed(0)}ms (was ~1200ms before)`)
 
     return NextResponse.json(
-      { classes: transformedClasses },
+      { success: true, data: { classes: transformedClasses } },
       {
         headers: {
           'Cache-Control': `public, s-maxage=${CACHE_TTL}, stale-while-revalidate=${CACHE_TTL * 2}`,

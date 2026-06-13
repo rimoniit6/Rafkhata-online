@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 
     if (!type) {
       return NextResponse.json(
-        { error: 'কন্টেন্ট টাইপ আবশ্যক (mcq, cq, lecture, exam)' },
+        { success: false, error: 'কন্টেন্ট টাইপ আবশ্যক (mcq, cq, lecture, exam)' },
         { status: 400 }
       )
     }
@@ -160,16 +160,16 @@ export async function GET(request: Request) {
 
       default:
         return NextResponse.json(
-          { error: 'অবৈধ কন্টেন্ট টাইপ। সমর্থিত: mcq, cq, lecture, exam' },
+          { success: false, error: 'অবৈধ কন্টেন্ট টাইপ। সমর্থিত: mcq, cq, lecture, exam' },
           { status: 400 }
         )
     }
 
-    return NextResponse.json({ data: results })
+    return NextResponse.json({ success: true, data: results })
   } catch (error) {
     console.error('Admin Bundle Content Search error:', error)
     return NextResponse.json(
-      { error: 'কন্টেন্ট অনুসন্ধানে সমস্যা হয়েছে' },
+      { success: false, error: 'কন্টেন্ট অনুসন্ধানে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

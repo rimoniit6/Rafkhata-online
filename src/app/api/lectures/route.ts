@@ -1,9 +1,14 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
 import { handleApiError } from '@/lib/errors'
+import { applyRateLimit } from '@/lib/api-utils'
+import { apiLimiter } from '@/lib/rate-limit'
 
 export async function GET(request: Request) {
   try {
+    const rateCheck = await applyRateLimit(apiLimiter, request)
+    if ('error' in rateCheck) return rateCheck.error
+
     const { searchParams } = new URL(request.url)
     const chapterId = searchParams.get('chapterId')
     const subjectId = searchParams.get('subjectId')
@@ -96,7 +101,8 @@ export async function GET(request: Request) {
     }))
 
     return NextResponse.json({
-      lectures: transformedLectures,
+      success: true,
+      data: { lectures: transformedLectures },
       pagination: {
         page,
         limit,

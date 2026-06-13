@@ -9,7 +9,7 @@ export async function GET(
   try {
     const auth = await verifyAuth(request)
     if (!auth || !auth.isAdmin) {
-      return NextResponse.json({ error: 'অননুমোদিত' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অননুমোদিত' }, { status: 403 })
     }
 
     const { id } = await params
@@ -21,7 +21,7 @@ export async function GET(
     })
 
     if (!feedback) {
-      return NextResponse.json({ error: 'ফিডব্যাক খুঁজে পাওয়া যায়নি' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'ফিডব্যাক খুঁজে পাওয়া যায়নি' }, { status: 404 })
     }
 
     const messages = await db.feedbackMessage.findMany({
@@ -32,10 +32,10 @@ export async function GET(
       orderBy: { createdAt: 'asc' },
     })
 
-    return NextResponse.json({ data: { feedback, messages } })
+    return NextResponse.json({ success: true, data: { feedback, messages } })
   } catch (error) {
     console.error('Admin Get Feedback Messages error:', error)
-    return NextResponse.json({ error: 'বার্তা আনতে সমস্যা হয়েছে' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'বার্তা আনতে সমস্যা হয়েছে' }, { status: 500 })
   }
 }
 
@@ -46,21 +46,21 @@ export async function POST(
   try {
     const auth = await verifyAuth(request)
     if (!auth || !auth.isAdmin) {
-      return NextResponse.json({ error: 'অননুমোদিত' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অননুমোদিত' }, { status: 403 })
     }
 
     const { id } = await params
     const feedback = await db.userFeedback.findUnique({ where: { id } })
 
     if (!feedback) {
-      return NextResponse.json({ error: 'ফিডব্যাক খুঁজে পাওয়া যায়নি' }, { status: 404 })
+      return NextResponse.json({ success: false, error: 'ফিডব্যাক খুঁজে পাওয়া যায়নি' }, { status: 404 })
     }
 
     const body = await request.json()
     const { message } = body
 
     if (!message?.trim()) {
-      return NextResponse.json({ error: 'বার্তা আবশ্যক' }, { status: 400 })
+      return NextResponse.json({ success: false, error: 'বার্তা আবশ্যক' }, { status: 400 })
     }
 
     const [msg] = await Promise.all([
@@ -81,9 +81,9 @@ export async function POST(
       }),
     ])
 
-    return NextResponse.json({ data: msg }, { status: 201 })
+    return NextResponse.json({ success: true, data: msg }, { status: 201 })
   } catch (error) {
     console.error('Admin Reply Feedback error:', error)
-    return NextResponse.json({ error: 'উত্তর দিতে সমস্যা হয়েছে' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'উত্তর দিতে সমস্যা হয়েছে' }, { status: 500 })
   }
 }

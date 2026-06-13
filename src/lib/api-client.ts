@@ -506,3 +506,33 @@ api.onRequest(contentTypeInterceptor)
 //     }
 //     return config
 //   })
+
+// Register response interceptor: auto-unwrap { success, data, pagination } envelope.
+// This is the standard response format for all API routes.
+// - Object data: returned directly (pagination merged if present)
+// - Array data with pagination: returned as { data: array, pagination }
+// - Array data without pagination: returned as bare array
+// - Error responses (success=false): passed through unchanged
+api.onResponse((_response, data) => {
+  if (typeof data === 'object' && data !== null && 'success' in data && 'data' in data) {
+    const env = data as Record<string, unknown>
+    if (env.success === true) {
+      const payload = env.data
+      const pagination = env.pagination
+
+      // Array data with pagination → wrap in { data, pagination }
+      if (pagination && Array.isArray(payload)) {
+        return { data: payload, pagination }
+      }
+
+      // Object data with pagination → merge pagination into object
+      if (pagination && typeof payload === 'object' && payload !== null && !Array.isArray(payload)) {
+        return { ...(payload as Record<string, unknown>), pagination }
+      }
+
+      // Everything else → return data directly
+      return payload
+    }
+  }
+  return data
+})

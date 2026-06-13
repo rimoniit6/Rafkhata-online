@@ -18,7 +18,11 @@ export function useBoardYears() {
   useEffect(() => {
     fetch('/api/admin/board-years')
       .then(r => r.json())
-      .then(j => setBoardYears(Array.isArray(j.data) ? j.data : []))
+      .then(j => {
+        // Handle { success, data } envelope
+        const items = j.success === true && j.data ? j.data : j
+        setBoardYears(Array.isArray(items) ? items : (Array.isArray(items.data) ? items.data : []))
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])

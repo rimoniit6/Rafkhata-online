@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireSuperAdmin(request)
     if (!auth) {
-      return NextResponse.json({ error: 'অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'অনুমতি নেই' }, { status: 403 })
     }
 
     let created = 0
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[Admin Navigation Seed] POST error:', error)
     return NextResponse.json(
-      { error: 'নেভিগেশন seed করতে সমস্যা হয়েছে' },
+      { success: false, error: 'নেভিগেশন seed করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

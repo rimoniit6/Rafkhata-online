@@ -10,9 +10,9 @@ export async function GET() {
       orderBy: { order: 'asc' },
       select: { id: true, name: true, slug: true, color: true },
     })
-    return NextResponse.json({ data: boards }, { headers: cacheHeaders.public.long })
+    return NextResponse.json({ success: true, data: boards }, { headers: cacheHeaders.public.long })
   } catch (error) {
     console.error('Boards list error:', error)
-    return NextResponse.json({ data: [] })
+    return NextResponse.json({ success: true, data: [] })
   }
 }

@@ -6,7 +6,7 @@ export async function GET(request: Request) {
   try {
     const auth = await verifyAuth(request)
     if (!auth) {
-      return NextResponse.json({ error: 'প্রমাণীকরণ প্রয়োজন' }, { status: 401 })
+      return NextResponse.json({ success: false, error: 'প্রমাণীকরণ প্রয়োজন' }, { status: 401 })
     }
 
     const userId = auth.user.id
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     }
 
     if (recentItems.length === 0) {
-      return NextResponse.json({ data: [] })
+      return NextResponse.json({ success: true, data: [] })
     }
 
     const lectureIds = recentItems.map(item => item.contentId)
@@ -68,9 +68,9 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json({ data: result })
+    return NextResponse.json({ success: true, data: result })
   } catch (error) {
     console.error('Recent lectures error:', error)
-    return NextResponse.json({ error: 'তথ্য আনতে সমস্যা হয়েছে' }, { status: 500 })
+    return NextResponse.json({ success: false, error: 'তথ্য আনতে সমস্যা হয়েছে' }, { status: 500 })
   }
 }

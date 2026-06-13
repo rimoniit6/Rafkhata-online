@@ -60,7 +60,7 @@ export async function GET(request: Request) {
       })
     )
 
-    return NextResponse.json({ packages: packagesWithCounts })
+    return NextResponse.json({ success: true, data: { packages: packagesWithCounts } })
   } catch (error) {
     return handleApiError(error, 'Get public packages error')
   }

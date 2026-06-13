@@ -10,9 +10,9 @@ export async function GET() {
       orderBy: { order: 'desc' },
       select: { id: true, year: true },
     })
-    return NextResponse.json({ data: years }, { headers: cacheHeaders.public.long })
+    return NextResponse.json({ success: true, data: years }, { headers: cacheHeaders.public.long })
   } catch (error) {
     console.error('Years list error:', error)
-    return NextResponse.json({ data: [] })
+    return NextResponse.json({ success: true, data: [] })
   }
 }

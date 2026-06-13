@@ -20,16 +20,16 @@ export async function GET(
 
     if (!bundle) {
       return NextResponse.json(
-        { error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ data: bundle })
+    return NextResponse.json({ success: true, data: bundle })
   } catch (error) {
     console.error('Admin Get Bundle error:', error)
     return NextResponse.json(
-      { error: 'বান্ডলের তথ্য আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'বান্ডলের তথ্য আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -48,7 +48,7 @@ export async function PUT(
     const existing = await db.contentBundle.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json(
-        { error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -60,7 +60,7 @@ export async function PUT(
       })
       if (slugExists) {
         return NextResponse.json(
-          { error: 'এই স্লাগটি ইতিমধ্যে ব্যবহৃত হয়েছে' },
+          { success: false, error: 'এই স্লাগটি ইতিমধ্যে ব্যবহৃত হয়েছে' },
           { status: 400 }
         )
       }
@@ -111,11 +111,11 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json({ data: updated })
+    return NextResponse.json({ success: true, data: updated })
   } catch (error) {
     console.error('Admin Update Bundle error:', error)
     return NextResponse.json(
-      { error: 'বান্ডল আপডেট করতে সমস্যা হয়েছে' },
+      { success: false, error: 'বান্ডল আপডেট করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -132,7 +132,7 @@ export async function DELETE(
     const existing = await db.contentBundle.findUnique({ where: { id } })
     if (!existing) {
       return NextResponse.json(
-        { error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'বান্ডল খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -141,13 +141,14 @@ export async function DELETE(
     await db.contentBundle.delete({ where: { id } })
 
     return NextResponse.json({
+      success: true,
       data: { id },
       message: 'বান্ডল সফলভাবে মুছে ফেলা হয়েছে',
     })
   } catch (error) {
     console.error('Admin Delete Bundle error:', error)
     return NextResponse.json(
-      { error: 'বান্ডল মুছে ফেলতে সমস্যা হয়েছে' },
+      { success: false, error: 'বান্ডল মুছে ফেলতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

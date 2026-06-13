@@ -39,7 +39,7 @@ export async function GET(
 
     if (!lecture) {
       return NextResponse.json(
-        { error: 'লেকচার খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'লেকচার খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -50,7 +50,7 @@ export async function GET(
 
       if (!userId) {
         return NextResponse.json(
-          { error: 'এই লেকচারটি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
+          { success: false, error: 'এই লেকচারটি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
           { status: 401 }
         )
       }
@@ -63,19 +63,22 @@ export async function GET(
 
       if (!access.hasAccess) {
         return NextResponse.json({
-          id: lecture.id,
-          title: lecture.title,
-          thumbnail: lecture.thumbnail,
-          isPremium: true,
-          price: lecture.price,
-          chapterName: lecture.chapter.name,
-          subjectName: lecture.chapter.subject.name,
-          className: lecture.chapter.subject.class.name,
-          classSlug: lecture.chapter.subject.class.slug,
-          subjectId: lecture.chapter.subject.id,
-          chapterId: lecture.chapter.id,
-          hasAccess: false,
-          pendingPayment: access.pendingPayment,
+          success: true,
+          data: {
+            id: lecture.id,
+            title: lecture.title,
+            thumbnail: lecture.thumbnail,
+            isPremium: true,
+            price: lecture.price,
+            chapterName: lecture.chapter.name,
+            subjectName: lecture.chapter.subject.name,
+            className: lecture.chapter.subject.class.name,
+            classSlug: lecture.chapter.subject.class.slug,
+            subjectId: lecture.chapter.subject.id,
+            chapterId: lecture.chapter.id,
+            hasAccess: false,
+            pendingPayment: access.pendingPayment,
+          },
         })
       }
     }
@@ -123,11 +126,11 @@ export async function GET(
       })),
     }
 
-    return NextResponse.json(result)
+    return NextResponse.json({ success: true, data: result })
   } catch (error) {
     console.error('Get lecture detail error:', error)
     return NextResponse.json(
-      { error: 'লেকচারের বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'লেকচারের বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

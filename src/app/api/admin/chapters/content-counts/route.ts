@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     })
 
     if (chapters.length === 0) {
-      return NextResponse.json({ data: [] })
+      return NextResponse.json({ success: true, data: [] })
     }
 
     const chapterIds = chapters.map((c) => c.id)
@@ -114,11 +114,11 @@ export async function GET(request: Request) {
       }
     })
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ success: true, data })
   } catch (error) {
     console.error('Admin Chapters Content Counts error:', error)
     return NextResponse.json(
-      { error: 'অধ্যায়ের কন্টেন্ট সংখ্যা আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'অধ্যায়ের কন্টেন্ট সংখ্যা আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

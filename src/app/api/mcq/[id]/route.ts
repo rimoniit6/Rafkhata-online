@@ -61,7 +61,7 @@ export async function GET(
 
     if (!mcq) {
       return NextResponse.json(
-        { error: 'MCQ খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'MCQ খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -72,7 +72,7 @@ export async function GET(
 
       if (!userId) {
         return NextResponse.json(
-          { error: 'এই MCQ টি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
+          { success: false, error: 'এই MCQ টি দেখতে লগইন করুন', code: 'PREMIUM_REQUIRES_AUTH' },
           { status: 401 }
         )
       }
@@ -85,23 +85,26 @@ export async function GET(
 
       if (!access.hasAccess) {
         return NextResponse.json({
-          id: mcq.id,
-          text: mcq.question,
-          isPremium: true,
-          price: mcq.price,
-          chapterId: mcq.chapterId,
-          chapterName: mcq.chapter?.name || '',
-          hasAccess: false,
-          pendingPayment: access.pendingPayment,
+          success: true,
+          data: {
+            id: mcq.id,
+            text: mcq.question,
+            isPremium: true,
+            price: mcq.price,
+            chapterId: mcq.chapterId,
+            chapterName: mcq.chapter?.name || '',
+            hasAccess: false,
+            pendingPayment: access.pendingPayment,
+          },
         })
       }
     }
 
-    return NextResponse.json(transformMCQ(mcq))
+    return NextResponse.json({ success: true, data: transformMCQ(mcq) })
   } catch (error) {
     console.error('Get MCQ detail error:', error)
     return NextResponse.json(
-      { error: 'MCQ এর বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
+      { success: false, error: 'MCQ এর বিস্তারিত তথ্য আনতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -116,7 +119,7 @@ export async function PUT(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth || !auth.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ error: 'MCQ আপডেট করার অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'MCQ আপডেট করার অনুমতি নেই' }, { status: 403 })
     }
 
     const { id } = await props.params
@@ -126,7 +129,7 @@ export async function PUT(
 
     if (!existingMcq) {
       return NextResponse.json(
-        { error: 'MCQ খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'MCQ খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -157,11 +160,11 @@ export async function PUT(
       },
     })
 
-    return NextResponse.json({ message: 'MCQ আপডেট হয়েছে', mcq: transformMCQ(mcq) })
+    return NextResponse.json({ success: true, data: { message: 'MCQ আপডেট হয়েছে', mcq: transformMCQ(mcq) } })
   } catch (error) {
     console.error('Update MCQ error:', error)
     return NextResponse.json(
-      { error: 'MCQ আপডেট করতে সমস্যা হয়েছে' },
+      { success: false, error: 'MCQ আপডেট করতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }
@@ -176,7 +179,7 @@ export async function DELETE(
     if ('error' in csrfCheck) return csrfCheck.error
     const auth = await verifyAuth(request)
     if (!auth || !auth.user || !['ADMIN', 'SUPER_ADMIN'].includes(auth.user.role)) {
-      return NextResponse.json({ error: 'MCQ মুছে ফেলার অনুমতি নেই' }, { status: 403 })
+      return NextResponse.json({ success: false, error: 'MCQ মুছে ফেলার অনুমতি নেই' }, { status: 403 })
     }
 
     const { id } = await props.params
@@ -185,7 +188,7 @@ export async function DELETE(
 
     if (!existingMcq) {
       return NextResponse.json(
-        { error: 'MCQ খুঁজে পাওয়া যায়নি' },
+        { success: false, error: 'MCQ খুঁজে পাওয়া যায়নি' },
         { status: 404 }
       )
     }
@@ -195,11 +198,11 @@ export async function DELETE(
       data: { isActive: false },
     })
 
-    return NextResponse.json({ message: 'MCQ সফলভাবে মুছে ফেলা হয়েছে' })
+    return NextResponse.json({ success: true, data: { message: 'MCQ সফলভাবে মুছে ফেলা হয়েছে' } })
   } catch (error) {
     console.error('Delete MCQ error:', error)
     return NextResponse.json(
-      { error: 'MCQ মুছে ফেলতে সমস্যা হয়েছে' },
+      { success: false, error: 'MCQ মুছে ফেলতে সমস্যা হয়েছে' },
       { status: 500 }
     )
   }

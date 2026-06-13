@@ -35,6 +35,7 @@ export async function GET(request: Request) {
     ])
 
     return NextResponse.json({
+      success: true,
       data,
       pagination: {
         page,
@@ -90,7 +91,7 @@ export async function POST(request: Request) {
         where: { id: existing.id },
         data: { content },
       })
-      return NextResponse.json({ data: updated })
+      return NextResponse.json({ success: true, data: updated })
     }
 
     // Create new note
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
       },
     })
 
-    return NextResponse.json({ data }, { status: 201 })
+    return NextResponse.json({ success: true, data }, { status: 201 })
   } catch (error) {
     console.error('Create Note error:', error)
     return NextResponse.json(
