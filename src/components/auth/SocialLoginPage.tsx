@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { GraduationCap, Chrome, Facebook, Mail, Lock, Shield } from 'lucide-react'
+import { GraduationCap, Chrome, Mail, Lock, Shield } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -24,17 +24,6 @@ export default function SocialLoginPage() {
     const supabase = createClient()
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/api/auth/callback`,
-      },
-    })
-  }
-
-  const handleFacebookLogin = async () => {
-    setLoading(true)
-    const supabase = createClient()
-    await supabase.auth.signInWithOAuth({
-      provider: 'facebook',
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },
@@ -200,15 +189,6 @@ export default function SocialLoginPage() {
                   >
                     <Chrome className="w-5 h-5 mr-3" />
                     Google দিয়ে লগইন করুন
-                  </Button>
-
-                  <Button
-                    onClick={handleFacebookLogin}
-                    disabled={isLoading}
-                    className="w-full h-12 bg-[#1877F2] hover:bg-[#166fe5] text-white font-medium text-base"
-                  >
-                    <Facebook className="w-5 h-5 mr-3 fill-current" />
-                    Facebook দিয়ে লগইন করুন
                   </Button>
                 </motion.div>
 
