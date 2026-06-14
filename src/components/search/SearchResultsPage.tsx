@@ -158,8 +158,8 @@ export default function SearchResultsPage() {
       const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
-        setResults(data.results || {})
-        setTotal(data.total || 0)
+        setResults(data.data?.results || {})
+        setTotal(data.data?.total || 0)
       } else {
         setResults({})
         setTotal(0)

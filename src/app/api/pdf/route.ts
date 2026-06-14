@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
 
     const url = request.nextUrl.searchParams.get('url')
     const filename = request.nextUrl.searchParams.get('filename') || 'document.pdf'
+    const inline = request.nextUrl.searchParams.get('inline') === 'true'
 
     if (!url) {
       return apiError('URL parameter is required', 400)
@@ -120,14 +121,22 @@ export async function GET(request: NextRequest) {
       return apiError('File too large', 400)
     }
 
+    const headers: Record<string, string> = {
+      'Content-Type': contentType || 'application/pdf',
+      'Content-Length': String(buffer.byteLength),
+      'Cache-Control': 'public, max-age=3600',
+    }
+
+    if (inline) {
+      headers['Content-Disposition'] = `inline; filename="${encodeURIComponent(filename)}"`
+      headers['X-Frame-Options'] = 'SAMEORIGIN'
+    } else {
+      headers['Content-Disposition'] = `attachment; filename="${encodeURIComponent(filename)}"`
+    }
+
     return new NextResponse(buffer, {
       status: 200,
-      headers: {
-        'Content-Type': contentType || 'application/pdf',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(filename)}"`,
-        'Content-Length': String(buffer.byteLength),
-        'Cache-Control': 'public, max-age=3600',
-      },
+      headers,
     })
   } catch (error) {
     console.error('PDF proxy error:', error)

@@ -177,8 +177,8 @@ export default function MCQExamPackagePurchaseDialog({
       const res = await fetch('/api/payment/accounts')
       if (res.ok) {
         const data = await res.json()
-        if (data.accounts) {
-          setPaymentAccounts(data.accounts)
+        if (data.data?.accounts) {
+          setPaymentAccounts(data.data.accounts)
         }
       }
     } catch {

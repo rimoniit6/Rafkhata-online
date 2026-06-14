@@ -711,7 +711,7 @@ export default function CQExamViewerPage() {
       if (!res.ok) throw new Error('Failed to fetch set detail')
       const json = await res.json()
       if (json.error) throw new Error(json.error)
-      const set = json.set
+      const set = json.data?.set
       const questions = set.questions || []
       setSetData({ set, questions })
       const collapsed: Record<string, boolean> = {}
@@ -757,14 +757,14 @@ export default function CQExamViewerPage() {
         toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
         return
       }
-      const submission = json.submission
+      const submission = json.data?.submission
       if (!submission) {
         toast({ title: 'ত্রুটি', description: 'পরীক্ষা শুরু করতে সমস্যা হয়েছে', variant: 'destructive' })
         return
       }
 
       // If already submitted, redirect to result page
-      if (json.status === 'submitted') {
+      if (json.data?.status === 'submitted') {
         navigate('cq-exam-result', { packageId, examId: setId, resultId: submission.id })
         return
       }
@@ -864,7 +864,7 @@ export default function CQExamViewerPage() {
             ...prev,
             [key]: {
               ...current,
-              images: [...current.images, { id: imgData.image.id, imageUrl: imageUrl!, order: current.images.length }],
+              images: [...current.images, { id: imgData.data?.image?.id, imageUrl: imageUrl!, order: current.images.length }],
             },
           }
         })

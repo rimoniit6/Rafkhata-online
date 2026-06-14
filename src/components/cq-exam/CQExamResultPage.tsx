@@ -258,7 +258,8 @@ export default function CQExamResultPage() {
       if (!res.ok) throw new Error('Failed to fetch')
       const json = await res.json()
       if (json.error) throw new Error(json.error)
-      setSubmission({ ...json.submission, questions: json.submission.set?.questions || [] })
+      const sub = json.data?.submission
+      if (sub) setSubmission({ ...sub, questions: sub.set?.questions || [] })
     } catch {
       toast({
         title: 'ত্রুটি',
@@ -284,7 +285,7 @@ export default function CQExamResultPage() {
         )
         if (!res.ok) return
         const json = await res.json()
-        const requests = json.requests || []
+        const requests = json.data?.requests || []
         const hasPending = requests.some(
           (r: any) => r.setId === submission.setId && r.status === 'pending'
         )

@@ -230,10 +230,10 @@ export default function CQExamPackageDetailPage() {
       const json = await res.json()
       if (json.error) throw new Error(json.error)
 
-      setPkgDetail(json.package)
-      setHasPurchased(json.hasPurchased)
-      setHasPendingPayment(json.hasPendingPayment || false)
-      setSubmissions(json.submissions || [])
+      setPkgDetail(json.data?.package)
+      setHasPurchased(json.data?.hasPurchased)
+      setHasPendingPayment(json.data?.hasPendingPayment || false)
+      setSubmissions(json.data?.submissions || [])
     } catch {
       toast({
         title: 'ত্রুটি',

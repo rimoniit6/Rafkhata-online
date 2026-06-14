@@ -444,7 +444,7 @@ export default function SuggestionPage() {
       const res = await fetch('/api/classes')
       if (!res.ok) return
       const json = await res.json()
-      setClasses(Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : []))
+      setClasses(json.data?.classes || (Array.isArray(json) ? json : (Array.isArray(json.data) ? json.data : [])))
     } catch {
       // Silently fail — class filter is optional
     }

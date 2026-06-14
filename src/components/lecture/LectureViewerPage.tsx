@@ -62,6 +62,7 @@ export default function LectureViewerPage() {
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [showVideo, setShowVideo] = useState(true)
+  const [showPdf, setShowPdf] = useState(true)
   const [paymentStatus, setPaymentStatus] = useState<{
     purchased: boolean
     pendingPayment: boolean
@@ -325,6 +326,43 @@ export default function LectureViewerPage() {
         >
           <Play className="size-4" />
           ভিডিও দেখুন
+        </Button>
+      )}
+
+      {/* PDF Viewer */}
+      {lectureData.pdfUrl && showPdf && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6"
+        >
+          <div className="rounded-xl overflow-hidden border border-border/50 bg-muted/20">
+            <iframe
+              src={`/api/pdf?url=${encodeURIComponent(lectureData.pdfUrl)}&inline=true`}
+              className="w-full h-[500px] sm:h-[600px]"
+              title="PDF"
+            />
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="mt-2 gap-1 text-muted-foreground"
+            onClick={() => setShowPdf(false)}
+          >
+            <X className="size-4" />
+            PDF লুকান
+          </Button>
+        </motion.div>
+      )}
+      {!showPdf && lectureData.pdfUrl && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="mb-4 gap-2"
+          onClick={() => setShowPdf(true)}
+        >
+          <FileText className="size-4" />
+          PDF দেখুন
         </Button>
       )}
 

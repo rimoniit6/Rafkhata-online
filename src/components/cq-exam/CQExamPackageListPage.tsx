@@ -265,8 +265,8 @@ export default function CQExamPackageListPage() {
     const res = await fetch(`/api/cq-exam-packages?${params.toString()}`)
     if (!res.ok) throw new Error('Failed to fetch package detail')
     const json = await res.json()
-    if (json.error || !json.package) throw new Error(json.error || 'Package not found')
-    return json.package as CQPackageDetailForDialog
+    if (json.error || !json.data?.package) throw new Error(json.error || 'Package not found')
+    return json.data.package as CQPackageDetailForDialog
   }, [user?.id])
 
   // ─── Check Purchase Status ──────────────────────────────────────────────
@@ -319,7 +319,7 @@ export default function CQExamPackageListPage() {
       if (!res.ok) throw new Error('Failed to fetch')
 
       const json = await res.json()
-      const fetchedPackages = json.packages || []
+      const fetchedPackages = json.data?.packages || []
       setPackages(fetchedPackages)
 
       // Check purchase status if authenticated

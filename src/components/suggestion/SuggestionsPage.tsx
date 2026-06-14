@@ -142,7 +142,7 @@ export default function SuggestionsPage() {
         const res = await fetch('/api/classes')
         if (res.ok) {
           const json = await res.json()
-          setClasses(ensureArray<ClassOption>(json))
+          setClasses(json.data?.classes || ensureArray<ClassOption>(json))
         } else {
           setClasses([])
         }

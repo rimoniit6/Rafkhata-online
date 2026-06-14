@@ -223,7 +223,7 @@ export default function PremiumPage() {
       const res = await fetch(`/api/packages?${params}`)
       if (!res.ok) throw new Error('Failed')
       const json = await res.json()
-      const items = ensureArray<ContentPackage>(json)
+      const items = json.data?.packages || ensureArray<ContentPackage>(json)
       setPackages(items)
     } catch {
       setPackages([])

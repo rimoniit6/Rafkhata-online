@@ -412,7 +412,7 @@ export function useMCQExamPackages() {
 
       if (res.ok) {
         const json = await res.json()
-        toast({ title: json.message })
+        toast({ title: json.data?.message || '' })
         setBulkUploadDialogOpen(false)
         setBulkUploadFile(null)
         setBulkUploadResult(null)

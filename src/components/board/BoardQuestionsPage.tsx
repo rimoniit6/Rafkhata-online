@@ -326,7 +326,7 @@ export default function BoardQuestionsPage() {
       const res = await fetch('/api/board-questions/filters')
       if (res.ok) {
         const data = await res.json()
-        const classLevels: ClassInfo[] = data.classLevels || []
+        const classLevels: ClassInfo[] = data.data?.classLevels || []
         
         // Fetch actual counts for each class level
         const classWithCounts = await Promise.all(
@@ -379,7 +379,7 @@ export default function BoardQuestionsPage() {
       const filterRes = await fetch(`/api/board-questions/filters?classLevel=${encodeURIComponent(classLevel)}`)
       if (filterRes.ok) {
         const filterData = await filterRes.json()
-        const years: string[] = filterData.years || []
+        const years: string[] = filterData.data?.years || []
         
         // Fetch actual counts for each year - only include years with content
         const countPromises = years.map(async (year) => {

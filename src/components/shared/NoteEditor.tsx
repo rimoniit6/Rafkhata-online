@@ -23,13 +23,22 @@ export default function NoteEditor({ contentId, contentType }: NoteEditorProps) 
   const [saved, setSaved] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const savePromiseRef = useRef<Promise<void> | undefined>(undefined)
+  const csrfRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (!contentId || !user?.id) {
       setLoading(false)
       return
     }
-    const fetchNote = async () => {
+    const init = async () => {
+      try {
+        const csrfRes = await fetch('/api/csrf-token')
+        if (csrfRes.ok) {
+          const csrfJson = await csrfRes.json()
+          csrfRef.current = csrfJson.token
+        }
+      } catch { /* ignore */ }
+
       try {
         const res = await fetch(`/api/notes?contentId=${contentId}&contentType=${contentType}&limit=1`)
         if (res.ok) {
@@ -43,7 +52,7 @@ export default function NoteEditor({ contentId, contentType }: NoteEditorProps) 
       } catch { /* ignore */ }
       finally { setLoading(false) }
     }
-    fetchNote()
+    init()
   }, [contentId, contentType, user?.id])
 
   const saveNote = useCallback(async () => {
@@ -53,10 +62,20 @@ export default function NoteEditor({ contentId, contentType }: NoteEditorProps) 
 
     setSaving(true)
     try {
+      const body: Record<string, unknown> = { contentId, contentType, content: trimmed }
+      if (!csrfRef.current) {
+        const csrfRes = await fetch('/api/csrf-token')
+        if (csrfRes.ok) {
+          const csrfJson = await csrfRes.json()
+          csrfRef.current = csrfJson.token
+        }
+      }
+      if (csrfRef.current) body._csrf = csrfRef.current
+
       const res = await fetch('/api/notes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentId, contentType, content: trimmed }),
+        body: JSON.stringify(body),
       })
       if (res.ok) {
         const json = await res.json()

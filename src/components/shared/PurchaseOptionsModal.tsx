@@ -160,9 +160,10 @@ export default function PurchaseOptionsModal({
       const res = await fetch(`/api/content/bundles-for?${params}`)
       if (res.ok) {
         const data = await res.json()
-        setBundles(data.bundles || [])
-        setPackages(data.packages || [])
-        setHasBundles(data.hasBundles || false)
+        const d = data.data || {}
+        setBundles(d.bundles || [])
+        setPackages(d.packages || [])
+        setHasBundles(d.hasBundles || false)
       }
     } catch {
       // Silently fail

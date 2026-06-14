@@ -101,13 +101,13 @@ export default function CQListPage() {
         const res = await fetch(`/api/cq?${queryParams}`)
         if (res.ok) {
           const data = await res.json()
-          setCqList(data.cqs || [])
+          setCqList(data.data?.cqs || [])
           setCurrentPage(1)
           setHasMore((data.pagination?.page || 1) < (data.pagination?.totalPages || 1))
           setApiCounts({
-            total: data.total || 0,
-            freeCount: data.freeCount || 0,
-            premiumCount: data.premiumCount || 0,
+            total: data.data?.total || 0,
+            freeCount: data.data?.freeCount || 0,
+            premiumCount: data.data?.premiumCount || 0,
           })
         } else {
           setCqList([])
@@ -247,7 +247,7 @@ export default function CQListPage() {
       const res = await fetch(`/api/cq?${queryParams}`)
       if (res.ok) {
         const data = await res.json()
-        setCqList(prev => [...prev, ...(data.cqs || [])])
+        setCqList(prev => [...prev, ...(data.data?.cqs || [])])
         setCurrentPage(nextPage)
         setHasMore(nextPage < (data.pagination?.totalPages || 1))
       }

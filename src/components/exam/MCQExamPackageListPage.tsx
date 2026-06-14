@@ -427,7 +427,7 @@ export default function MCQExamPackageListPage() {
         const res = await fetch('/api/classes')
         if (res.ok) {
           const json = await res.json()
-          const classes: ClassInfo[] = json.data || json.classes || json
+          const classes: ClassInfo[] = json.data?.classes || json.data || json.classes || json
           const map = new Map<string, ClassInfo>()
           for (const cls of classes) {
             map.set(cls.slug, cls)

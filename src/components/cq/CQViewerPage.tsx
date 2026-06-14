@@ -97,17 +97,17 @@ export default function CQViewerPage() {
         const res = await fetch(`/api/cq/${cqId}`)
         if (!res.ok) throw new Error('Failed')
         const data = await res.json()
-        setCqData(data)
+        setCqData(data.data)
 
         // Record recently viewed & update progress
-        if (user?.id && data?.id) {
+        if (user?.id && data.data?.id) {
           fetch('/api/recently-viewed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contentId: data.id,
+              contentId: data.data.id,
               contentType: 'cq',
-              title: `${data.chapterName} - সৃজনশীল প্রশ্ন`,
+              title: `${data.data.chapterName} - সৃজনশীল প্রশ্ন`,
             }),
           }).catch(() => {})
 
@@ -116,7 +116,7 @@ export default function CQViewerPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contentId: data.id,
+              contentId: data.data.id,
               contentType: 'cq',
               progress: 5,
             }),
@@ -214,7 +214,7 @@ export default function CQViewerPage() {
   const isPremiumUser = user?.isPremium && !!user?.premiumExpiry && new Date(user.premiumExpiry) > new Date()
   // Non-logged-in = free user: premium content requires purchase
   const isLocked = isPremiumContent && !isPremiumUser && !paymentStatus.purchased
-  const totalMarks = cqData.questions.reduce((sum, q) => sum + q.marks, 0)
+  const totalMarks = cqData.questions?.reduce((sum, q) => sum + q.marks, 0) || 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -249,9 +249,9 @@ export default function CQViewerPage() {
               )}
 
             </div>
-            <p className="text-amber-100 text-sm mt-1">
-              {cqData.chapterName} • মোট নম্বর: {totalMarks}
-            </p>
+              <p className="text-amber-100 text-sm mt-1">
+               {cqData.chapterName}{totalMarks > 0 ? ` • মোট নম্বর: ${totalMarks}` : ''}
+             </p>
           </motion.div>
           <BookmarkButton
             contentId={cqData.id}
@@ -349,28 +349,30 @@ export default function CQViewerPage() {
               })}
             >
               {/* Blurred preview of questions */}
-              <div className="blur-md pointer-events-none select-none opacity-50 space-y-4">
-                {cqData.questions.map((question) => (
-                  <Card key={question.id} className="border-border/50">
-                    <CardContent className="p-5 sm:p-6">
-                      <div className="flex items-start gap-3 mb-4">
-                        <Badge variant="outline" className="font-mono shrink-0 mt-0.5">
-                          {question.label}
-                        </Badge>
-                        <div className="flex-1">
-                          <RichContentRenderer content={question.text} className="text-base font-medium leading-relaxed" />
-                          {question.questionImage && (
-                            <SafeImage src={question.questionImage} alt="প্রশ্ন চিত্র" className="mt-2 max-w-full rounded-lg border max-h-40" />
-                          )}
-                          <Badge variant="secondary" className="mt-2 text-xs">
-                            {question.marks} নম্বর
+              {cqData.questions && cqData.questions.length > 0 && (
+                <div className="blur-md pointer-events-none select-none opacity-50 space-y-4">
+                  {cqData.questions.map((question) => (
+                    <Card key={question.id} className="border-border/50">
+                      <CardContent className="p-5 sm:p-6">
+                        <div className="flex items-start gap-3 mb-4">
+                          <Badge variant="outline" className="font-mono shrink-0 mt-0.5">
+                            {question.label}
                           </Badge>
+                          <div className="flex-1">
+                            <RichContentRenderer content={question.text} className="text-base font-medium leading-relaxed" />
+                            {question.questionImage && (
+                              <SafeImage src={question.questionImage} alt="প্রশ্ন চিত্র" className="mt-2 max-w-full rounded-lg border max-h-40" />
+                            )}
+                            <Badge variant="secondary" className="mt-2 text-xs">
+                              {question.marks} নম্বর
+                            </Badge>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
             </PremiumLock>
           </div>
         ) : (
@@ -392,7 +394,7 @@ export default function CQViewerPage() {
               </motion.div>
             )}
 
-            {cqData.questions.map((question, index) => {
+            {cqData.questions?.map((question, index) => {
               const isRevealed = revealedAnswers.has(question.id)
               return (
                 <motion.div
