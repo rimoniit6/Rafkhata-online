@@ -37,6 +37,7 @@ const CQExamPackageListPage = dynamic(() => import('@/components/cq-exam/CQExamP
 const CQExamPackageDetailPage = dynamic(() => import('@/components/cq-exam/CQExamPackageDetailPage'))
 const CQExamViewerPage = dynamic(() => import('@/components/cq-exam/CQExamViewerPage'))
 const CQExamResultPage = dynamic(() => import('@/components/cq-exam/CQExamResultPage'))
+const KnowledgeQuestionsPage = dynamic(() => import('@/components/knowledge/KnowledgeQuestionsPage'))
 
 function RouteRenderer() {
   usePageMeta()
@@ -80,6 +81,7 @@ function RouteRenderer() {
     'cq-exam-package-detail': <CQExamPackageDetailPage />,
     'cq-exam-viewer': <CQExamViewerPage />,
     'cq-exam-result': <CQExamResultPage />,
+    'short-questions': <KnowledgeQuestionsPage />,
   }
 
   return routeMap[currentRoute] || <HomePage />

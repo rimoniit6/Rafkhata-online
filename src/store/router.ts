@@ -60,6 +60,8 @@ export type RoutePath =
   | 'admin-feedback'
   | 'admin-teacher-moderators'
   | 'admin-cq-exam-packages'
+  | 'short-questions'
+  | 'admin-knowledge-questions'
   | 'cq-exam-package-list'
   | 'cq-exam-package-detail'
   | 'cq-exam-viewer'
@@ -73,6 +75,7 @@ export const ADMIN_ROUTES: RoutePath[] = [
   'admin-bulk-import',
   'admin-mcq',
   'admin-cq',
+  'admin-knowledge-questions',
   'admin-lectures',
   'admin-board',
   'admin-notices',

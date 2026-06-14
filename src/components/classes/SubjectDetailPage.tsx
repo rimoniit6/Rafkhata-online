@@ -38,6 +38,8 @@ interface Chapter {
   freeCqCount: number
   suggestionCount: number
   examCount: number
+  shortQuestionsCount: number
+  freeShortQuestionsCount: number
   progress: number
 }
 
@@ -164,6 +166,7 @@ const CONTENT_PILLS: PillConfigItem[] = [
   { key: 'lecture', label: 'লেকচার', Icon: PlayCircle, colorKey: 'emerald' },
   { key: 'cq', label: 'সৃজনশীল', Icon: ClipboardList, colorKey: 'amber', hasSubFilter: true },
   { key: 'mcq', label: 'MCQ প্র্যাকটিস', Icon: FileQuestion, colorKey: 'teal' },
+  { key: 'short-questions', label: 'সংক্ষিপ্ত প্রশ্ন', Icon: FileText, colorKey: 'cyan' },
   { key: 'suggestion', label: 'সাজেশন', Icon: Lightbulb, colorKey: 'violet' },
   { key: 'exam', label: 'পরীক্ষা', Icon: Award, colorKey: 'sky' },
   { key: 'board', label: 'বোর্ড প্রশ্ন', Icon: GraduationCap, colorKey: 'rose' },
@@ -260,6 +263,7 @@ const PILL_ACTIVE_COLORS: Record<string, { bg: string; text: string; ring: strin
   emerald: { bg: 'bg-emerald-600 dark:bg-emerald-500', text: 'text-white', ring: 'ring-emerald-300 dark:ring-emerald-700' },
   amber: { bg: 'bg-amber-600 dark:bg-amber-500', text: 'text-white', ring: 'ring-amber-300 dark:ring-amber-700' },
   teal: { bg: 'bg-teal-600 dark:bg-teal-500', text: 'text-white', ring: 'ring-teal-300 dark:ring-teal-700' },
+  cyan: { bg: 'bg-cyan-600 dark:bg-cyan-500', text: 'text-white', ring: 'ring-cyan-300 dark:ring-cyan-700' },
   violet: { bg: 'bg-violet-600 dark:bg-violet-500', text: 'text-white', ring: 'ring-violet-300 dark:ring-violet-700' },
   sky: { bg: 'bg-sky-600 dark:bg-sky-500', text: 'text-white', ring: 'ring-sky-300 dark:ring-sky-700' },
   rose: { bg: 'bg-rose-600 dark:bg-rose-500', text: 'text-white', ring: 'ring-rose-300 dark:ring-rose-700' },
@@ -468,6 +472,7 @@ export default function SubjectDetailPage() {
       }
       case 'suggestion': return subjectData.chapters.filter(ch => ch.suggestionCount > 0)
       case 'exam': return subjectData.chapters.filter(ch => ch.examCount > 0)
+      case 'short-questions': return subjectData.chapters.filter(ch => ch.shortQuestionsCount > 0)
       default: return subjectData.chapters
     }
   }, [subjectData, boardQuestions])
@@ -481,6 +486,7 @@ export default function SubjectDetailPage() {
       case 'board': return boardQuestions.filter(q => q.chapterId === chapter.id).length
       case 'suggestion': return chapter.suggestionCount
       case 'exam': return chapter.examCount
+      case 'short-questions': return chapter.shortQuestionsCount
       default: return 0
     }
   }
@@ -491,6 +497,7 @@ export default function SubjectDetailPage() {
       case 'lecture': return chapter.freeLectureCount > 0
       case 'cq': return chapter.freeCqCount > 0
       case 'mcq': return chapter.freeMcqCount > 0
+      case 'short-questions': return chapter.freeShortQuestionsCount > 0
       default: return false
     }
   }
@@ -884,6 +891,7 @@ export default function SubjectDetailPage() {
     if ((cc.mcq ?? 0) > 0) stats.push({ label: 'MCQ', count: cc.mcq })
     if ((cc.suggestion ?? 0) > 0) stats.push({ label: 'সাজেশন', count: cc.suggestion })
     if ((cc.exam ?? 0) > 0) stats.push({ label: 'পরীক্ষা', count: cc.exam })
+    if ((cc['short-questions'] ?? 0) > 0) stats.push({ label: 'সংক্ষিপ্ত প্রশ্ন', count: cc['short-questions'] })
     if ((cc.board ?? 0) > 0) stats.push({ label: 'বোর্ড প্রশ্ন', count: cc.board })
     return stats
   }, [subjectData])
@@ -2190,6 +2198,50 @@ export default function SubjectDetailPage() {
     )
   }
 
+  // ============ SHORT QUESTIONS CONTENT (navigates to chapter detail) ============
+  const renderShortQuestionsContent = () => {
+    const chapters = getChaptersForPill('short-questions')
+    if (chapters.length === 0) {
+      return <ComingSoonEmptyState title={msg.contentTypeSoon} subtitle="এই বিষয়ের সংক্ষিপ্ত প্রশ্ন শীঘ্রই যোগ করা হবে" />
+    }
+    return (
+      <motion.div variants={container} initial="hidden" animate="show" className="space-y-3">
+        {chapters.map((chapter) => (
+          <motion.div key={chapter.id} variants={item}>
+            <Card
+              className="cursor-pointer hover:shadow-md transition-all border-border/50"
+              onClick={() => navigate('chapter-detail', {
+                chapterId: chapter.id,
+                subjectId: subjectData.id,
+                classSlug: subjectData.classSlug,
+                initialTab: 'short-questions',
+              })}
+            >
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center justify-center size-10 rounded-xl bg-cyan-50 dark:bg-cyan-950/30 text-cyan-600 dark:text-cyan-400 shrink-0">
+                    <span className="font-bold text-lg">{chapter.number}</span>
+                  </div>
+                  <div>
+                    <p className="font-medium">{chapter.name}</p>
+                    <p className="text-sm text-muted-foreground">অধ্যায় {chapter.number}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-cyan-100 dark:bg-cyan-900/30 text-cyan-700 dark:text-cyan-400 gap-1">
+                    <FileText className="size-3" />
+                    {toBengaliNum(chapter.shortQuestionsCount)}টি সংক্ষিপ্ত প্রশ্ন
+                  </Badge>
+                  <ChevronRight className="size-5 text-muted-foreground shrink-0" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </motion.div>
+    )
+  }
+
   // ============ SUBJECT-LEVEL SUGGESTIONS (flat list fallback) ============
   const renderSubjectSuggestions = () => {
     if (getChaptersForPill('suggestion').length === 0 && subjectData.contentCounts?.suggestion > 0) {
@@ -2372,6 +2424,8 @@ export default function SubjectDetailPage() {
         {/* MCQ Practice — navigates away, no inline expansion */}
         {activePill === 'mcq' ? (
           renderMcqPracticeContent()
+        ) : activePill === 'short-questions' ? (
+          renderShortQuestionsContent()
         ) : activePill === 'suggestion' && chapters.length === 0 ? (
           renderSubjectSuggestions()
         ) : chapters.length === 0 ? (

@@ -80,6 +80,14 @@ export async function GET(
       },
     })
 
+    // Knowledge & Comprehension questions count (combined as short questions)
+    const shortQuestionCount = await db.knowledgeQuestion.count({
+      where: { chapterId: id, isActive: true },
+    })
+    const freeShortQuestionCount = await db.knowledgeQuestion.count({
+      where: { chapterId: id, isActive: true, isPremium: false },
+    })
+
     // Free (non-premium) content counts
     const freeLectureCount = await db.lecture.count({
       where: { chapterId: id, isActive: true, isPremium: false },
@@ -134,24 +142,25 @@ export async function GET(
       // Note: mcq count includes board MCQs, so mcq ≥ board. This is intentional.
       contentCounts: {
         lecture: lectureCount,
-        knowledge: cqCount,       // জ্ঞানমূলক = CQ ক
-        understanding: cqCount,   // অনুধাবন = CQ ক+খ
+        knowledge: cqCount,
+        understanding: cqCount,
         mcq: mcqCount,
         cq: cqCount,
         board: boardQuestionCount,
         suggestion: suggestionCount,
         exam: examCount,
+        'short-questions': shortQuestionCount,
       } as Record<string, number>,
-      // Free (non-premium) content counts map
       freeContentCounts: {
         lecture: freeLectureCount,
-        knowledge: freeCqCount,       // জ্ঞানমূলক free
-        understanding: freeCqCount,   // অনুধাবন free
+        knowledge: freeCqCount,
+        understanding: freeCqCount,
         mcq: freeMcqCount,
         cq: freeCqCount,
         board: freeBoardQuestionCount,
         suggestion: freeSuggestionCount,
         exam: freeExamCount,
+        'short-questions': freeShortQuestionCount,
       } as Record<string, number>,
     }
 

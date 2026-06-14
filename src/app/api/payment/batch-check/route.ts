@@ -127,6 +127,8 @@ export async function POST(request: Request) {
         const examItems = unpurchasedItems.filter(i => i.contentType === 'exam')
         const suggestionItems = unpurchasedItems.filter(i => i.contentType === 'suggestion')
 
+        const shortQuestionItems = unpurchasedItems.filter(i => i.contentType === 'short-questions')
+
         if (mcqItems.length > 0) {
           const mcqIds = mcqItems.map(i => i.contentId)
           const mcqs = await db.mCQ.findMany({
@@ -216,6 +218,37 @@ export async function POST(request: Request) {
                 if (slug && subClassLevels.has(slug)) {
                   subscriptionPurchasedIds.add(suggestion.id)
                 }
+              }
+            }
+          }
+        }
+
+        if (shortQuestionItems.length > 0) {
+          const sqIds = shortQuestionItems.map(i => i.contentId)
+          const sqs = await db.knowledgeQuestion.findMany({
+            where: { id: { in: sqIds } },
+            select: {
+              id: true,
+              chapter: {
+                select: {
+                  subject: {
+                    select: { classId: true },
+                  },
+                },
+              },
+            },
+          })
+          if (sqs.length > 0) {
+            const classIds: string[] = [...new Set(sqs.map(sq => sq.chapter.subject.classId))]
+            const classCats = await db.classCategory.findMany({
+              where: { id: { in: classIds } },
+              select: { id: true, slug: true },
+            })
+            const classSlugMap = new Map(classCats.map(c => [c.id, c.slug]))
+            for (const sq of sqs) {
+              const slug = classSlugMap.get(sq.chapter.subject.classId)
+              if (slug && subClassLevels.has(slug)) {
+                subscriptionPurchasedIds.add(sq.id)
               }
             }
           }

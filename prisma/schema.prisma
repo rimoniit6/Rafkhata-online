@@ -109,9 +109,10 @@ model Chapter {
   updatedAt   DateTime  @updatedAt
 
   subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  lectures    Lecture[]
-  mcqs        MCQ[]
-  cqs         CQ[]
+  lectures            Lecture[]
+  mcqs                MCQ[]
+  cqs                 CQ[]
+  knowledgeQuestions  KnowledgeQuestion[]
 
   @@unique([slug, subjectId])
 
@@ -134,6 +135,29 @@ model Topic {
   chapter     Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   @@unique([slug, chapterId])
+}
+
+// ============ KNOWLEDGE & COMPREHENSION SYSTEM ============
+
+model KnowledgeQuestion {
+  id              String    @id @default(cuid())
+  chapterId       String
+  type            String    // 'knowledge' or 'comprehension'
+  question        String
+  answer          String
+  questionImage   String?
+  answerImage     String?
+  isPremium       Boolean   @default(false)
+  price           Float     @default(0)
+  order           Int       @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  chapter         Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId, type, isActive])
+  @@index([isPremium, isActive])
 }
 
 // ============ LECTURE SYSTEM ============

@@ -8,6 +8,7 @@ import {
   FileText,
   FileQuestion,
   AlignLeft,
+  Brain,
   BookOpen,
   Archive,
   CreditCard,
@@ -59,6 +60,7 @@ const AdminPages = {
   'admin-bulk-import': lazy(() => import('./AdminBulkImportPage')),  // Questions
   'admin-mcq': lazy(() => import('./AdminMCQPage')),
   'admin-cq': lazy(() => import('./AdminCQPage')),
+  'admin-knowledge-questions': lazy(() => import('./AdminKnowledgeQuestionsPage')),
 
   // Exams
   'admin-exams': lazy(() => import('./AdminExamsPage')),
@@ -114,6 +116,7 @@ const sidebarItems: SidebarItem[] = [
   { label: 'বাল্ক ইম্পোর্ট', icon: Upload, route: 'admin-bulk-import' },
   { label: 'MCQ ব্যবস্থাপনা', icon: FileQuestion, route: 'admin-mcq' },
   { label: 'CQ ব্যবস্থাপনা', icon: AlignLeft, route: 'admin-cq' },
+  { label: 'সংক্ষিপ্ত প্রশ্ন', icon: Brain, route: 'admin-knowledge-questions' },
   { label: 'লেকচার', icon: BookOpen, route: 'admin-lectures' },
   { label: 'বোর্ড প্রশ্ন', icon: Archive, route: 'admin-board' },
   { label: 'নোটিশ', icon: Megaphone, route: 'admin-notices' },

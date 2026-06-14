@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Plus, Edit, Trash2, Eye, EyeOff, GripVertical,
-  ArrowUp, ArrowDown, Loader2, X, Check, Tags,
+  ArrowUp, ArrowDown, Loader2, X, Check, Tags, RefreshCw,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 import { invalidateContentTypesCache } from '@/hooks/use-content-types'
 
 interface ContentTypeItem {
@@ -95,6 +96,31 @@ export default function AdminContentTypesPage() {
       setLoading(false)
     }
   }, [toast])
+
+  const [seeding, setSeeding] = useState(false)
+
+  const handleSeed = async () => {
+    setSeeding(true)
+    try {
+      const csrfRes = await fetch('/api/csrf-token')
+      const csrfJson = await csrfRes.json()
+      const token = csrfJson.token
+      const res = await fetch('/api/content-types/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ _csrf: token }),
+      })
+      const json = await res.json()
+      if (json.success) {
+        toast({ title: json.message || 'সিড সম্পন্ন' })
+        fetchItems()
+      } else {
+        toast({ title: json.error || 'সিড করতে সমস্যা হয়েছে', variant: 'destructive' })
+      }
+    } catch {
+      toast({ title: 'সিড করতে সমস্যা হয়েছে', variant: 'destructive' })
+    } finally { setSeeding(false) }
+  }
 
   useEffect(() => {
     fetchItems()
@@ -266,10 +292,16 @@ export default function AdminContentTypesPage() {
             কন্টেন্ট টাইপ যোগ, সম্পাদনা ও অর্ডার পরিবর্তন করুন
           </p>
         </div>
-        <Button onClick={openCreateDialog} className="gap-2">
-          <Plus className="size-4" />
-          নতুন কন্টেন্ট টাইপ
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSeed} disabled={seeding} className="gap-2">
+            <RefreshCw className={cn('size-4', seeding && 'animate-spin')} />
+            {seeding ? 'সিড হচ্ছে...' : 'ডিফল্ট সিড'}
+          </Button>
+          <Button onClick={openCreateDialog} className="gap-2">
+            <Plus className="size-4" />
+            নতুন কন্টেন্ট টাইপ
+          </Button>
+        </div>
       </div>
 
       {/* Content Types List */}

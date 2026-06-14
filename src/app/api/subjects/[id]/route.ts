@@ -142,6 +142,14 @@ export async function GET(
     const freeBoardQuestionCount = freeBoardMcqCount + freeBoardCqCount
     // Free practice MCQs (non-board, non-premium)
     const freePracticeMcqCount = freeMcqCount - freeBoardMcqCount
+    // Knowledge & Comprehension questions (combined as short questions)
+    const shortQuestionCount = await db.knowledgeQuestion.count({
+      where: { chapter: { subjectId: id }, isActive: true },
+    })
+    const freeShortQuestionCount = await db.knowledgeQuestion.count({
+      where: { chapter: { subjectId: id }, isActive: true, isPremium: false },
+    })
+
     const freeSuggestionCount = await db.suggestion.count({
       where: { subjectId: id, isActive: true, isPremium: false },
     })
@@ -149,7 +157,7 @@ export async function GET(
       where: { subjectId: id, isActive: true, status: 'published', isPremium: false },
     })
 
-    // Per-chapter free counts + suggestion/exam counts
+    // Per-chapter free counts + suggestion/exam/knowledge counts
     const chapterFreeCounts = await Promise.all(
       subject.chapters.map(async (chapter) => {
         const freeLectures = await db.lecture.count({
@@ -167,7 +175,13 @@ export async function GET(
         const examCount = await db.exam.count({
           where: { chapterIds: { contains: chapter.id }, isActive: true, status: 'published' },
         })
-        return { chapterId: chapter.id, freeLectures, freeMcqs, freeCqs, suggestionCount, examCount }
+        const freeKnowledgeQuestions = await db.knowledgeQuestion.count({
+          where: { chapterId: chapter.id, isActive: true, isPremium: false },
+        })
+        const shortQuestionsCount = await db.knowledgeQuestion.count({
+          where: { chapterId: chapter.id, isActive: true },
+        })
+        return { chapterId: chapter.id, freeLectures, freeMcqs, freeCqs, suggestionCount, examCount, freeKnowledgeQuestions, shortQuestionsCount }
       })
     )
     const chapterFreeMap = new Map(chapterFreeCounts.map(c => [c.chapterId, c]))
@@ -192,6 +206,8 @@ export async function GET(
           freeCqCount: freeCounts?.freeCqs ?? 0,
           suggestionCount: freeCounts?.suggestionCount ?? 0,
           examCount: freeCounts?.examCount ?? 0,
+          shortQuestionsCount: freeCounts?.shortQuestionsCount ?? 0,
+          freeShortQuestionsCount: freeCounts?.freeKnowledgeQuestions ?? 0,
           progress: 0,
         }
       }),
@@ -205,24 +221,25 @@ export async function GET(
       // Note: mcq count includes board MCQs, so mcq ≥ board. This is intentional.
       contentCounts: {
         lecture: lectureCount,
-        knowledge: cqCount,       // জ্ঞানমূলক = CQ ক (same count as all CQs)
-        understanding: cqCount,   // অনুধাবন = CQ ক+খ (same count as all CQs)
+        knowledge: cqCount,
+        understanding: cqCount,
         mcq: mcqPracticeCount,
         cq: cqCount,
         board: boardQuestionCount,
         suggestion: suggestionCount,
         exam: examCount,
+        'short-questions': shortQuestionCount,
       } as Record<string, number>,
-      // Free (non-premium) content counts
       freeContentCounts: {
         lecture: freeLectureCount,
-        knowledge: freeCqCount,       // জ্ঞানমূলক free = CQ free count
-        understanding: freeCqCount,   // অনুধাবন free = CQ free count
+        knowledge: freeCqCount,
+        understanding: freeCqCount,
         mcq: freeMcqCount,
         cq: freeCqCount,
         board: freeBoardQuestionCount,
         suggestion: freeSuggestionCount,
         exam: freeExamCount,
+        'short-questions': freeShortQuestionCount,
       } as Record<string, number>,
     }
 

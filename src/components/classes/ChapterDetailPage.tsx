@@ -121,12 +121,23 @@ interface PurchaseStatus {
   pendingPayment: boolean
 }
 
+interface KQItem {
+  id: string
+  question: string
+  answer: string
+  questionImage: string | null
+  answerImage: string | null
+  isPremium: boolean
+  price: number
+  order: number
+}
+
 // ─── Helpers ───
 
 const toBengaliNum = (n: number) => n.toString().replace(/\d/g, d => '০১২৩৪৫৬৭৮৯'[parseInt(d)])
 
 // Content types that get their own dedicated tabs (not shown as cards in "কন্টেন্ট" tab)
-const INLINE_TAB_KEYS = new Set(['cq', 'suggestion', 'knowledge', 'understanding', 'exam'])
+const INLINE_TAB_KEYS = new Set(['cq', 'suggestion', 'knowledge', 'understanding', 'exam', 'short-questions'])
 
 // Helper component to trigger a callback on mount (for lazy fetching)
 function EffectWrapper({ callback }: { callback: () => void }) {
@@ -482,6 +493,73 @@ export default function ChapterDetailPage() {
     return { freeExams: free, purchasedExams: purchased, lockedExams: locked }
   }, [exams, examPurchaseMap])
 
+  // ─── Short questions state ───
+  const [shortQuestions, setShortQuestions] = useState<KQItem[]>([])
+  const [shortQuestionsLoading, setShortQuestionsLoading] = useState(false)
+  const [shortQuestionsFetched, setShortQuestionsFetched] = useState(false)
+  const [shortQuestionPurchaseMap, setShortQuestionPurchaseMap] = useState<Record<string, PurchaseStatus>>({})
+
+  const fetchShortQuestions = useCallback(async (chapterId: string) => {
+    if (shortQuestionsFetched) return
+    setShortQuestionsLoading(true)
+    try {
+      const res = await fetch(`/api/knowledge-questions?chapterId=${chapterId}`)
+      if (res.ok) {
+        const json = await res.json()
+        const data = json.success ? json.data : (Array.isArray(json) ? json : [])
+        setShortQuestions(data || [])
+        setShortQuestionsFetched(true)
+      }
+    } catch {
+      setShortQuestions([])
+    } finally {
+      setShortQuestionsLoading(false)
+    }
+  }, [shortQuestionsFetched])
+
+  // ─── Batch check purchases: Short questions ───
+  useEffect(() => {
+    if (!user?.id || shortQuestions.length === 0) return
+    const premiumItems = shortQuestions.filter(q => q.isPremium)
+    if (premiumItems.length === 0) return
+
+    const checkPurchases = async () => {
+      try {
+        const res = await fetch('/api/payment/batch-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: premiumItems.map(q => ({ contentType: 'short-questions', contentId: q.id })),
+          }),
+        })
+        if (res.ok) {
+          const result = await res.json()
+          const data = result.data || result
+          const items = data.items || []
+          const newMap: Record<string, PurchaseStatus> = {}
+          for (const it of items) {
+            newMap[it.contentId] = { purchased: it.purchased || false, pendingPayment: it.pendingPayment || false }
+          }
+          setShortQuestionPurchaseMap(newMap)
+        }
+      } catch { /* silent */ }
+    }
+    checkPurchases()
+  }, [shortQuestions, user?.id])
+
+  // ─── Separate short questions by access level ───
+  const { freeShortQuestions, purchasedShortQuestions, lockedShortQuestions } = useMemo(() => {
+    const free: KQItem[] = []
+    const purchased: KQItem[] = []
+    const locked: KQItem[] = []
+    for (const q of shortQuestions) {
+      if (!q.isPremium) free.push(q)
+      else if (shortQuestionPurchaseMap[q.id]?.purchased) purchased.push(q)
+      else locked.push(q)
+    }
+    return { freeShortQuestions: free, purchasedShortQuestions: purchased, lockedShortQuestions: locked }
+  }, [shortQuestions, shortQuestionPurchaseMap])
+
   // ─── Only show content types that are marked for chapter detail ───
   const chapterContentTypes = useMemo(() => {
     if (!chapterData) return []
@@ -516,6 +594,12 @@ export default function ChapterDetailPage() {
       tabs.push({ key: 'board-cq', labelBn: 'অনুধাবন', count: understandingCount })
     }
 
+    // "সংক্ষিপ্ত প্রশ্ন" tab
+    const shortQuestionCount = chapterData.contentCounts?.['short-questions'] ?? 0
+    if (shortQuestionCount > 0) {
+      tabs.push({ key: 'short-questions', labelBn: 'সংক্ষিপ্ত প্রশ্ন', count: shortQuestionCount })
+    }
+
     // "সাজেশন" tab
     const suggestionCount = chapterData.contentCounts?.['suggestion'] ?? 0
     if (suggestionCount > 0) {
@@ -531,7 +615,10 @@ export default function ChapterDetailPage() {
     return tabs
   }, [chapterData, navigationalContentTypes])
 
-  const defaultTab = dynamicTabs.length > 0 ? dynamicTabs[0].key : 'content'
+  const defaultTab = useMemo(() => {
+    if (params.initialTab && dynamicTabs.some(t => t.key === params.initialTab)) return params.initialTab
+    return dynamicTabs.length > 0 ? dynamicTabs[0].key : 'content'
+  }, [dynamicTabs, params.initialTab])
 
   // ─── Loading skeleton ───
   if (loading || ctLoading) {
@@ -816,9 +903,13 @@ export default function ChapterDetailPage() {
                   {tab.key === 'content' && <BookOpen className="size-4" />}
                   {tab.key === 'board-mcq' && <FileText className="size-4" />}
                   {tab.key === 'board-cq' && <ClipboardList className="size-4" />}
+                  {tab.key === 'short-questions' && <FileText className="size-4" />}
                   {tab.key === 'suggestion' && <Lightbulb className="size-4" />}
                   {tab.key === 'exam' && <GraduationCap className="size-4" />}
                   {tab.labelBn}
+                  {tab.count > 0 && (
+                    <Badge className="bg-primary/10 text-primary text-xs ml-1">{toBengaliNum(tab.count)}</Badge>
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -1324,9 +1415,6 @@ export default function ChapterDetailPage() {
             </TabsContent>
 
             {/* ═══════ "সাজেশন" Tab — inline suggestions ═══════ */}
-            
-
-            {/* ═══════ "সাজেশন" Tab — inline suggestions ═══════ */}
             <TabsContent value="suggestion">
               {suggestions.length === 0 && !suggestionsLoading ? (
                 <ComingSoonEmptyState title={msg.contentTypeSoon} subtitle="এই অধ্যায়ের সাজেশন শীঘ্রই যোগ করা হবে" />
@@ -1400,7 +1488,178 @@ export default function ChapterDetailPage() {
                 </motion.div>
               )}
             </TabsContent>
-            
+
+            {/* ═══════ "সংক্ষিপ্ত প্রশ্ন" Tab — inline short Q&A ═══════ */}
+            <TabsContent value="short-questions">
+              <div className="mt-4">
+                {/* Fetch trigger */}
+                {!shortQuestionsFetched && !shortQuestionsLoading && (
+                  <EffectWrapper callback={() => fetchShortQuestions(chapterData.id)} />
+                )}
+
+                {shortQuestionsLoading ? (
+                  <div className="flex items-center justify-center py-16">
+                    <Loader2 className="size-8 animate-spin text-cyan-600" />
+                  </div>
+                ) : freeShortQuestions.length === 0 && purchasedShortQuestions.length === 0 && lockedShortQuestions.length === 0 ? (
+                  <ComingSoonEmptyState
+                    title={msg.contentTypeSoon}
+                    subtitle="এই অধ্যায়ের সংক্ষিপ্ত প্রশ্ন শীঘ্রই যোগ করা হবে"
+                  />
+                ) : (
+                  <div className="space-y-4">
+                    {/* Stats */}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {freeShortQuestions.length > 0 && (
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 gap-1">
+                          <Eye className="size-3" /> ফ্রি {toBengaliNum(freeShortQuestions.length)}টি
+                        </Badge>
+                      )}
+                      {purchasedShortQuestions.length > 0 && (
+                        <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 gap-1">
+                          <CheckCircle2 className="size-3" /> কেনা {toBengaliNum(purchasedShortQuestions.length)}টি
+                        </Badge>
+                      )}
+                      {lockedShortQuestions.length > 0 && (
+                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 gap-1">
+                          <Lock className="size-3" /> প্রিমিয়াম {toBengaliNum(lockedShortQuestions.length)}টি
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Free questions */}
+                    {freeShortQuestions.length > 0 && (
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="size-2 rounded-full bg-cyan-500" />
+                          <span className="text-sm font-medium text-cyan-700 dark:text-cyan-400">ফ্রি প্রশ্ন</span>
+                        </div>
+                        <div className="space-y-3">
+                          {freeShortQuestions.map((q, i) => (
+                            <Card key={q.id} className="overflow-hidden border-l-4 border-l-emerald-400">
+                              <CardContent className="p-4 space-y-2">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="flex-1">
+                                    <p className="font-medium">
+                                      <span className="text-muted-foreground mr-2">{toBengaliNum(i + 1)}.</span>
+                                      <RichContentRenderer content={q.question} inline />
+                                      <span className="mx-1.5 text-muted-foreground">—</span>
+                                      <RichContentRenderer content={q.answer} inline />
+                                    </p>
+                                    {q.questionImage && (
+                                      <img src={q.questionImage} alt="প্রশ্নের ছবি" className="mt-2 max-w-full h-auto rounded-lg" />
+                                    )}
+                                    {q.answerImage && (
+                                      <img src={q.answerImage} alt="উত্তরের ছবি" className="mt-2 max-w-full h-auto rounded-lg" />
+                                    )}
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Purchased questions */}
+                    {purchasedShortQuestions.length > 0 && (
+                      <div className="mt-6">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="size-2 rounded-full bg-emerald-500" />
+                          <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400">কেনা প্রশ্ন</span>
+                        </div>
+                        <div className="space-y-3">
+                          {purchasedShortQuestions.map((q, i) => {
+                            const freeCount = freeShortQuestions.length
+                            return (
+                              <Card key={q.id} className="overflow-hidden border-l-4 border-l-emerald-500">
+                                <CardContent className="p-4 space-y-2">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1">
+                                      <p className="font-medium">
+                                        <span className="text-muted-foreground mr-2">{toBengaliNum(freeCount + i + 1)}.</span>
+                                        <RichContentRenderer content={q.question} inline />
+                                        <span className="mx-1.5 text-muted-foreground">—</span>
+                                        <RichContentRenderer content={q.answer} inline />
+                                      </p>
+                                      {q.questionImage && (
+                                        <img src={q.questionImage} alt="প্রশ্নের ছবি" className="mt-2 max-w-full h-auto rounded-lg" />
+                                      )}
+                                      {q.answerImage && (
+                                        <img src={q.answerImage} alt="উত্তরের ছবি" className="mt-2 max-w-full h-auto rounded-lg" />
+                                      )}
+                                    </div>
+                                    <Badge className="shrink-0 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                      <CheckCircle2 className="size-3 mr-1" /> কেনা
+                                    </Badge>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Locked premium questions */}
+                    {lockedShortQuestions.length > 0 && (
+                      <div className="mt-6">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="size-2 rounded-full bg-amber-500" />
+                          <span className="text-sm font-medium text-amber-700 dark:text-amber-400">প্রিমিয়াম প্রশ্ন</span>
+                        </div>
+                        <div className="space-y-3">
+                          {lockedShortQuestions.map((q, i) => {
+                            const visibleCount = freeShortQuestions.length + purchasedShortQuestions.length
+                            return (
+                              <Card
+                                key={q.id}
+                                className="overflow-hidden border-l-4 border-l-amber-400 cursor-pointer hover:shadow-md transition-all"
+                                onClick={() => {
+                                  setPurchaseModalOpen(true)
+                                  setPurchaseModalData({
+                                    contentType: 'short-questions',
+                                    contentId: q.id,
+                                    contentTitle: q.question.length > 60 ? q.question.slice(0, 60) + '...' : q.question,
+                                    contentPrice: q.price,
+                                    classLevel: chapterData.classSlug,
+                                  })
+                                }}
+                              >
+                                <CardContent className="p-4 space-y-2">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex-1">
+                                      <p className="font-medium text-muted-foreground">
+                                        <span className="text-muted-foreground mr-2">{toBengaliNum(visibleCount + i + 1)}.</span>
+                                        <RichContentRenderer content={q.question} inline />
+                                        <span className="mx-1.5 text-muted-foreground">—</span>
+                                        <span className="blur-sm select-none italic">উত্তর দেখতে কিনুন</span>
+                                      </p>
+                                      {q.questionImage && (
+                                        <img src={q.questionImage} alt="প্রশ্নের ছবি" className="mt-2 max-w-full h-auto rounded-lg opacity-60" />
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 gap-1">
+                                        <Lock className="size-3" /> প্রিমিয়াম
+                                      </Badge>
+                                      {q.price > 0 && (
+                                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">৳{q.price}</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
           </Tabs>
         )}
       </div>

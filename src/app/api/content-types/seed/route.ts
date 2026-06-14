@@ -35,6 +35,21 @@ const DEFAULT_CONTENT_TYPES = [
     order: 2,
   },
   {
+    key: 'short-questions',
+    labelBn: 'সংক্ষিপ্ত প্রশ্ন',
+    labelEn: 'Short Questions',
+    description: 'জ্ঞানমূলক ও বোধমূলক সংক্ষিপ্ত প্রশ্ন ও উত্তর',
+    icon: 'FileText',
+    color: 'bg-cyan-500',
+    lightColor: 'bg-cyan-50 dark:bg-cyan-950/30',
+    textColor: 'text-cyan-600 dark:text-cyan-400',
+    route: 'short-questions',
+    paramKey: 'chapterId',
+    buttonLabel: 'সংক্ষিপ্ত প্রশ্ন দেখুন',
+    showInChapterDetail: true,
+    order: 3,
+  },
+  {
     key: 'understanding',
     labelBn: 'অনুধাবন',
     labelEn: 'Understanding',
@@ -47,7 +62,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: 'chapterId',
     buttonLabel: 'অনুধাবন দেখুন',
     showInChapterDetail: true,
-    order: 3,
+    order: 5,
   },
   {
     key: 'cq',
@@ -62,7 +77,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: 'chapterId',
     buttonLabel: 'সৃজনশীল প্রশ্ন দেখুন',
     showInChapterDetail: true,
-    order: 4,
+    order: 6,
   },
   {
     key: 'mcq',
@@ -77,7 +92,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: 'chapterId',
     buttonLabel: 'MCQ প্র্যাকটিস',
     showInChapterDetail: true,
-    order: 5,
+    order: 7,
   },
   {
     key: 'suggestion',
@@ -92,7 +107,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'সাজেশন দেখুন',
     showInChapterDetail: true,
-    order: 6,
+    order: 8,
   },
   {
     key: 'exam',
@@ -107,7 +122,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'পরীক্ষা দিন',
     showInChapterDetail: true,
-    order: 7,
+    order: 9,
   },
   {
     key: 'board',
@@ -122,7 +137,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'বোর্ড প্রশ্ন দেখুন',
     showInChapterDetail: false,
-    order: 8,
+    order: 10,
   },
   {
     key: 'bundle',
@@ -137,7 +152,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'বান্ডেল দেখুন',
     showInChapterDetail: false,
-    order: 9,
+    order: 11,
   },
   {
     key: 'package',
@@ -152,7 +167,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'প্যাকেজ দেখুন',
     showInChapterDetail: false,
-    order: 10,
+    order: 12,
   },
   {
     key: 'board-mcq',
@@ -167,7 +182,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'বোর্ড MCQ দেখুন',
     showInChapterDetail: false,
-    order: 11,
+    order: 13,
   },
   {
     key: 'board-cq',
@@ -182,7 +197,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'বোর্ড সৃজনশীল প্রশ্ন দেখুন',
     showInChapterDetail: false,
-    order: 12,
+    order: 14,
   },
   {
     key: 'mcq-exam-package',
@@ -197,7 +212,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'এক্সাম প্যাকেজ দেখুন',
     showInChapterDetail: false,
-    order: 13,
+    order: 15,
   },
   {
     key: 'cq-exam-package',
@@ -212,7 +227,7 @@ const DEFAULT_CONTENT_TYPES = [
     paramKey: '',
     buttonLabel: 'এক্সাম প্যাকেজ দেখুন',
     showInChapterDetail: false,
-    order: 14,
+    order: 16,
   },
 ]
 
