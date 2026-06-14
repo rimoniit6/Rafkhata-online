@@ -98,7 +98,7 @@ export default function LectureListPage() {
         const res = await fetch(`/api/lectures?${queryParams}`)
         if (res.ok) {
           const data = await res.json()
-          setLectureList(data.lectures || [])
+          setLectureList(data.data?.lectures || [])
         } else {
           setLectureList([])
         }

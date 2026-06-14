@@ -99,7 +99,7 @@ export default function LectureViewerPage() {
               const listRes = await fetch(`/api/lectures?${filterParam}&limit=1`)
               if (listRes.ok) {
                 const listData = await listRes.json()
-                const lectures = listData.lectures || []
+                const lectures = listData.data?.lectures || []
                 if (lectures.length > 0) {
                   lectureId = lectures[0].id
                 }
@@ -116,7 +116,7 @@ export default function LectureViewerPage() {
         const res = await fetch(`/api/lectures/${lectureId}`)
         if (!res.ok) throw new Error('Failed')
         const data = await res.json()
-        setLectureData(data)
+        setLectureData(data.data)
 
         // Record recently viewed & update progress
         if (user?.id && data?.id) {

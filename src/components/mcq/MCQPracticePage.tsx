@@ -121,16 +121,16 @@ export default function MCQPracticePage() {
         const res = await fetch(`/api/mcq?${queryParams}`)
         if (res.ok) {
           const data = await res.json()
-          setMcqList(data.questions || [])
+          setMcqList(data.data?.questions || [])
           setCurrentPage(1)
           setHasMore((data.pagination?.page || 1) < (data.pagination?.totalPages || 1))
           // Store API-returned counts for consistent display
           setApiCounts({
-            total: data.total || 0,
-            freeCount: data.freeCount || 0,
-            premiumCount: data.premiumCount || 0,
-            boardCount: data.boardCount || 0,
-            practiceCount: data.practiceCount || 0,
+            total: data.data?.total || 0,
+            freeCount: data.data?.freeCount || 0,
+            premiumCount: data.data?.premiumCount || 0,
+            boardCount: data.data?.boardCount || 0,
+            practiceCount: data.data?.practiceCount || 0,
           })
         } else {
           setMcqList([])
@@ -306,7 +306,7 @@ export default function MCQPracticePage() {
       const res = await fetch(`/api/mcq?${queryParams}`)
       if (res.ok) {
         const data = await res.json()
-        setMcqList(prev => [...prev, ...(data.questions || [])])
+        setMcqList(prev => [...prev, ...(data.data?.questions || [])])
         setCurrentPage(nextPage)
         setHasMore(nextPage < (data.pagination?.totalPages || 1))
       }

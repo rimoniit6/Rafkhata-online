@@ -80,7 +80,7 @@ export default function CQViewerPage() {
               const listRes = await fetch(`/api/cq?${filterParam}&limit=1`)
               if (listRes.ok) {
                 const listData = await listRes.json()
-                const cqs = listData.cqs || listData.questions || listData
+                const cqs = listData.data?.cqs || listData.cqs || listData.questions || listData
                 if (Array.isArray(cqs) && cqs.length > 0) {
                   cqId = cqs[0].id
                 }

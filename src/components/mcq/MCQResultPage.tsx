@@ -125,7 +125,7 @@ export default function MCQResultPage() {
           const res = await fetch(`/api/mcq?chapterId=${chapterId}&limit=9999`)
           if (res.ok) {
             const data = await res.json()
-            rawQuestions = data.questions || data
+            rawQuestions = data.data?.questions || data.questions || data
           }
         }
 
@@ -134,7 +134,7 @@ export default function MCQResultPage() {
           const res = await fetch(`/api/mcq?subjectId=${subjectId}&limit=9999`)
           if (res.ok) {
             const data = await res.json()
-            rawQuestions = data.questions || data
+            rawQuestions = data.data?.questions || data.questions || data
           }
         }
 
@@ -143,7 +143,7 @@ export default function MCQResultPage() {
           const res = await fetch(`/api/mcq?classLevel=${classSlug}&limit=9999`)
           if (res.ok) {
             const data = await res.json()
-            rawQuestions = data.questions || data
+            rawQuestions = data.data?.questions || data.questions || data
           }
         }
 

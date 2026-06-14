@@ -243,7 +243,7 @@ export default function ChapterDetailPage() {
       const res = await fetch(`/api/cq?type=list&chapterId=${chapterId}&limit=50`)
       if (res.ok) {
         const json = await res.json()
-        setCqs(json.cqs || [])
+        setCqs(json.data?.cqs || [])
         setCqsFetched(true)
       }
     } catch {
@@ -261,7 +261,7 @@ export default function ChapterDetailPage() {
       const res = await fetch(`/api/cq?chapterId=${chapterId}&limit=50`)
       if (res.ok) {
         const json = await res.json()
-        setDetailCqs(json.cqs || [])
+        setDetailCqs(json.data?.cqs || [])
         setDetailCqsFetched(true)
       }
     } catch {

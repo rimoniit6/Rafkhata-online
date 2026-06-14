@@ -510,7 +510,7 @@ export default function SubjectDetailPage() {
       const res = await fetch(`/api/cq?chapterId=${chapterId}&limit=50`)
       if (res.ok) {
         const json = await res.json()
-        setChapterCqs(json.cqs || [])
+        setChapterCqs(json.data?.cqs || [])
       }
     } catch {
       setChapterCqs([])
@@ -564,7 +564,7 @@ export default function SubjectDetailPage() {
       const res = await fetch(`/api/lectures?chapterId=${chapterId}&limit=50`)
       if (res.ok) {
         const json = await res.json()
-        setChapterLectures(json.lectures || [])
+        setChapterLectures(json.data?.lectures || [])
       }
     } catch {
       setChapterLectures([])
