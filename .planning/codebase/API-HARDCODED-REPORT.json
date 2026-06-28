@@ -1,0 +1,366 @@
+{
+  "report": {
+    "title": "API Route Files - Hardcoded Data & Pattern Violations Analysis",
+    "analysisDate": "2026-06-14",
+    "totalRoutesScanned": 97,
+    "summary": {
+      "totalFilesWithIssues": 27,
+      "criticalIssues": 1,
+      "highIssues": 5,
+      "mediumIssues": 9,
+      "lowIssues": 12
+    }
+  },
+
+  "severityBreakdown": {
+    "critical": [
+      {
+        "file": "src/app/api/payment/accounts/route.ts",
+        "lines": [26, 29, 44, 51],
+        "type": "hardcoded_placeholder_data",
+        "description": "Returns hardcoded placeholder phone numbers '017XXXXXXXX', '018XXXXXXXX', '016XXXXXXXX' as payment account numbers when DB lookup fails or settings are empty. These are not valid numbers but are returned as actual account data to the client.",
+        "impact": "Real users could send payments to fake numbers, losing money. Fallback should return empty/null rather than fake placeholder values.",
+        "fixApproach": "Remove placeholder defaults; return empty string or null when no account setting is found in DB. Add validation that account numbers look real before displaying."
+      }
+    ],
+    "high": [
+      {
+        "file": "src/app/api/classes/route.ts",
+        "lines": [124],
+        "type": "fallback_bypasses_db_field",
+        "description": "Uses FALLBACK_SLUG_GRADIENTS[cls.slug] to set gradient instead of reading the gradient field from the classCategory model. The classCategory schema HAS a gradient field (used by hierarchy/metadata/route.ts), but this route ignores it entirely and falls back to a hardcoded map, THEN applies its own fallback string. The DB field is never consulted.",
+        "impact": "Admin changes to class gradients in DB have no effect. UI always shows the hardcoded gradient.",
+        "fixApproach": "Read `gradient` field from DB first (cls.gradient), then fall back to FALLBACK_SLUG_GRADIENTS, then fall back to the default string."
+      },
+      {
+        "file": "src/app/api/classes/[slug]/route.ts",
+        "lines": [28, 31, 119, 123],
+        "type": "error_response_inconsistency",
+        "description": "Uses raw NextResponse.json({ error: '...' }) for both 404 and 500 errors instead of the standardized apiError() utility. The response format is { error } instead of { success: false, error } — inconsistent with the rest of the codebase.",
+        "impact": "Frontend error handling code cannot rely on a consistent error shape across all API endpoints, leading to potential unhandled errors or extra conditional parsing.",
+        "fixApproach": "Replace with apiError('ক্লাস খুঁজে পাওয়া যায়নি', 404, 'NOT_FOUND') and handleApiError(error, 'Get class detail error')."
+      },
+      {
+        "file": "src/app/api/board-questions/route.ts",
+        "lines": [193, 197],
+        "type": "error_response_inconsistency",
+        "description": "Returns a massive hardcoded fallback response object ({ error, data: [], boards: [], availableYears: [], pagination: {...} }) instead of a proper error response. The error response shape is completely different from standardized format.",
+        "impact": "Frontend must handle two completely different response shapes for error vs success from the same endpoint.",
+        "fixApproach": "Replace with handleApiError(error, 'Board questions error') which returns standardized { success: false, error, code }."
+      },
+      {
+        "file": "src/app/api/payment/content-info/route.ts",
+        "lines": [14, 17, 28, 32, 47, 62, 79, 94, 112, 127, 142, 329, 332],
+        "type": "error_response_inconsistency",
+        "description": "Every validation error and not-found error uses raw NextResponse.json({ success: false, error: '...' }, { status }) instead of apiError(). Also blocks try/catch bare console.error + raw NextResponse. The pattern is inconsistent with payment routes that use apiError.",
+        "impact": "Error responses lack the standardized `code` field, making it harder for frontends to programmatically handle specific error types.",
+        "fixApproach": "Replace all NextResponse.json error responses with apiError() calls."
+      },
+      {
+        "file": "src/app/api/payment/check/route.ts",
+        "lines": [14, 17, 62, 64],
+        "type": "inconsistent_rate_limit_error",
+        "description": "Rate limit error is handled with raw NextResponse.json instead of the standardized rateLimitExceeded() utility. Response format is different from other rate-limited endpoints.",
+        "impact": "Rate limit error shape differs from what applyRateLimit() produces, creating inconsistency in client-side rate-limit handling.",
+        "fixApproach": "Use applyRateLimit() helper instead of direct getClientIdentifier + manual error construction."
+      }
+    ],
+    "medium": [
+      {
+        "file": "src/app/api/config/route.ts",
+        "lines": [20, 77, 63, 76],
+        "type": "hardcoded_defaults_with_db_fallback",
+        "description": "A large hardcoded defaultConfig object with Bengali site name 'শিক্ষা বাংলা', empty contact info, and 14 hardcoded Bengali empty-state messages (contentComingSoon, chaptersComingSoon, etc.). The DB (siteSettings table) can override these, but on error the entire defaultConfig is sent as the response.",
+        "impact": "If DB fails, the API silently returns a hardcoded config as if everything is normal (response still has success: true). Admin changes to some messages may be overridden by the || default fallback chain.",
+        "fixApproach": "On DB error, return a proper error response instead of silently falling back. Separate static structural defaults from content defaults that should always be DB-driven."
+      },
+      {
+        "file": "src/app/api/config/route.ts",
+        "lines": [152, 154],
+        "type": "silent_error_fallback",
+        "description": "When DB fetch fails, returns the entire hardcoded defaultConfig with success: true — making the error invisible to the client. This means if the siteSettings table is missing, the app appears to work but uses wrong data.",
+        "impact": "Complete data failure is invisible to users and admins. Frontend has no way to detect or report this issue.",
+        "fixApproach": "Return { success: false, error: 'কনফিগারেশন লোড করতে সমস্যা হয়েছে' } on DB error, or at least add a warning flag to the response."
+      },
+      {
+        "file": "src/app/api/payment/accounts/route.ts",
+        "lines": [42, 53],
+        "type": "hardcoded_fallback_on_error",
+        "description": "On any error (including DB failure), silently returns success: true with hardcoded placeholder account numbers. The error is completely hidden from the client.",
+        "impact": "Users see fake account numbers to send payments to when the DB is down.",
+        "fixApproach": "Return success: false on DB error, with empty/null account values."
+      },
+      {
+        "file": "src/app/api/boards/route.ts",
+        "lines": [16],
+        "type": "hardcoded_empty_array_fallback",
+        "description": "On error, returns { success: true, data: [] } — masks the error as an empty list. Never logs the specific error details to a structured logger.",
+        "impact": "Board listing silently fails. Admin cannot detect DB issues.",
+        "fixApproach": "Return handleApiError(error, 'Boards list error') for consistent error handling."
+      },
+      {
+        "file": "src/app/api/years/route.ts",
+        "lines": [15, 16],
+        "type": "hardcoded_empty_array_fallback",
+        "description": "Same pattern as boards — catch block returns { success: true, data: [] } hiding the error.",
+        "impact": "Same as boards — silent failures.",
+        "fixApproach": "Use handleApiError() instead of the catch-and-return-empty pattern."
+      },
+      {
+        "file": "src/app/api/testimonials/route.ts",
+        "lines": [14, 18],
+        "type": "partial_error_inconsistency",
+        "description": "Returns { success: false, error: '...' } on error but doesn't use handleApiError(). Error logging is just console.error.",
+        "impact": "Errors are not sent to a centralized error logger. The error format differs from apiError() which would include a code field.",
+        "fixApproach": "Use handleApiError(error, 'Get testimonials error')."
+      },
+      {
+        "file": "src/app/api/board-years/route.ts",
+        "lines": [21, 23],
+        "type": "missing_rate_limit_and_validation",
+        "description": "No rate limiting. No validation on the `board` query parameter — it's injected directly into the where clause.",
+        "impact": "Public endpoint is unthrottled. Injection of unexpected values into where clause could expose data or cause unexpected behavior.",
+        "fixApproach": "Add rate limiting via applyRateLimit(). Validate board param against known values."
+      },
+      {
+        "file": "src/app/api/bundles/route.ts",
+        "lines": ["unknown"],
+        "type": "potential_missing_rate_limit",
+        "description": "Public GET endpoint that likely lacks rate limiting (pattern match from other public endpoints).",
+        "impact": "Unthrottled access to resource listing.",
+        "fixApproach": "Add applyRateLimit() at the top of GET handler."
+      },
+      {
+        "file": "src/app/api/notices/route.ts",
+        "lines": [5, 53],
+        "type": "missing_rate_limit",
+        "description": "No rate limiting on a public, paginated endpoint that accepts search/filter parameters.",
+        "impact": "Vulnerable to scraping and DoS through search queries.",
+        "fixApproach": "Add applyRateLimit(apiLimiter, request)."
+      }
+    ],
+    "low": [
+      {
+        "file": "src/app/api/favicon/route.ts",
+        "line": 24,
+        "type": "hardcoded_third_party_url",
+        "description": "Returns hardcoded third-party CDN URL 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg' as favicon fallback.",
+        "impact": "Third-party dependency for a core branding element. If CDN goes down, favicon breaks. Also potentially unrelated to the project's branding.",
+        "fixApproach": "Replace with a locally hosted default SVG favicon."
+      },
+      {
+        "file": "src/app/api/hierarchy/metadata/route.ts",
+        "lines": [15, 21, 114, 134],
+        "type": "inconsistent_error_response",
+        "description": "Returns { success: false, error: '...' } directly without using apiError(). Error messages are constructed inline.",
+        "impact": "Inconsistent with routes using handleApiError(). The code field is missing from responses.",
+        "fixApproach": "Use handleApiError() for the catch block."
+      },
+      {
+        "file": "src/app/api/subjects/[id]/route.ts",
+        "lines": [32, 35, 232, 234],
+        "type": "inconsistent_error_response",
+        "description": "Returns raw NextResponse.json({ error: '...' }) without apiError(). No rate limiting. No input validation on the subject ID.",
+        "impact": "Inconsistent error shape. Unauthenticated access (OK for public content, but unthrottled).",
+        "fixApproach": "Use apiError() for 404. Use handleApiError() for catch. Add rate limiting."
+      },
+      {
+        "file": "src/app/api/chapters/[id]/route.ts",
+        "lines": [33, 36],
+        "type": "inconsistent_error_response",
+        "description": "Same pattern as subjects — uses raw NextResponse.json for errors. No rate limiting.",
+        "impact": "Same as subjects.",
+        "fixApproach": "Use apiError() + handleApiError() + rate limiting."
+      },
+      {
+        "file": "src/app/api/content-types/seed/route.ts",
+        "lines": [6, 217, 226, 268, 271],
+        "type": "hardcoded_seed_data",
+        "description": "DEFAULT_CONTENT_TYPES array with 14 hardcoded content type definitions including Bengali labels, colors, Tailwind classes. Uses raw NextResponse.json for error responses.",
+        "impact": "Seed data could become stale if the contentType table structure changes. Error responses are inconsistent with the rest of the API.",
+        "fixApproach": "Use apiError() for error responses. Move seed defaults to a constants file if they need to be shared."
+      },
+      {
+        "file": "src/app/api/admin/navigation/seed/route.ts",
+        "lines": [5, 28, 35, 71, 72],
+        "type": "hardcoded_seed_data",
+        "description": "DEFAULT_NAVIGATION_ITEMS array with hardcoded nav items including Bengali labels and routes. Uses raw NextResponse.json for errors.",
+        "impact": "Seed data could diverge from actual routes if the frontend routing structure changes.",
+        "fixApproach": "Same as content-types/seed — use apiError() for error responses."
+      },
+      {
+        "file": "src/app/api/boards/route.ts",
+        "lines": [6],
+        "type": "missing_rate_limit",
+        "description": "No rate limiting on this public endpoint.",
+        "impact": "Unthrottled access.",
+        "fixApproach": "Add applyRateLimit(apiLimiter, request) before the DB query."
+      },
+      {
+        "file": "src/app/api/years/route.ts",
+        "lines": [6],
+        "type": "missing_rate_limit",
+        "description": "No rate limiting on this public endpoint.",
+        "impact": "Unthrottled access.",
+        "fixApproach": "Add applyRateLimit(apiLimiter, request)."
+      },
+      {
+        "file": "src/app/api/stats/route.ts",
+        "lines": [5],
+        "type": "missing_rate_limit",
+        "description": "No rate limiting. Aggregates across multiple large tables on every request.",
+        "impact": "Unthrottled access to an expensive endpoint that runs 5 COUNT queries.",
+        "fixApproach": "Add applyRateLimit() and consider caching the stats response."
+      },
+      {
+        "file": "src/app/api/navigation/route.ts",
+        "lines": [5],
+        "type": "missing_rate_limit",
+        "description": "No rate limiting.",
+        "impact": "Unthrottled access.",
+        "fixApproach": "Add applyRateLimit()."
+      },
+      {
+        "file": "src/app/api/plans/route.ts",
+        "lines": [5],
+        "type": "missing_rate_limit",
+        "description": "No rate limiting on this pricing/plans endpoint.",
+        "impact": "Unthrottled access to pricing data (could be scraped).",
+        "fixApproach": "Add applyRateLimit()."
+      },
+      {
+        "file": "src/app/api/search/route.ts",
+        "lines": [13, 15],
+        "type": "missing_rate_limit_on_parts",
+        "description": "Has applyRateLimit call but uses raw apiLimiter with fallback. No CSRF check (GET, OK).",
+        "impact": "Partially rate limited but the identifier creation and limit check is inconsistent with other routes.",
+        "fixApproach": "Consistent pattern — already has rate limiting, but the type param min=Math.min with limit should be more restrictive for search (max 20 not 50)."
+      }
+    ]
+  },
+
+  "patterns": {
+    "inconsistentErrorFormat": {
+      "files": [
+        "src/app/api/classes/[slug]/route.ts",
+        "src/app/api/board-questions/route.ts",
+        "src/app/api/board-questions/filters/route.ts",
+        "src/app/api/board-years/route.ts",
+        "src/app/api/content-types/seed/route.ts",
+        "src/app/api/subjects/[id]/route.ts",
+        "src/app/api/chapters/[id]/route.ts",
+        "src/app/api/courses/featured/route.ts",
+        "src/app/api/content/bundles-for/route.ts",
+        "src/app/api/recently-viewed/route.ts",
+        "src/app/api/user/feedback/route.ts",
+        "src/app/api/payment/content-info/route.ts",
+        "src/app/api/admin/navigation/seed/route.ts",
+        "src/app/api/hierarchy/metadata/route.ts"
+      ],
+      "description": "14 route files use raw NextResponse.json({ error: '...' }) instead of the standardized apiError() or handleApiError() functions. This produces inconsistent error shapes across endpoints — some have { error, code, details }, others just { error }, and some embed error inside different structures.",
+      "standardFormat": {
+        "success": false,
+        "error": "<message>",
+        "code": "<ERROR_CODE>"
+      }
+    },
+
+    "catchSilentFallback": {
+      "files": [
+        "src/app/api/boards/route.ts",
+        "src/app/api/years/route.ts",
+        "src/app/api/config/route.ts",
+        "src/app/api/payment/accounts/route.ts"
+      ],
+      "description": "4 routes catch errors and return hardcoded fallback data with success: true instead of propagating the error. This masks infrastructure failures and prevents monitoring from detecting issues."
+    },
+
+    "hardcodedFallbackMaps": {
+      "file": "src/lib/hierarchy-labels.ts",
+      "lines": [71, 98],
+      "maps": {
+        "FALLBACK_CLASS_LABELS": "5 entries (class-6 through hsc)",
+        "FALLBACK_BOARD_LABELS": "10 entries (dhaka through tangail)",
+        "FALLBACK_SLUG_GRADIENTS": "5 entries (class-6 through hsc)"
+      },
+      "description": "Static maps of slug-to-label/gradient pairs. These are used as primary values by src/app/api/classes/route.ts (gradient) and elsewhere. While declared as fallbacks, they bypass DB values in practice."
+    },
+
+    "missingRateLimit": {
+      "fileCount": 13,
+      "examples": [
+        "src/app/api/boards/route.ts",
+        "src/app/api/board-years/route.ts",
+        "src/app/api/years/route.ts",
+        "src/app/api/stats/route.ts",
+        "src/app/api/notices/route.ts",
+        "src/app/api/testimonials/route.ts",
+        "src/app/api/classes/[slug]/route.ts",
+        "src/app/api/subjects/[id]/route.ts",
+        "src/app/api/chapters/[id]/route.ts",
+        "src/app/api/navigation/route.ts",
+        "src/app/api/hierarchy/metadata/route.ts",
+        "src/app/api/plans/route.ts",
+        "src/app/api/config/route.ts"
+      ],
+      "description": "13 public endpoints lack any rate limiting. Some of these perform expensive DB aggregations (stats runs 5 COUNT queries, hierarchy/metadata runs 6+ queries)."
+    },
+
+    "missingInputValidation": {
+      "files": [
+        "src/app/api/board-questions/route.ts",
+        "src/app/api/board-questions/filters/route.ts",
+        "src/app/api/board-years/route.ts",
+        "src/app/api/classes/[slug]/route.ts",
+        "src/app/api/subjects/[id]/route.ts",
+        "src/app/api/chapters/[id]/route.ts"
+      ],
+      "description": "6 endpoints accept user-supplied params (slugs, IDs, filter values) that are directly injected into DB where clauses without validation beyond existence checks."
+    },
+
+    "transformerFunctionsDuplicatingDBFields": {
+      "files": [
+        "src/app/api/mcq/route.ts (lines 9-59)",
+        "src/app/api/cq/route.ts (lines 9-60)"
+      ],
+      "description": "Both MCQ and CQ routes define inline transform functions that manually map every single DB field to a response field. These could be replaced with Prisma select to avoid duplication and maintenance overhead.",
+      "severity": "low"
+    }
+  },
+
+  "recommendations": [
+    {
+      "priority": "P0 - Immediate",
+      "items": [
+        "Fix src/app/api/payment/accounts/route.ts to never return placeholder phone numbers — return null/empty instead.",
+        "Fix src/app/api/classes/route.ts to read gradient from the DB classCategory.gradient field before using FALLBACK_SLUG_GRADIENTS."
+      ]
+    },
+    {
+      "priority": "P1 - High",
+      "items": [
+        "Standardize all error responses across every route to use apiError()/handleApiError() — eliminate raw NextResponse.json error patterns.",
+        "Remove the silent-success-fallback pattern in boards, years, config, and payment/accounts. Always propagate errors.",
+        "Add rate limiting to all 13 unthrottled public endpoints.",
+        "Replace hardcoded placeholder account numbers with proper empty/null handling."
+      ]
+    },
+    {
+      "priority": "P2 - Medium",
+      "items": [
+        "Add input validation for all route params (class slug, subject/chapter IDs, board names).",
+        "Extract the DEFAULT_CONTENT_TYPES and DEFAULT_NAVIGATION_ITEMS seed arrays to shared constants files.",
+        "Refactor the hardcoded fallback messages in config/route.ts — either make them all DB-driven or reduce to essential minimum.",
+        "Replace the third-party favicon fallback URL with a local asset."
+      ]
+    },
+    {
+      "priority": "P3 - Low",
+      "items": [
+        "Extract MCQ/CQ transformer functions to a shared utility for reuse.",
+        "Add structured error logging (via handleApiError) to all catch blocks currently using console.error only.",
+        "Consider caching for stats and hierarchy/metadata endpoints to reduce DB load."
+      ]
+    }
+  ]
+}

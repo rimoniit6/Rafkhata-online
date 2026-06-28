@@ -1,0 +1,575 @@
+'use client'
+
+import React, { useState, useCallback, useMemo, Suspense, lazy } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  FileQuestion,
+  AlignLeft,
+  Brain,
+  BookOpen,
+  Archive,
+  CreditCard,
+  ClipboardCheck,
+  Image as ImageIcon,
+  Bell,
+  Megaphone,
+  Lightbulb,
+  Package,
+  Box,
+  Settings,
+  Menu,
+  ChevronLeft,
+  ExternalLink,
+  LogOut,
+  Layers,
+  X,
+  Upload,
+  Star,
+  Tags,
+  HelpCircle,
+  MessageSquareQuote,
+  StickyNote,
+  Trophy,
+  ShoppingCart,
+  CalendarCheck,
+  Filter,
+  GraduationCap,
+  BarChart3,
+} from 'lucide-react'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useRouterStore, RoutePath, isAdminRoute } from '@/store/router'
+import { useAuthStore } from '@/store/auth'
+import { parseUrl } from '@/lib/urls'
+import AdminAuthGuard from './AdminAuthGuard'
+import { Button } from '@/components/ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+import { useSiteConfig } from '@/hooks/use-metadata'
+import Image from 'next/image'
+
+// Lazy load admin pages by feature group - only loads the needed page
+const AdminPages = {
+  // Core
+  'admin-dashboard': lazy(() => import('./AdminDashboardPage')),
+  'admin-users': lazy(() => import('./AdminUsersPage')),
+  'admin-content': lazy(() => import('./AdminContentPage')),
+  'admin-hierarchy': lazy(() => import('./AdminHierarchyPage')),
+  'admin-bulk-import': lazy(() => import('./AdminBulkImportPage')),  // Questions
+  'admin-mcq': lazy(() => import('./AdminMCQPage')),
+  'admin-cq': lazy(() => import('./AdminCQPage')),
+  'admin-knowledge-questions': lazy(() => import('./AdminKnowledgeQuestionsPage')),
+
+  // Exams
+  'admin-exams': lazy(() => import('./AdminExamsPage')),
+
+  // Content
+  'admin-lectures': lazy(() => import('./AdminLecturesPage')),
+  'admin-board': lazy(() => import('./AdminBoardPage')),
+  'admin-notices': lazy(() => import('./AdminNoticePage')),
+  'admin-suggestions': lazy(() => import('./AdminSuggestionPage')),
+  'admin-featured': lazy(() => import('./AdminFeaturedPage')),
+  'admin-content-types': lazy(() => import('./AdminContentTypesPage')),
+  
+  // Bundles & Packages
+  'admin-bundles': lazy(() => import('./AdminBundlesPage')),
+  'admin-packages': lazy(() => import('./AdminPackagesPage')),
+  
+  // MCQ Exam
+  'admin-mcq-exam-packages': lazy(() => import('@/features/mcq-exam/admin/MCQExamAdminContainer')),
+  'admin-mcq-exam-purchases': lazy(() => import('./AdminMCQExamPurchasesPage')),
+  
+  // CQ Exam
+  'admin-cq-exam-packages': lazy(() => import('@/features/cq-exam/admin/CQExamAdminContainer')),
+  'admin-exam-results': lazy(() => import('./AdminExamResultsPage')),
+
+  // Courses
+  'admin-courses': lazy(() => import('@/features/course/admin/CourseAdminContainer')),
+  
+  // Commerce
+  'admin-payments': lazy(() => import('./AdminPaymentsPage')),
+  'admin-subscriptions': lazy(() => import('./AdminSubscriptionsPage')),
+  'admin-content-purchases': lazy(() => import('./AdminContentPurchasesPage')),
+  
+  // CMS
+  'admin-banners': lazy(() => import('./AdminBannersPage')),
+  'admin-notifications': lazy(() => import('./AdminNotificationsPage')),
+  'admin-faqs': lazy(() => import('./AdminFAQsPage')),
+  'admin-testimonials': lazy(() => import('./AdminTestimonialsPage')),
+  'admin-notes': lazy(() => import('./AdminNotesPage')),
+  'admin-teacher-moderators': lazy(() => import('./AdminTeacherModeratorsPage')),
+  
+  // Settings
+  'admin-settings': lazy(() => import('./AdminSettingsPage')),
+
+  // Analytics
+  'admin-analytics': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-revenue': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-students': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-retention': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-conversion': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-dropoff': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-courses': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-lectures': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-mcq': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-cq': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-payments': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-acquisition': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-search': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-devices': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-geo': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-realtime': lazy(() => import('@/components/analytics/AnalyticsPage')),
+  'admin-analytics-reports': lazy(() => import('@/components/analytics/AnalyticsPage')),
+}
+
+const GROUPS = {
+  MAIN: 'মূল',
+  ANALYTICS: 'বিশ্লেষণ',
+  CONTENT: 'কন্টেন্ট',
+  QUESTIONS: 'প্রশ্ন',
+  EDUCATION: 'শিক্ষা',
+  EXAMS: 'এক্সাম ও প্যাকেজ',
+  RESULTS: 'ফলাফল ও ক্রয়',
+  FINANCIAL: 'আর্থিক',
+  CMS: 'সিএমএস',
+  SETTINGS: 'সেটিংস',
+} as const
+
+const GROUP_ORDER = [GROUPS.MAIN, GROUPS.CONTENT, GROUPS.QUESTIONS, GROUPS.EDUCATION, GROUPS.EXAMS, GROUPS.RESULTS, GROUPS.FINANCIAL, GROUPS.CMS, GROUPS.SETTINGS, GROUPS.ANALYTICS]
+
+interface SidebarItem {
+  label: string
+  icon: React.ElementType
+  route: RoutePath
+  group: string
+}
+
+const sidebarItems: SidebarItem[] = [
+  { label: 'ড্যাশবোর্ড', icon: LayoutDashboard, route: 'admin-dashboard', group: GROUPS.MAIN },
+  { label: 'ব্যবহারকারী', icon: Users, route: 'admin-users', group: GROUPS.MAIN },
+  { label: 'শিক্ষক ও মডারেটর', icon: GraduationCap, route: 'admin-teacher-moderators', group: GROUPS.MAIN },
+  { label: 'কন্টেন্ট', icon: FileText, route: 'admin-content', group: GROUPS.CONTENT },
+  { label: 'হায়ারার্কি', icon: Layers, route: 'admin-hierarchy', group: GROUPS.CONTENT },
+  { label: 'বাল্ক ইম্পোর্ট', icon: Upload, route: 'admin-bulk-import', group: GROUPS.CONTENT },
+  { label: 'কন্টেন্ট টাইপ', icon: Tags, route: 'admin-content-types', group: GROUPS.CONTENT },
+  { label: 'ফিচার্ড কন্টেন্ট', icon: Star, route: 'admin-featured', group: GROUPS.CONTENT },
+  { label: 'MCQ ব্যবস্থাপনা', icon: FileQuestion, route: 'admin-mcq', group: GROUPS.QUESTIONS },
+  { label: 'CQ ব্যবস্থাপনা', icon: AlignLeft, route: 'admin-cq', group: GROUPS.QUESTIONS },
+  { label: 'সংক্ষিপ্ত প্রশ্ন', icon: Brain, route: 'admin-knowledge-questions', group: GROUPS.QUESTIONS },
+  { label: 'বোর্ড প্রশ্ন', icon: Archive, route: 'admin-board', group: GROUPS.QUESTIONS },
+  { label: 'লেকচার', icon: BookOpen, route: 'admin-lectures', group: GROUPS.EDUCATION },
+  { label: 'নোটিশ', icon: Megaphone, route: 'admin-notices', group: GROUPS.EDUCATION },
+  { label: 'সাজেশন', icon: Lightbulb, route: 'admin-suggestions', group: GROUPS.EDUCATION },
+  { label: 'নোট', icon: StickyNote, route: 'admin-notes', group: GROUPS.EDUCATION },
+  { label: 'FAQ', icon: HelpCircle, route: 'admin-faqs', group: GROUPS.EDUCATION },
+  { label: 'এক্সাম', icon: ClipboardCheck, route: 'admin-exams', group: GROUPS.EXAMS },
+  { label: 'বান্ডেল', icon: Package, route: 'admin-bundles', group: GROUPS.EXAMS },
+  { label: 'প্যাকেজ', icon: Box, route: 'admin-packages', group: GROUPS.EXAMS },
+  { label: 'কোর্স', icon: BookOpen, route: 'admin-courses', group: GROUPS.EXAMS },
+  { label: 'MCQ এক্সাম প্যাকেজ', icon: FileQuestion, route: 'admin-mcq-exam-packages', group: GROUPS.EXAMS },
+  { label: 'CQ এক্সাম প্যাকেজ', icon: AlignLeft, route: 'admin-cq-exam-packages', group: GROUPS.EXAMS },
+  { label: 'এক্সাম ফলাফল', icon: Trophy, route: 'admin-exam-results', group: GROUPS.RESULTS },
+  { label: 'MCQ ক্রয়', icon: ShoppingCart, route: 'admin-mcq-exam-purchases', group: GROUPS.RESULTS },
+  { label: 'কন্টেন্ট ক্রয়', icon: Filter, route: 'admin-content-purchases', group: GROUPS.RESULTS },
+  { label: 'সাবস্ক্রিপশন', icon: CalendarCheck, route: 'admin-subscriptions', group: GROUPS.RESULTS },
+  { label: 'পেমেন্ট', icon: CreditCard, route: 'admin-payments', group: GROUPS.FINANCIAL },
+  { label: 'ব্যানার', icon: ImageIcon, route: 'admin-banners', group: GROUPS.CMS },
+  { label: 'নোটিফিকেশন', icon: Bell, route: 'admin-notifications', group: GROUPS.CMS },
+  { label: 'টেস্টিমোনিয়াল', icon: MessageSquareQuote, route: 'admin-testimonials', group: GROUPS.CMS },
+  { label: 'সেটিংস', icon: Settings, route: 'admin-settings', group: GROUPS.SETTINGS },
+
+  // Analytics (single entry — all tabs inside)
+  { label: 'বিশ্লেষণ', icon: BarChart3, route: 'admin-analytics', group: GROUPS.ANALYTICS },
+]
+
+function SidebarContent({
+  collapsed,
+  currentRoute,
+  onNavigate,
+  onToggleCollapse,
+}: {
+  collapsed: boolean
+  currentRoute: RoutePath
+  onNavigate?: () => void
+  onToggleCollapse: () => void
+}) {
+  const { navigate } = useRouterStore()
+  const { user, logout } = useAuthStore()
+  const { config } = useSiteConfig()
+  const siteName = config?.siteName || 'শিক্ষা বাংলা'
+
+  const groupedItems = useMemo(() => {
+    const map = new Map<string, SidebarItem[]>()
+    for (const item of sidebarItems) {
+      if (!map.has(item.group)) map.set(item.group, [])
+      map.get(item.group)!.push(item)
+    }
+    return map
+  }, [])
+
+  const handleNavigate = (route: RoutePath) => {
+    navigate(route)
+    onNavigate?.()
+  }
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  return (
+    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
+      {/* Header */}
+      <div className="flex items-center gap-3 border-b border-sidebar-border p-4 shrink-0">
+        {config?.logo ? (
+          <Image
+            src={config.logo}
+            alt={siteName}
+            width={36}
+            height={36}
+            className="w-9 h-9 rounded-lg object-contain shrink-0"
+          />
+        ) : (
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-sm shrink-0">
+            {siteName.charAt(0)}
+          </div>
+        )}
+        <AnimatePresence>
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0, width: 0 }}
+              animate={{ opacity: 1, width: 'auto' }}
+              exit={{ opacity: 0, width: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden whitespace-nowrap"
+            >
+              <h1 className="font-bold text-sm">{siteName}</h1>
+              <p className="text-xs text-sidebar-foreground/60">অ্যাডমিন প্যানেল</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Navigation — scrollable when items overflow */}
+      <ScrollArea className="flex-1 overflow-y-auto">
+        <nav className="flex flex-col gap-1 px-2 py-2">
+          <TooltipProvider delayDuration={0}>
+            {GROUP_ORDER.map((groupName) => {
+              const groupItems = groupedItems.get(groupName)
+              if (!groupItems) return null
+              const isFirst = groupName === GROUP_ORDER[0]
+              return (
+                <div key={groupName} className="flex flex-col gap-0.5">
+                  {!collapsed && (
+                    <>
+                      {!isFirst && <div className="border-t border-sidebar-border/40 mx-1 my-2" />}
+                      <div className="px-3 py-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+                          {groupName}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {groupItems.map((item) => {
+                    const isActive = currentRoute === item.route
+                    const Icon = item.icon
+                    return (
+                      <Tooltip key={item.route}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => handleNavigate(item.route)}
+                            className={cn(
+                              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 w-full',
+                              'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                              isActive &&
+                                'bg-emerald-600/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-600/20',
+                              collapsed && 'justify-center px-2'
+                            )}
+                          >
+                            <Icon
+                              className={cn(
+                                'h-5 w-5 shrink-0',
+                                isActive && 'text-emerald-600 dark:text-emerald-400'
+                              )}
+                            />
+                            <AnimatePresence>
+                              {!collapsed && (
+                                <motion.span
+                                  initial={{ opacity: 0, width: 0 }}
+                                  animate={{ opacity: 1, width: 'auto' }}
+                                  exit={{ opacity: 0, width: 0 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="overflow-hidden whitespace-nowrap"
+                                >
+                                  {item.label}
+                                </motion.span>
+                              )}
+                            </AnimatePresence>
+                            {isActive && !collapsed && (
+                              <motion.div
+                                layoutId="activeIndicator"
+                                className="ml-auto h-1.5 w-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400"
+                                transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+                              />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        {collapsed && (
+                          <TooltipContent side="right" className="font-normal">
+                            {item.label}
+                          </TooltipContent>
+                        )}
+                      </Tooltip>
+                    )
+                  })}
+                </div>
+              )
+            })}
+          </TooltipProvider>
+        </nav>
+      </ScrollArea>
+
+      {/* Bottom section — user info + actions */}
+      <div className="border-t border-sidebar-border p-3 space-y-2 shrink-0">
+        {/* Visit website link */}
+        <button
+          onClick={() => handleNavigate('home')}
+          className={cn(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors w-full',
+            collapsed && 'justify-center px-2'
+          )}
+        >
+          <ExternalLink className="h-4 w-4 shrink-0" />
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.span
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden whitespace-nowrap"
+              >
+                ওয়েবসাইটে যান
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
+
+        <Separator className="bg-sidebar-border" />
+
+        {/* Admin user */}
+        <div
+          className={cn(
+            'flex items-center gap-3 rounded-lg px-3 py-2',
+            collapsed && 'justify-center px-2'
+          )}
+        >
+          <Avatar className="h-8 w-8 shrink-0">
+            <AvatarImage src={user?.avatar} alt={user?.name || 'User avatar'} />
+            <AvatarFallback className="bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300 text-xs">
+              {user?.name ? getInitials(user.name) : 'A'}
+            </AvatarFallback>
+          </Avatar>
+          <AnimatePresence>
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, width: 0 }}
+                animate={{ opacity: 1, width: 'auto' }}
+                exit={{ opacity: 0, width: 0 }}
+                transition={{ duration: 0.2 }}
+                className="flex-1 overflow-hidden min-w-0"
+              >
+                <p className="text-sm font-medium truncate">{user?.name || 'অ্যাডমিন'}</p>
+                <p className="text-xs text-sidebar-foreground/60 truncate">
+                  {user?.role === 'SUPER_ADMIN' ? 'সুপার অ্যাডমিন' : 'অ্যাডমিন'}
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          {!collapsed && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 shrink-0 text-sidebar-foreground/50 hover:text-destructive"
+              onClick={() => {
+                logout()
+                navigate('home')
+              }}
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Collapse toggle - desktop only */}
+      <div className="hidden lg:block border-t border-sidebar-border p-2 shrink-0">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleCollapse}
+          className="w-full justify-center text-sidebar-foreground/60 hover:text-sidebar-foreground"
+        >
+          <ChevronLeft
+            className={cn(
+              'h-4 w-4 transition-transform duration-200',
+              collapsed && 'rotate-180'
+            )}
+          />
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function AdminContent() {
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  // Derive admin page from URL to prevent double rendering.
+  // Zustand's navigate() + _onNavigate → router.push() causes the old
+  // page shell to render the new page before Next.js navigation completes.
+  // Using the URL directly ensures only the correct shell renders the page.
+  const parsed = parseUrl(pathname, searchParams ?? undefined)
+  const adminRoute = parsed?.route && isAdminRoute(parsed.route)
+    ? parsed.route
+    : 'admin-dashboard'
+
+  const Page = AdminPages[adminRoute as keyof typeof AdminPages] || AdminPages['admin-dashboard']
+
+  return (
+    <AdminAuthGuard>
+      <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" /></div>}>
+        <Page />
+      </Suspense>
+    </AdminAuthGuard>
+  )
+}
+
+export default function AdminLayout() {
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const { config } = useSiteConfig()
+  const siteName = config?.siteName || 'শিক্ষা বাংলা'
+
+  // Derive route from URL to stay in sync with the page shell
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const parsed = parseUrl(pathname, searchParams ?? undefined)
+  const currentRoute = parsed?.route && isAdminRoute(parsed.route) ? parsed.route : 'admin-dashboard'
+
+  const closeMobileSidebar = useCallback(() => {
+    setMobileOpen(false)
+  }, [])
+
+  if (!isAdminRoute(currentRoute)) return null
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-background">
+      {/* Desktop sidebar */}
+      <motion.aside
+        initial={false}
+        animate={{ width: collapsed ? 72 : 256 }}
+        transition={{ duration: 0.2, ease: 'easeInOut' } as const}
+        className="hidden lg:flex flex-col border-r border-sidebar-border shrink-0 overflow-hidden"
+      >
+        <SidebarContent
+          collapsed={collapsed}
+          currentRoute={currentRoute}
+          onToggleCollapse={() => setCollapsed(!collapsed)}
+        />
+      </motion.aside>
+
+      {/* Mobile sidebar overlay */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+              onClick={closeMobileSidebar}
+              aria-hidden="true"
+            />
+            {/* Sidebar panel */}
+            <motion.aside
+              initial={{ x: -288 }}
+              animate={{ x: 0 }}
+              exit={{ x: -288 }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+              className="fixed inset-y-0 left-0 z-50 w-72 lg:hidden shadow-xl"
+            >
+              {/* Close button */}
+              <button
+                onClick={closeMobileSidebar}
+                className="absolute top-3 right-3 z-10 flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent transition-colors"
+                aria-label="মেনু বন্ধ করুন"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <SidebarContent
+                collapsed={false}
+                currentRoute={currentRoute}
+                onNavigate={closeMobileSidebar}
+                onToggleCollapse={() => {}}
+              />
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main content */}
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        {/* Top bar for mobile */}
+        <header className="lg:hidden flex items-center gap-3 border-b px-4 py-3 bg-card shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => setMobileOpen(true)}
+            aria-label="মেনু খুলুন"
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2">
+            {config?.logo ? (
+              <Image
+                src={config.logo}
+                alt={siteName}
+                width={28}
+                height={28}
+                className="w-7 h-7 rounded-md object-contain"
+              />
+            ) : (
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-emerald-600 text-white font-bold text-xs">
+                {siteName.charAt(0)}
+              </div>
+            )}
+            <span className="font-semibold text-sm">{siteName}</span>
+          </div>
+        </header>
+
+        {/* Page content */}
+        <main className="flex-1 overflow-y-auto scrollbar-thin">
+          <div className="p-4 md:p-6 lg:p-8">
+            <Suspense fallback={<div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" /></div>}>
+              <AdminContent />
+            </Suspense>
+          </div>
+        </main>
+      </div>
+    </div>
+  )
+}
