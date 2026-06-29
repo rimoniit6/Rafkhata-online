@@ -168,7 +168,7 @@ export default function CreateExamPage() {
       })
       const json = await res.json()
       if (res.ok && json.data?.examId) {
-        navigate('exam-session', { examId: json.data.examId })
+        navigate('exam-session', { examId: json.data.examId, source: 'custom' })
       } else {
         setError(json.error || 'পরীক্ষা তৈরি করতে সমস্যা হয়েছে')
       }

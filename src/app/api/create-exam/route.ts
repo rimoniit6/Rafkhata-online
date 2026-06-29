@@ -99,6 +99,7 @@ export async function POST(request: Request) {
         price: 0,
         isActive: true,
         status: 'published',
+        creatorId: auth.user.id,
         questions: {
           create: shuffled.map((mcq, index) => ({
             questionType: 'mcq',

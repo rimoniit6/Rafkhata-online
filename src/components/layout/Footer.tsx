@@ -22,7 +22,7 @@ import { getMessages } from '@/lib/messages'
 import Image from 'next/image'
 
 export default function Footer() {
-  const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear())
+  const [currentYear, setCurrentYear] = useState(2026)
 
   useEffect(() => { setCurrentYear(new Date().getFullYear()) }, [])
 
@@ -137,8 +137,8 @@ export default function Footer() {
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-4">শ্রেণিসমূহ</h4>
               <ul className="space-y-2.5">
-                {classLinks.map((link, idx) => (
-                  <li key={idx}>
+                {classLinks.map((link) => (
+                  <li key={link.params.classSlug}>
                     <button
                       onClick={() => navigate(link.route, link.params)}
                       className="text-sm text-muted-foreground hover:text-edu-primary transition-colors flex items-center gap-1.5 group"
@@ -167,10 +167,10 @@ export default function Footer() {
             <div>
               <h4 className="text-sm font-semibold text-foreground mb-4">যোগাযোগ</h4>
               <ul className="space-y-3">
-                {finalContactInfo.map((item, idx) => {
+                {finalContactInfo.map((item) => {
                   const Icon = item.icon
                   return (
-                    <li key={idx}>
+                    <li key={item.label}>
                       <a
                         href={item.href}
                         className="text-sm text-muted-foreground hover:text-edu-primary transition-colors flex items-center gap-2"

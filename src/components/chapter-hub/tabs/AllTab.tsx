@@ -2,7 +2,7 @@
 
 import { Card,CardContent } from '@/components/ui/card'
 import type { ChapterData } from '@/hooks/use-chapter-data'
-import { ArrowRight,BookOpen,BookOpenCheck,Brain,GraduationCap,Lightbulb } from 'lucide-react'
+import { ArrowRight,BookOpen,BookOpenCheck,Brain,GraduationCap,HelpCircle,Lightbulb } from 'lucide-react'
 import { useMemo } from 'react'
 
 interface AllTabProps {
@@ -12,6 +12,7 @@ interface AllTabProps {
 
 const TYPE_META: Record<string, { icon: React.ElementType; label: string; gradient: string; tab: string }> = {
   lecture: { icon: BookOpen, label: 'Lectures', gradient: 'from-blue-500 to-cyan-500', tab: 'lecture' },
+  mcq: { icon: HelpCircle, label: 'MCQ', gradient: 'from-orange-500 to-red-500', tab: 'mcq' },
   cq: { icon: Lightbulb, label: 'CQ', gradient: 'from-violet-500 to-purple-500', tab: 'cq' },
   knowledge: { icon: Brain, label: 'Knowledge Questions', gradient: 'from-pink-500 to-rose-500', tab: 'knowledge' },
   suggestion: { icon: GraduationCap, label: 'Suggestions', gradient: 'from-indigo-500 to-blue-500', tab: 'suggestion' },

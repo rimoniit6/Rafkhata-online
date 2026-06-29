@@ -947,7 +947,6 @@ export default function CQExamViewerPage() {
         clearInterval(timerRef.current)
         timerRef.current = null
       }
-      setSubmitDialogOpen(false)
       setSubmitSuccessDialogOpen(true)
     } catch {
       toast({ title: 'ত্রুটি', description: 'পরীক্ষা জমা দিতে সমস্যা হয়েছে', variant: 'destructive' })
@@ -1210,21 +1209,23 @@ export default function CQExamViewerPage() {
           <Button
             className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white min-w-[200px]"
             onClick={() => setSubmitDialogOpen(true)}
+            disabled={submitting}
           >
-            <Send className="size-4" />
-            পরীক্ষা জমা দিন
+            {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+            {submitting ? 'জমা হচ্ছে...' : 'পরীক্ষা জমা দিন'}
           </Button>
         </div>
       </div>
 
+      {/* ─── Submit Confirmation Dialog ─────────────────────────────────── */}
       <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>পরীক্ষা জমা দিন</DialogTitle>
             <DialogDescription>
               আপনি {toBengaliNumerals(totalAnswered)}টি প্রশ্নের উত্তর দিয়েছেন।{' '}
-              {toBengaliNumerals(totalSubQuestions - totalAnswered)}টি প্রশ্ন বাকি আছে। আপনি কি
-              নিশ্চিতভাবে জমা দিতে চান?
+              {toBengaliNumerals(totalSubQuestions - totalAnswered)}টি প্রশ্ন বাকি আছে।
+              আপনি কি নিশ্চিতভাবে জমা দিতে চান?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2">
@@ -1236,21 +1237,15 @@ export default function CQExamViewerPage() {
               বাতিল
             </Button>
             <Button
-              onClick={handleSubmitExam}
+              onClick={() => {
+                setSubmitDialogOpen(false)
+                handleSubmitExam()
+              }}
               disabled={submitting}
               className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
             >
-              {submitting ? (
-                <>
-                  <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  জমা হচ্ছে...
-                </>
-              ) : (
-                <>
-                  <Send className="size-4" />
-                  জমা দিন
-                </>
-              )}
+              {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {submitting ? 'জমা হচ্ছে...' : 'জমা দিন'}
             </Button>
           </DialogFooter>
         </DialogContent>

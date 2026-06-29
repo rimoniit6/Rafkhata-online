@@ -122,6 +122,14 @@ export const routeMeta: Record<string, PageMeta> = {
     title: `পরীক্ষার ইতিহাস - ${SITE_NAME}`,
     description: 'আপনার পূর্বের পরীক্ষাগুলোর ফলাফল দেখুন।',
   },
+  'exam-creator-history': {
+    title: `আমার পরীক্ষাসমূহ - ${SITE_NAME}`,
+    description: 'আপনার তৈরি করা কাস্টম পরীক্ষার তালিকা ও ফলাফল দেখুন।',
+  },
+  'exam-creator-result': {
+    title: `পরীক্ষার ফলাফল পর্যালোচনা - ${SITE_NAME}`,
+    description: 'আপনার পরীক্ষার ফলাফল ও প্রশ্ন পর্যালোচনা দেখুন।',
+  },
   'cq-exam-package-list': {
     title: `CQ পরীক্ষা প্যাকেজ - ${SITE_NAME}`,
     description: 'সৃজনশীল প্রশ্নের পরীক্ষার প্যাকেজ সমূহ দেখুন এবং অংশ নিন।',

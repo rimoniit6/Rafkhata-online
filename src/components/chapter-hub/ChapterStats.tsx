@@ -1,6 +1,6 @@
 
 import {
-  BookOpen, Lightbulb, FileText,
+  BookOpen, HelpCircle, Lightbulb, FileText,
   GraduationCap, Brain, BookOpenCheck,
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
@@ -35,6 +35,7 @@ function StatCard({ icon: Icon, label, count, gradient, delay }: StatDef & { del
 export function ChapterStats({ chapter }: { chapter: ChapterData }) {
   const stats: StatDef[] = [
     { icon: BookOpen, label: 'Lectures', count: chapter.lectureCount, gradient: 'from-blue-500 to-cyan-500' },
+    { icon: HelpCircle, label: 'MCQ', count: chapter.mcqCount, gradient: 'from-orange-500 to-red-500' },
     { icon: Lightbulb, label: 'CQ', count: chapter.cqCount, gradient: 'from-violet-500 to-purple-500' },
     { icon: FileText, label: 'Board Questions', count: chapter.boardQuestionCount, gradient: 'from-orange-500 to-amber-500' },
     { icon: Brain, label: 'Knowledge Questions', count: chapter.contentCounts['short-questions'] || 0, gradient: 'from-pink-500 to-rose-500' },

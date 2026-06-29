@@ -359,15 +359,19 @@ export default function UserExamListPage() {
         }
 
         const res = await fetch(`/api/exams?${params.toString()}`)
-        if (!res.ok) throw new Error('Failed to fetch exams')
+        if (!res.ok) {
+          const errorBody = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+          throw new Error(errorBody.error || `HTTP ${res.status}`)
+        }
 
-        const json: ExamListResponse = await res.json()
+        const json = await res.json().catch(() => null) as ExamListResponse | null
+        if (!json) throw new Error('সার্ভার থেকে অপ্রত্যাশিত রেসপন্স')
         setExams(Array.isArray(json.data) ? json.data : [])
         if (json.pagination) {
           setPagination((prev) => ({ ...prev, ...json.pagination }))
         }
       } catch (err) {
-        console.error('Failed to fetch exams:', err)
+        console.error('পরীক্ষার তালিকা লোড করতে সমস্যা:', err)
         setExams([])
       } finally {
         setLoading(false)

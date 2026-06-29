@@ -31,27 +31,11 @@ function sanitizeData(data: Record<string, unknown>, fields: string[]): void {
   }
 }
 
-// PrismaClient singleton with connection pooling for production
 const isProduction = process.env.NODE_ENV === 'production'
-
-function getPoolUrl(): string {
-  const url = process.env.DIRECT_URL || process.env.DATABASE_URL || ''
-  if (!url.includes('connection_limit=')) {
-    const sep = url.includes('?') ? '&' : '?'
-    const limit = process.env.NODE_ENV === 'production' ? '10' : '2'
-    return `${url}${sep}connection_limit=${limit}`
-  }
-  return url
-}
 
 function createPrismaClient() {
   const client = new PrismaClient({
     log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'query'],
-    datasources: {
-      db: {
-        url: getPoolUrl(),
-      },
-    },
   })
 
   // ─── AUTO-SANITIZE HTML FIELDS ───

@@ -3,7 +3,30 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card,CardContent } from '@/components/ui/card'
-import { Dialog,DialogClose,DialogContent,DialogDescription,DialogFooter,DialogHeader,DialogTitle,DialogTrigger } from '@/components/ui/dialog'
+import { cn, toBengaliNumerals } from '@/lib/utils'
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+} from '@/components/ui/dialog'
+import {
+AlertCircle,
+ArrowLeft,
+BookOpen,
+CheckCircle2,
+ChevronLeft,ChevronRight,
+Clock,
+Layers,
+Loader2,
+MinusCircle,
+Send,
+SkipForward,
+Trophy,
+XCircle,
+} from 'lucide-react'
 import { Progress } from '@/components/ui/progress'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 import SafeImage from '@/components/ui/safe-image'
@@ -13,16 +36,7 @@ import { fetchCsrfToken } from '@/lib/api-client'
 import { useExamStore } from '@/store/exam'
 import { useRouterStore } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
-import {
-AlertCircle,
-ArrowLeft,
-BookOpen,
-ChevronLeft,ChevronRight,
-Clock,
-Layers,
-Send,
-SkipForward
-} from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react'
 
 interface MCQQuestion {
@@ -52,6 +66,13 @@ export default function ExamSessionPage() {
   const [examDuration, setExamDuration] = useState(0)
   const [examMarksPerMcq, setExamMarksPerMcq] = useState(1)
   const [examNegativeMarks, setExamNegativeMarks] = useState(0)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
+
+  // Custom exam handling
+  const isCustomExam = params.source === 'custom'
+  const [showCustomResult, setShowCustomResult] = useState(false)
+  const [customResult, setCustomResult] = useState<{ correct: number; wrong: number; skipped: number; score: number; totalMarks: number; percentage: number; timeTaken: number } | null>(null)
 
   const examIdParam = params.examId || ''
   const examId = examIdParam ? `exam-${examIdParam}` : ''
@@ -73,22 +94,26 @@ export default function ExamSessionPage() {
   }, [goBack])
 
   useEffect(() => {
+    if (!examIdParam) {
+      if (questions.length === 0) {
+        setLoading(false)
+      }
+      return
+    }
     const fetchData = async () => {
       setLoading(true)
       try {
-        if (examIdParam) {
-          const examRes = await fetch(`/api/exams/${examIdParam}`)
-          if (examRes.ok) {
-            const examData = await examRes.json()
-            const examObj = examData.data?.exam || examData.exam
-            if (examObj && examObj.questions && examObj.questions.length > 0) {
-              setQuestions(examObj.questions)
-              setExamTitle(examObj.title || 'পরীক্ষা')
-              if (examObj.duration) setExamDuration(examObj.duration)
-              if (examObj.marksPerMcq) setExamMarksPerMcq(examObj.marksPerMcq)
-              if (examObj.negativeMarks !== undefined) setExamNegativeMarks(examObj.negativeMarks)
-              return
-            }
+        const examRes = await fetch(`/api/exams/${examIdParam}`)
+        if (examRes.ok) {
+          const examData = await examRes.json()
+          const examObj = examData.data?.exam || examData.exam
+          if (examObj && examObj.questions && examObj.questions.length > 0) {
+            setQuestions(examObj.questions)
+            setExamTitle(examObj.title || 'পরীক্ষা')
+            if (examObj.duration) setExamDuration(examObj.duration)
+            if (examObj.marksPerMcq) setExamMarksPerMcq(examObj.marksPerMcq)
+            if (examObj.negativeMarks !== undefined) setExamNegativeMarks(examObj.negativeMarks)
+            return
           }
         }
         setQuestions([])
@@ -182,29 +207,6 @@ export default function ExamSessionPage() {
   const answeredCount = useMemo(() => questions.filter((q) => answers[q.id]).length, [questions, answers])
   const progressPercent = useMemo(() => questions.length > 0 ? (answeredCount / questions.length) * 100 : 0, [answeredCount, questions.length])
 
-  const SubmitExamDialog = ({ trigger }: { trigger: React.ReactNode }) => (
-    <Dialog>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>পরীক্ষা জমা দিন</DialogTitle>
-          <DialogDescription>
-            আপনি {answeredCount}টি প্রশ্নের উত্তর দিয়েছেন। {questions.length - answeredCount}টি প্রশ্ন বাকি আছে।
-            আপনি কি নিশ্চিতভাবে জমা দিতে চান?
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter className="gap-2">
-          <DialogClose asChild>
-            <Button variant="outline">বাতিল</Button>
-          </DialogClose>
-          <Button onClick={handleSubmit}>জমা দিন</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-
   const advanceToNext = useCallback(() => {
     if (currentIndex < questions.length - 1) {
       const nextIndex = currentIndex + 1
@@ -236,44 +238,106 @@ export default function ExamSessionPage() {
     advanceToNext()
   }, [advanceToNext])
 
-  const handleSubmit = async () => {
-    if (examIdParam) {
-      try {
-        let correct = 0
-        let wrong = 0
-        for (const q of questions) {
-          const ua = answers[q.id]
-          if (!ua) continue
-          if (ua === q.correctAnswer) correct++
-          else wrong++
-        }
-        const score = correct * examMarksPerMcq - wrong * examNegativeMarks
-        const totalMarks = questions.length * examMarksPerMcq
-        const initialDurationSeconds = examDuration ? examDuration * 60 : questions.length * 60
-        const timeTaken = Math.max(0, initialDurationSeconds - timeRemaining)
+  const handleSubmitRef = useRef<() => void>(() => {})
 
-        const token = await fetchCsrfToken()
-        await fetch('/api/exams/results', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-csrf-token': token },
-          body: JSON.stringify({
-            examId: examIdParam,
-            score: Math.max(0, score),
-            totalMarks,
-            timeTaken,
-            answers,
-          }),
-        })
-      } catch (e) {
-        console.error('Failed to save exam result:', e)
+  const { toast } = useToast()
+
+  const openSubmitDialog = useCallback(() => {
+    setSubmitDialogOpen(true)
+  }, [])
+
+  const handleSubmit = useCallback(async () => {
+    // Use currentExamId from store as fallback if params.examId is lost (e.g. page refresh)
+    const effectiveExamId = examIdParam || currentExamId?.replace('exam-', '') || ''
+    if (!effectiveExamId || submitting) {
+      if (!effectiveExamId) {
+        toast({ title: 'ত্রুটি', description: 'পরীক্ষা আইডি পাওয়া যায়নি। অনুগ্রহ করে আবার চেষ্টা করুন।', variant: 'destructive' })
       }
+      return
     }
 
-    endExam()
-    navigate('exam-result', {
-      resultId: examIdParam || undefined,
-    })
-  }
+    setSubmitDialogOpen(false)
+    setSubmitting(true)
+
+    const initialDurationSeconds = examDuration ? examDuration * 60 : questions.length * 60
+    const timeTaken = Math.max(0, initialDurationSeconds - timeRemaining)
+
+    if (isCustomExam) {
+      // ── Custom exam: compute result client-side, skip DB save ──
+      let correct = 0
+      let wrong = 0
+      for (const q of questions) {
+        const ua = answers[q.id]
+        if (!ua) continue
+        if (ua === q.correctAnswer) correct++
+        else wrong++
+      }
+      const skipped = questions.length - correct - wrong
+      const score = correct * examMarksPerMcq - wrong * examNegativeMarks
+      const totalMarks = questions.length * examMarksPerMcq
+      const percentage = totalMarks > 0 ? Math.round((Math.max(0, score) / totalMarks) * 100) : 0
+
+      endExam()
+      setCustomResult({
+        correct,
+        wrong,
+        skipped,
+        score: Math.max(0, score),
+        totalMarks,
+        percentage,
+        timeTaken,
+      })
+      setShowCustomResult(true)
+      setSubmitting(false)
+      return
+    }
+
+    // ── Regular exam: save to DB ──
+    try {
+      const token = await fetchCsrfToken()
+      const idempotencyKey = `${effectiveExamId}_${Date.now()}_${Math.random().toString(36).slice(2)}`
+
+      const res = await fetch('/api/exams/results', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-csrf-token': token },
+        body: JSON.stringify({
+          examId: effectiveExamId,
+          timeTaken,
+          answers,
+          idempotencyKey,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        throw new Error(data.error || 'পরীক্ষা জমা দিতে ব্যর্থ হয়েছে')
+      }
+
+      const resultId = data.data?.resultId
+      endExam()
+      navigate('exam-result', {
+        resultId: resultId || effectiveExamId,
+      })
+    } catch (e) {
+      const message = e instanceof Error ? e.message : 'পরীক্ষা জমা দিতে ব্যর্থ হয়েছে'
+      toast({ title: 'ত্রুটি', description: message, variant: 'destructive' })
+    } finally {
+      setSubmitting(false)
+    }
+  }, [examIdParam, currentExamId, submitting, questions, answers, examDuration, timeRemaining, isCustomExam, examMarksPerMcq, examNegativeMarks, endExam, navigate, toast])
+
+  // Keep ref in sync with latest handleSubmit (for auto-submit on timeout)
+  useEffect(() => {
+    handleSubmitRef.current = handleSubmit
+  }, [handleSubmit])
+
+  // Auto-submit when timer expires
+  useEffect(() => {
+    if (isExamActive && timeRemaining <= 0 && questions.length > 0) {
+      handleSubmitRef.current()
+    }
+  }, [timeRemaining, isExamActive, questions.length])
 
   const getBatchQuestions = useMemo(() => {
     const start = paletteBatch * BATCH_SIZE
@@ -321,6 +385,121 @@ export default function ExamSessionPage() {
         <span className="text-muted-foreground/60">
           (প্রশ্ন {currentBatchRange.start}-{currentBatchRange.end})
         </span>
+      </div>
+    )
+  }
+
+  // ─── Custom Exam Result View (early return — hides exam UI) ───
+  if (isCustomExam && showCustomResult && customResult) {
+    return (
+      <div className="min-h-screen bg-background">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-3xl mx-auto px-4 py-8"
+        >
+          <Card className="border-emerald-200/50 dark:border-emerald-800/30 overflow-hidden">
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6 text-white text-center">
+              <Trophy className="size-12 mx-auto mb-2" />
+              <h2 className="text-xl font-bold mb-1">{examTitle}</h2>
+              <p className="text-emerald-100 text-sm">পরীক্ষার ফলাফল</p>
+            </div>
+            <CardContent className="p-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center mb-6">
+                <div>
+                  <CheckCircle2 className="size-6 text-emerald-500 mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-emerald-600">{toBengaliNumerals(customResult.correct)}</p>
+                  <p className="text-xs text-muted-foreground">সঠিক</p>
+                </div>
+                <div>
+                  <XCircle className="size-6 text-destructive mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-destructive">{toBengaliNumerals(customResult.wrong)}</p>
+                  <p className="text-xs text-muted-foreground">ভুল</p>
+                </div>
+                <div>
+                  <MinusCircle className="size-6 text-amber-500 mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-amber-500">{toBengaliNumerals(customResult.skipped)}</p>
+                  <p className="text-xs text-muted-foreground">বাদ দেওয়া</p>
+                </div>
+                <div>
+                  <Trophy className="size-6 text-emerald-500 mx-auto mb-1" />
+                  <p className="text-2xl font-bold text-emerald-600">
+                    {toBengaliNumerals(customResult.percentage)}%
+                  </p>
+                  <p className="text-xs text-muted-foreground">স্কোর</p>
+                </div>
+              </div>
+
+              <div className="text-center mb-6">
+                <p className="text-lg font-semibold">
+                  {toBengaliNumerals(Math.round(customResult.score))} / {toBengaliNumerals(customResult.totalMarks)} নম্বর
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  সময়: {toBengaliNumerals(Math.floor(customResult.timeTaken / 60))} মিনিট {toBengaliNumerals(customResult.timeTaken % 60)} সেকেন্ড
+                </p>
+              </div>
+
+              <Separator className="mb-4" />
+              <h3 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                <BookOpen className="size-4 text-emerald-500" />
+                প্রশ্ন পর্যালোচনা
+              </h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto pr-2">
+                {questions.map((q, idx) => {
+                  const userAns = answers[q.id]
+                  const isCorrect = userAns && userAns === q.correctAnswer
+                  const isWrong = userAns && userAns !== q.correctAnswer
+                  const isSkipped = !userAns
+                  return (
+                    <Card key={q.id} className="border-border/50">
+                      <CardContent className="p-3">
+                        <div className="flex items-start gap-3">
+                          <div className={cn(
+                            'flex items-center justify-center size-7 rounded-full shrink-0',
+                            isCorrect ? 'bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600' :
+                            isWrong ? 'bg-destructive/10 text-destructive' :
+                            'bg-amber-100 dark:bg-amber-950/30 text-amber-600'
+                          )}>
+                            {isCorrect ? <CheckCircle2 className="size-4" /> :
+                             isWrong ? <XCircle className="size-4" /> :
+                             <MinusCircle className="size-4" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium mb-1">প্রশ্ন {toBengaliNumerals(idx + 1)}</p>
+                            <RichContentRenderer content={q.text} className="text-xs line-clamp-2" inline />
+                            <div className="flex items-center gap-2 mt-1">
+                              {userAns && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  আপনার উত্তর: <span className={cn('font-medium', isCorrect ? 'text-emerald-600' : 'text-destructive')}>{userAns}</span>
+                                </span>
+                              )}
+                              {q.correctAnswer && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  সঠিক উত্তর: <span className="font-medium text-emerald-600">{q.correctAnswer}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+
+              <div className="flex justify-center gap-3 mt-6">
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => navigate('exam-creator-history')}
+                >
+                  <BookOpen className="size-4" />
+                  আমার পরীক্ষাসমূহ
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     )
   }
@@ -509,7 +688,14 @@ export default function ExamSessionPage() {
                     <ChevronRight className="size-4" />
                   </Button>
                 ) : (
-                  <SubmitExamDialog trigger={<Button className="gap-2"><Send className="size-4" />জমা দিন</Button>} />
+                  <Button
+                    className="gap-2"
+                    disabled={submitting}
+                    onClick={openSubmitDialog}
+                  >
+                    {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                    {submitting ? 'জমা দেওয়া হচ্ছে...' : 'জমা দিন'}
+                  </Button>
                 )}
               </div>
             </div>
@@ -569,7 +755,15 @@ export default function ExamSessionPage() {
 
                 <Separator className="my-3" />
 
-                <SubmitExamDialog trigger={<Button className="w-full gap-2" size="sm"><Send className="size-4" />পরীক্ষা জমা দিন</Button>} />
+                <Button
+                  className="w-full gap-2"
+                  size="sm"
+                  disabled={submitting}
+                  onClick={openSubmitDialog}
+                >
+                  {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                  {submitting ? 'জমা দেওয়া হচ্ছে...' : 'পরীক্ষা জমা দিন'}
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -625,6 +819,36 @@ export default function ExamSessionPage() {
           </motion.div>
         )}
       </div>
+
+      {/* ─── Submit Confirmation Dialog ──────────────────────────────────── */}
+      <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>পরীক্ষা জমা দিন</DialogTitle>
+            <DialogDescription>
+              আপনি {toBengaliNumerals(answeredCount)}টি প্রশ্নের উত্তর দিয়েছেন। {toBengaliNumerals(questions.length - answeredCount)}টি প্রশ্ন বাকি আছে।
+              আপনি কি নিশ্চিতভাবে জমা দিতে চান?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setSubmitDialogOpen(false)}
+              disabled={submitting}
+            >
+              বাতিল
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={submitting}
+              className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
+            >
+              {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+              {submitting ? 'জমা হচ্ছে...' : 'জমা দিন'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

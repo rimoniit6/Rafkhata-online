@@ -167,17 +167,6 @@ export default function ExamResultPage() {
     fetchData()
   }, [params.resultId])
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-fade-in text-center">
-          <Trophy className="size-16 text-amber-500 mx-auto mb-4 animate-pulse" />
-          <p className="text-lg font-medium">ফলাফল হিসাব করা হচ্ছে...</p>
-        </div>
-      </div>
-    )
-  }
-
   const correctCount = useMemo(() => questions.filter((q) => q.isCorrect).length, [questions])
   const wrongCount = useMemo(() => questions.filter((q) => !q.isCorrect && !q.isSkipped).length, [questions])
   const skippedCount = useMemo(() => questions.filter((q) => q.isSkipped).length, [questions])
@@ -188,6 +177,17 @@ export default function ExamResultPage() {
   const minutesTaken = useMemo(() => Math.floor(timeTaken / 60), [timeTaken])
   const secondsTaken = useMemo(() => timeTaken % 60, [timeTaken])
   const gradeInfo = useMemo(() => getGrade(percentage), [percentage])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-fade-in text-center">
+          <Trophy className="size-16 text-amber-500 mx-auto mb-4 animate-pulse" />
+          <p className="text-lg font-medium">ফলাফল হিসাব করা হচ্ছে...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="pb-24 sm:pb-8">

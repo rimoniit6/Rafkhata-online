@@ -13,6 +13,7 @@ import { CqTab } from './tabs/CqTab'
 import { ExamsTab } from './tabs/ExamsTab'
 import { KnowledgeQuestionsTab } from './tabs/KnowledgeQuestionsTab'
 import { LecturesTab } from './tabs/LecturesTab'
+import { McqTab } from './tabs/McqTab'
 import { SuggestionsTab } from './tabs/SuggestionsTab'
 
 export default function ChapterHubPage() {
@@ -65,6 +66,7 @@ export default function ChapterHubPage() {
         <div className="mt-6">
           {activeTab === 'all' && <AllTab chapter={chapter} onNavigate={setActiveTab} />}
           {activeTab === 'lecture' && <LecturesTab chapterId={chapter.id} />}
+          {activeTab === 'mcq' && <McqTab chapterId={chapter.id} />}
           {activeTab === 'cq' && <CqTab chapterId={chapter.id} />}
           {activeTab === 'knowledge' && <KnowledgeQuestionsTab chapterId={chapter.id} />}
           {activeTab === 'suggestion' && <SuggestionsTab chapterId={chapter.id} />}

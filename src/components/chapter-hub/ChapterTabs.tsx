@@ -13,8 +13,8 @@ interface TabDef {
 const TABS: TabDef[] = [
   { value: 'all', label: 'All' },
   { value: 'lecture', label: 'Lectures', countKey: 'lecture' },
+  { value: 'mcq', label: 'MCQ', countKey: 'mcq' },
   { value: 'cq', label: 'CQ', countKey: 'cq' },
-
   { value: 'knowledge', label: 'Knowledge', countKey: 'short-questions' },
   { value: 'suggestion', label: 'Suggestions', countKey: 'suggestion' },
   { value: 'exam', label: 'Exams', countKey: 'exam' },

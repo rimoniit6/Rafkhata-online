@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { unstable_cache } from "next/cache";
 import { Geist, Geist_Mono } from "next/font/google";
 import { QueryClient, dehydrate } from '@tanstack/react-query'
@@ -141,7 +141,8 @@ export default async function RootLayout({
     staleTime: 300_000,
   })
   const dehydratedState = dehydrate(queryClient)
-  const nonce = (await headers()).get('x-csp-nonce') ?? ''
+  const [reqHeaders, cookieStore] = await Promise.all([headers(), cookies()])
+  const nonce = cookieStore.get('x-csp-nonce')?.value ?? reqHeaders.get('x-csp-nonce') ?? ''
 
   return (
     <html lang="bn" suppressHydrationWarning>

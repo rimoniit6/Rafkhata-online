@@ -183,25 +183,12 @@ export function logError(error: unknown, context?: string): void {
   const timestamp = new Date().toISOString()
   const errorInfo = formatError(error)
 
-  const logEntry = {
-    timestamp,
-    ...(context && { context }),
-    error: {
-      name: error instanceof Error ? error.name : 'Unknown',
-      message: errorInfo.message,
-      code: errorInfo.code,
-      statusCode: errorInfo.statusCode,
-      ...(error instanceof Error && { stack: error.stack }),
-    },
-  }
-
-  // Log to console with structured format
+  // Log to console with structured format (preserves timestamp, context for observability)
+  const logPrefix = `[${timestamp}]${context ? ` [${context}]` : ''} [${errorInfo.code}]`
   if (errorInfo.statusCode >= 500) {
-    console.error(JSON.stringify(logEntry, null, 2))
+    console.error(logPrefix, errorInfo.message, error instanceof Error ? error.stack : '')
   } else if (errorInfo.statusCode >= 400) {
-    console.warn(JSON.stringify(logEntry, null, 2))
-  } else {
-    console.log(JSON.stringify(logEntry, null, 2))
+    console.warn(logPrefix, errorInfo.message)
   }
 }
 

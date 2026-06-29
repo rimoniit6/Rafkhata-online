@@ -328,8 +328,9 @@ export default function MCQExamPackageDetailPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [examSetInfo, setExamSetInfo] = useState<ExamSet | null>(null)
-  const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
+
   const [submitting, setSubmitting] = useState(false)
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false)
 
   // Result state
   const [resultDetail, setResultDetail] = useState<{
@@ -698,9 +699,14 @@ export default function MCQExamPackageDetailPage() {
 
   // ─── Submit Exam ────────────────────────────────────────────────────────
 
+  const handleSubmitDialogOpen = useCallback(() => {
+    setSubmitDialogOpen(true)
+  }, [])
+
   const handleSubmitExam = useCallback(async () => {
     if (!examResult?.id || !activeSetId) return
 
+    setSubmitDialogOpen(false)
     setSubmitting(true)
     try {
       const res = await fetch('/api/mcq-exam-packages', {
@@ -749,7 +755,6 @@ export default function MCQExamPackageDetailPage() {
       })
     } finally {
       setSubmitting(false)
-      setSubmitDialogOpen(false)
     }
   }, [examResult, activeSetId, answers, timeRemaining, examSetInfo, toast, fetchWeakness])
 
@@ -1119,11 +1124,12 @@ export default function MCQExamPackageDetailPage() {
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => setSubmitDialogOpen(true)}
+                      onClick={handleSubmitDialogOpen}
+                      disabled={submitting}
                       className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
                     >
-                      <Send className="size-4" />
-                      জমা দিন
+                      {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                      {submitting ? 'জমা হচ্ছে...' : 'জমা দিন'}
                     </Button>
                   )}
                 </div>
@@ -1174,10 +1180,11 @@ export default function MCQExamPackageDetailPage() {
                   <Button
                     className="w-full gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
                     size="sm"
-                    onClick={() => setSubmitDialogOpen(true)}
+                    onClick={handleSubmitDialogOpen}
+                    disabled={submitting}
                   >
-                    <Send className="size-4" />
-                    পরীক্ষা জমা দিন
+                    {submitting ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
+                    {submitting ? 'জমা হচ্ছে...' : 'পরীক্ষা জমা দিন'}
                   </Button>
                 </CardContent>
               </Card>
@@ -1185,15 +1192,15 @@ export default function MCQExamPackageDetailPage() {
           </div>
         </div>
 
-        {/* Submit Confirmation Dialog */}
+        {/* ─── Submit Confirmation Dialog ─────────────────────────────── */}
         <Dialog open={submitDialogOpen} onOpenChange={setSubmitDialogOpen}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>পরীক্ষা জমা দিন</DialogTitle>
               <DialogDescription>
-                আপনি {answeredCount}টি প্রশ্নের উত্তর দিয়েছেন।{' '}
-                {examQuestions.length - answeredCount}টি প্রশ্ন বাকি আছে। আপনি কি
-                নিশ্চিতভাবে জমা দিতে চান?
+                আপনি {toBengaliNumerals(answeredCount)}টি প্রশ্নের উত্তর দিয়েছেন।{' '}
+                {toBengaliNumerals(examQuestions.length - answeredCount)}টি প্রশ্ন বাকি আছে।
+                আপনি কি নিশ্চিতভাবে জমা দিতে চান?
               </DialogDescription>
             </DialogHeader>
             <DialogFooter className="gap-2">
@@ -1210,16 +1217,11 @@ export default function MCQExamPackageDetailPage() {
                 className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white"
               >
                 {submitting ? (
-                  <>
-                    <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    জমা হচ্ছে...
-                  </>
+                  <Loader2 className="size-4 animate-spin" />
                 ) : (
-                  <>
-                    <Send className="size-4" />
-                    জমা দিন
-                  </>
+                  <Send className="size-4" />
                 )}
+                {submitting ? 'জমা হচ্ছে...' : 'জমা দিন'}
               </Button>
             </DialogFooter>
           </DialogContent>

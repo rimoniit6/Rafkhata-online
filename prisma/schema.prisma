@@ -58,6 +58,7 @@ model User {
   coursePurchases       CoursePurchase[]
   courseEnrollments     CourseEnrollment[]
   assignmentSubmissions AssignmentSubmission[]
+  createdExams          Exam[]
 }
 
 // ============ CONTENT STRUCTURE ============
@@ -320,6 +321,8 @@ model Exam {
   instructions  String? // exam instructions for students
   startsAt      DateTime?
   endsAt        DateTime?
+  creatorId     String? // user who created this exam (custom exam builder)
+  creator       User?     @relation(fields: [creatorId], references: [id], onDelete: SetNull)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -331,6 +334,7 @@ model Exam {
   @@index([status, isActive])
   @@index([subjectId, classLevel, isActive])
   @@index([isActive, createdAt])
+  @@index([creatorId])
 }
 
 model ExamQuestion {
@@ -354,13 +358,15 @@ model ExamResult {
   score       Float    @default(0)
   totalMarks  Float    @default(0)
   timeTaken   Int      @default(0) // seconds
-  answers     Json // JSON string
+  answers     Json // JSON object: {questionId: "A"}
+  idempotencyKey String? @unique // Client-generated UUID to prevent duplicate submission
   createdAt   DateTime @default(now())
   completedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, examId])
   @@index([userId])
   @@index([examId])
 }

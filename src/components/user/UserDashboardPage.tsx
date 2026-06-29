@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import {
-  Clock, Crown, Package, ShoppingBag, Sparkles, Timer, Play, Trophy, Bookmark, CreditCard, MessageSquareText
+  Clock, Crown, FileQuestion, Package, ShoppingBag, Sparkles, Timer, Play, Trophy, Bookmark, CreditCard, MessageSquareText
 } from 'lucide-react'
 import { useRouterStore } from '@/store/router'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ import { BookmarksSection } from './dashboard/BookmarksSection'
 import { PaymentHistory } from './dashboard/PaymentHistory'
 import { BundleDetailDialog } from './dashboard/BundleDetailDialog'
 import { EditProfileDialog } from './dashboard/EditProfileDialog'
+import CustomExamHistory from './dashboard/CustomExamHistory'
 import FeedbackSection from './dashboard/FeedbackSection'
 
 export default function UserDashboardPage() {
@@ -261,6 +262,10 @@ export default function UserDashboardPage() {
               <MessageSquareText className="size-4" />
               ফিডব্যাক
             </TabsTrigger>
+            <TabsTrigger value="custom-exams" className="gap-1.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-emerald-600 data-[state=active]:to-teal-600 data-[state=active]:text-white data-[state=active]:shadow-sm data-[state=active]:shadow-emerald-500/20">
+              <FileQuestion className="size-4" />
+              কাস্টম এক্সাম
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="purchased">
@@ -310,6 +315,9 @@ export default function UserDashboardPage() {
           </TabsContent>
           <TabsContent value="feedback">
             <FeedbackSection />
+          </TabsContent>
+          <TabsContent value="custom-exams">
+            <CustomExamHistory />
           </TabsContent>
         </Tabs>
       </div>

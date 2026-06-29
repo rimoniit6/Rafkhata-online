@@ -123,6 +123,7 @@ export async function proxy(request: NextRequest) {
 
   if (isPublicPageRoute(pathname)) {
     request.headers.set('x-csp-nonce', cspNonce)
+    request.cookies.set('x-csp-nonce', cspNonce)
     return addSecurityHeaders(NextResponse.next({ request: { headers: request.headers } }), cspNonce)
   }
 
@@ -182,6 +183,7 @@ export async function proxy(request: NextRequest) {
   }
 
   request.headers.set('x-csp-nonce', cspNonce)
+  request.cookies.set('x-csp-nonce', cspNonce)
   const response = NextResponse.next({ request: { headers: request.headers } })
   supabaseResponse.cookies.getAll().forEach(cookie => {
     response.cookies.set(cookie.name, cookie.value, cookie)

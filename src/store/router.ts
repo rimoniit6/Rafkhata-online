@@ -32,6 +32,8 @@ export type RoutePath =
   | 'mcq-exam-package-list'
   | 'mcq-exam-package-detail'
   | 'mcq-exam-history'
+  | 'exam-creator-history'
+  | 'exam-creator-result'
   | 'admin-dashboard'
   | 'admin-users'
   | 'admin-content'
