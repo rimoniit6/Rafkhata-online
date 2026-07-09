@@ -1,5 +1,7 @@
 import { create } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 
+const MAX_HISTORY = 50
 let _scrollTimeout: ReturnType<typeof setTimeout> | null = null
 
 export type RoutePath = 
@@ -92,6 +94,7 @@ export type RoutePath =
   | 'admin-analytics-geo'
   | 'admin-analytics-realtime'
   | 'admin-analytics-reports'
+
 // Single source of truth for admin routes — used by AppShell, page.tsx, and AdminLayout
 export const ADMIN_ROUTES: Set<RoutePath> = new Set([
   'admin-dashboard',
@@ -202,9 +205,7 @@ export interface RouterState {
   _onNavigate: ((route: RoutePath, params: RouteParams) => void) | null
 }
 
-const MAX_HISTORY = 50
-
-export const useRouterStore = create<RouterState>((set, get) => ({
+export const useRouterStore = create<RouterState>()((set, get) => ({
   currentRoute: 'home',
   params: {},
   history: [{ route: 'home', params: {} }],
@@ -219,9 +220,7 @@ export const useRouterStore = create<RouterState>((set, get) => ({
       params,
       history: [...history.slice(-(MAX_HISTORY - 1)), { route: currentRoute, params: currentParams }],
     })
-    if (_onNavigate) {
-      _onNavigate(route, params)
-    }
+    _onNavigate?.(route, params)
     if (params.scrollTarget) {
       if (_scrollTimeout) clearTimeout(_scrollTimeout)
       _scrollTimeout = setTimeout(() => {
@@ -244,9 +243,7 @@ export const useRouterStore = create<RouterState>((set, get) => ({
         params: lastEntry.params,
         history: newHistory,
       })
-      if (_onNavigate) {
-        _onNavigate(lastEntry.route, lastEntry.params)
-      }
+      _onNavigate?.(lastEntry.route, lastEntry.params)
     } else if (typeof window !== 'undefined') {
       window.history.back()
     }
@@ -264,3 +261,12 @@ export const useRouterStore = create<RouterState>((set, get) => ({
     set({ params: updatedParams, history: updatedHistory })
   },
 }))
+
+export const useCurrentRoute = () => useRouterStore((s) => s.currentRoute)
+export const useRouteParams = () => useRouterStore((s) => s.params)
+export const useRouteParam = <K extends keyof RouteParams>(key: K) =>
+  useRouterStore((s) => s.params[key])
+export const useShallowRouter = () => useRouterStore(useShallow((s) => ({
+  currentRoute: s.currentRoute,
+  params: s.params,
+})))

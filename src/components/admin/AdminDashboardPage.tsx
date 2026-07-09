@@ -2,61 +2,62 @@
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card,CardContent,CardHeader,CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
-Table,
-TableBody,
-TableCell,
-TableHead,
-TableHeader,
-TableRow,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table'
 import { useAuthStore } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import {
-AlignLeft,
-BarChart3,
-BookOpen,
-Clock,
-CreditCard,
-DollarSign,
-FileQuestion,
-UserPlus,
-Users
+  AlignLeft,
+  BarChart3,
+  BookOpen,
+  Clock,
+  CreditCard,
+  DollarSign,
+  FileQuestion,
+  UserPlus,
+  Users,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
-import { useEffect,useMemo,useState } from 'react'
+import { useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import type { Stats } from './AdminDashboardCharts'
 
 const AdminDashboardCharts = dynamic(() => import('./AdminDashboardCharts'), { ssr: false })
 
-export default function AdminDashboardPage() {
-  const { user } = useAuthStore()
-  const { navigate } = useRouterStore()
-  const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState<Stats | null>(null)
+const METHOD_LABELS: Record<string, string> = {
+  bkash: 'বিকাশ',
+  nagad: 'নগদ',
+  rocket: 'রকেট',
+}
 
-  useEffect(() => {
-    let cancelled = false
-    const controller = new AbortController()
-    ;(async () => {
-      try {
-        const res = await fetch('/api/admin/stats', { signal: controller.signal })
-        if (res.ok) {
-          const json = await res.json()
-          if (!cancelled) setStats(json.data.stats)
-        } else {
-          console.error('[AdminDashboard] Stats fetch failed:', res.status, await res.text().catch(() => ''))
-        }
-      } catch (err) {
-        if (!cancelled) console.error('Failed to fetch stats:', err)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    })()
-    return () => { cancelled = true; controller.abort() }
-  }, [])
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'অপেক্ষমান',
+  approved: 'অনুমোদিত',
+  rejected: 'প্রত্যাখ্যাত',
+}
+
+export default function AdminDashboardPage() {
+  const user = useAuthStore((s) => s.user)
+  const navigate = useRouterStore((s) => s.navigate)
+
+  const { data: stats, isLoading: loading } = useQuery<Stats>({
+    queryKey: ['admin', 'stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/admin/stats')
+      if (!res.ok) throw new Error(`Stats fetch failed: ${res.status}`)
+      const json = await res.json()
+      return json.data.stats as Stats
+    },
+    staleTime: 60_000,
+  })
 
   const statCards = useMemo(() => [
     {
@@ -120,18 +121,6 @@ export default function AdminDashboardPage() {
     )
   }
 
-  const methodLabels: Record<string, string> = {
-    bkash: 'বিকাশ',
-    nagad: 'নগদ',
-    rocket: 'রকেট',
-  }
-
-  const statusLabels: Record<string, string> = {
-    pending: 'অপেক্ষমান',
-    approved: 'অনুমোদিত',
-    rejected: 'প্রত্যাখ্যাত',
-  }
-
   return (
     <div className="space-y-6">
       {/* Welcome */}
@@ -168,7 +157,7 @@ export default function AdminDashboardPage() {
         })}
       </div>
 
-      <AdminDashboardCharts stats={stats} />
+      <AdminDashboardCharts stats={stats ?? null} />
 
       {/* Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -203,7 +192,7 @@ export default function AdminDashboardPage() {
                     <TableRow key={payment.id}>
                       <TableCell className="font-medium">{payment.user?.name || 'N/A'}</TableCell>
                       <TableCell>৳{payment.amount}</TableCell>
-                      <TableCell>{methodLabels[payment.method] || payment.method}</TableCell>
+                      <TableCell>{METHOD_LABELS[payment.method] || payment.method}</TableCell>
                       <TableCell>
                         <Badge
                           variant={
@@ -221,7 +210,7 @@ export default function AdminDashboardPage() {
                                 : ''
                           }
                         >
-                          {statusLabels[payment.status] || payment.status}
+                          {STATUS_LABELS[payment.status] || payment.status}
                         </Badge>
                       </TableCell>
                     </TableRow>
@@ -264,30 +253,19 @@ export default function AdminDashboardPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  <TableRow>
-                    <TableCell className="font-medium">শ্রেণি</TableCell>
-                    <TableCell>{stats?.content.classes ?? 0}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">বিষয়</TableCell>
-                    <TableCell>{stats?.content.subjects ?? 0}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">অধ্যায়</TableCell>
-                    <TableCell>{stats?.content.chapters ?? 0}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">MCQ</TableCell>
-                    <TableCell>{stats?.content.mcqs ?? 0}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">CQ</TableCell>
-                    <TableCell>{stats?.content.cqs ?? 0}</TableCell>
-                  </TableRow>
-                  <TableRow>
-                    <TableCell className="font-medium">লেকচার</TableCell>
-                    <TableCell>{stats?.content.lectures ?? 0}</TableCell>
-                  </TableRow>
+                  {[
+                    { label: 'শ্রেণি', value: stats?.content.classes ?? 0 },
+                    { label: 'বিষয়', value: stats?.content.subjects ?? 0 },
+                    { label: 'অধ্যায়', value: stats?.content.chapters ?? 0 },
+                    { label: 'MCQ', value: stats?.content.mcqs ?? 0 },
+                    { label: 'CQ', value: stats?.content.cqs ?? 0 },
+                    { label: 'লেকচার', value: stats?.content.lectures ?? 0 },
+                  ].map(({ label, value }) => (
+                    <TableRow key={label}>
+                      <TableCell className="font-medium">{label}</TableCell>
+                      <TableCell>{value}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </CardContent>
@@ -303,38 +281,22 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <Button
-                variant="outline"
-                className="h-auto py-3 flex-col gap-2 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-950/30"
-                onClick={() => navigate('admin-mcq')}
-              >
-                <FileQuestion className="h-5 w-5 text-emerald-600" />
-                <span className="text-xs">নতুন MCQ</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto py-3 flex-col gap-2 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-950/30"
-                onClick={() => navigate('admin-users')}
-              >
-                <UserPlus className="h-5 w-5 text-emerald-600" />
-                <span className="text-xs">ব্যবহারকারী</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto py-3 flex-col gap-2 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-950/30"
-                onClick={() => navigate('admin-payments')}
-              >
-                <CreditCard className="h-5 w-5 text-emerald-600" />
-                <span className="text-xs">পেমেন্ট</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-auto py-3 flex-col gap-2 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-950/30"
-                onClick={() => navigate('admin-lectures')}
-              >
-                <BarChart3 className="h-5 w-5 text-emerald-600" />
-                <span className="text-xs">লেকচার</span>
-              </Button>
+              {[
+                { label: 'নতুন MCQ', icon: FileQuestion, route: 'admin-mcq' as const },
+                { label: 'ব্যবহারকারী', icon: UserPlus, route: 'admin-users' as const },
+                { label: 'পেমেন্ট', icon: CreditCard, route: 'admin-payments' as const },
+                { label: 'লেকচার', icon: BarChart3, route: 'admin-lectures' as const },
+              ].map(({ label, icon: Icon, route }) => (
+                <Button
+                  key={route}
+                  variant="outline"
+                  className="h-auto py-3 flex-col gap-2 hover:bg-emerald-50 hover:border-emerald-300 dark:hover:bg-emerald-950/30"
+                  onClick={() => navigate(route)}
+                >
+                  <Icon className="h-5 w-5 text-emerald-600" />
+                  <span className="text-xs">{label}</span>
+                </Button>
+              ))}
             </div>
           </CardContent>
         </Card>

@@ -12,15 +12,15 @@ const globalForPrisma = globalThis as unknown as {
 
 const HTML_FIELDS: Record<string, string[]> = {
   lecture: ['content'],
-  mCQ: ['question', 'optionA', 'optionB', 'optionC', 'optionD', 'explanation'],
-  cQ: ['uddeepok', 'question1', 'question2', 'question3', 'question4', 'answer1', 'answer2', 'answer3', 'answer4'],
+  mcq: ['question', 'optionA', 'optionB', 'optionC', 'optionD', 'explanation'],
+  cq: ['uddeepok', 'question1', 'question2', 'question3', 'question4', 'answer1', 'answer2', 'answer3', 'answer4'],
   suggestion: ['content'],
   notice: ['content'],
   banner: ['title', 'subtitle'],
-  fAQ: ['question', 'answer'],
+  faq: ['question', 'answer'],
   testimonial: ['content'],
   exam: ['instructions'],
-  siteSetting: ['value'],
+  sitesetting: ['value'],
 }
 
 const MODELS_WITH_HTML = new Set(Object.keys(HTML_FIELDS))

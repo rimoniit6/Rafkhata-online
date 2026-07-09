@@ -79,19 +79,23 @@ let permissionCacheTime = 0
 const PERMISSION_CACHE_TTL = 60_000 // 1 minute
 
 async function getPermissionsForRole(role: Role): Promise<Set<string>> {
-  if (role === 'SUPER_ADMIN') return new Set(['*']) // super admin has all
+  if (role === 'SUPER_ADMIN') return new Set(['*'])
   const now = Date.now()
-  if (!permissionCache || now - permissionCacheTime > PERMISSION_CACHE_TTL) {
-    const rows = await db.rolePermission.findMany({
-      where: { role },
-      include: { permission: { select: { name: true } } },
-    })
-    const perms = new Set(rows.map(r => r.permission.name))
-    permissionCache = new Map([[role, perms]])
-    permissionCacheTime = now
-    return perms
+  if (permissionCache && now - permissionCacheTime <= PERMISSION_CACHE_TTL) {
+    const cached = permissionCache.get(role)
+    if (cached) return cached
   }
-  return permissionCache.get(role) ?? new Set()
+  if (!permissionCache || now - permissionCacheTime > PERMISSION_CACHE_TTL) {
+    permissionCache = new Map()
+    permissionCacheTime = now
+  }
+  const rows = await db.rolePermission.findMany({
+    where: { role },
+    include: { permission: { select: { name: true } } },
+  })
+  const perms = new Set(rows.map(r => r.permission.name))
+  permissionCache.set(role, perms)
+  return perms
 }
 
 export function invalidatePermissionCache() {

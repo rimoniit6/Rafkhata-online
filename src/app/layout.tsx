@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { headers, cookies } from "next/headers";
+import Script from "next/script";
 import { unstable_cache } from "next/cache";
 import { Geist, Geist_Mono } from "next/font/google";
+
+export const dynamic = 'force-dynamic'
 import { QueryClient, dehydrate } from '@tanstack/react-query'
 import { ThemeProvider } from "next-themes";
 import QueryProvider from "@/providers/QueryProvider";
@@ -16,7 +18,6 @@ import GlobalStructuredData from "@/components/shared/JsonLd";
 import RouteSync from "@/components/shared/RouteSync";
 import AppNavigationBridge from "@/components/shared/AppNavigationBridge";
 import { db } from '@/lib/db'
-import { sanitizeHtml } from '@/lib/sanitize'
 import { fetchSiteConfig } from '@/lib/fetch-site-config'
 import { queryKeys } from '@/lib/query-keys'
 
@@ -62,72 +63,45 @@ const getSeoSettings = unstable_cache(
   { revalidate: 300 }
 )
 
-export async function generateMetadata(): Promise<Metadata> {
-  try {
-    const seo = await getSeoSettings()
-    return {
-      metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://sikkhabangla.com'),
+function buildMetadata(seo: typeof DEFAULT_SEO): Metadata {
+  return {
+    metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://sikkhabangla.com'),
+    title: seo.title,
+    description: seo.description,
+    keywords: seo.keywords.split(','),
+    authors: [{ name: seo.author }],
+    icons: { icon: "/api/favicon", apple: "/apple-icon.png" },
+    manifest: "/manifest.json",
+    appleWebApp: { capable: true, title: "শিক্ষা বাংলা", statusBarStyle: "default" },
+    openGraph: {
       title: seo.title,
       description: seo.description,
-      keywords: seo.keywords.split(','),
-      authors: [{ name: seo.author }],
-      icons: { icon: "/api/favicon", apple: "/apple-icon.png" },
-      manifest: "/manifest.json",
-      appleWebApp: { capable: true, title: "শিক্ষা বাংলা", statusBarStyle: "default" },
-      openGraph: {
-        title: seo.title,
-        description: seo.description,
-        url: '/',
-        siteName: 'শিক্ষা বাংলা',
-        locale: 'bn_BD',
-        type: 'website',
-        images: [{ url: '/icon-512.png', width: 512, height: 512 }],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: seo.title,
-        description: seo.description,
-        images: ['/icon-512.png'],
-      },
-      robots: { index: true, follow: true },
-      other: {
-        'mobile-web-app-capable': 'yes',
-        'apple-mobile-web-app-capable': 'yes',
-        'apple-mobile-web-app-status-bar-style': 'default',
-      },
-    }
+      url: '/',
+      siteName: 'শিক্ষা বাংলা',
+      locale: 'bn_BD',
+      type: 'website',
+      images: [{ url: '/icon-512.png', width: 512, height: 512 }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: seo.title,
+      description: seo.description,
+      images: ['/icon-512.png'],
+    },
+    robots: { index: true, follow: true },
+    other: {
+      'mobile-web-app-capable': 'yes',
+      'apple-mobile-web-app-capable': 'yes',
+      'apple-mobile-web-app-status-bar-style': 'default',
+    },
+  }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    return buildMetadata(await getSeoSettings())
   } catch {
-    return {
-      title: DEFAULT_SEO.title,
-      description: DEFAULT_SEO.description,
-      keywords: DEFAULT_SEO.keywords.split(','),
-      authors: [{ name: DEFAULT_SEO.author }],
-      metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://sikkhabangla.com'),
-      icons: { icon: "/api/favicon", apple: "/apple-icon.png" },
-      manifest: "/manifest.json",
-      appleWebApp: { capable: true, title: "শিক্ষা বাংলা", statusBarStyle: "default" },
-      openGraph: {
-        title: DEFAULT_SEO.title,
-        description: DEFAULT_SEO.description,
-        url: '/',
-        siteName: 'শিক্ষা বাংলা',
-        locale: 'bn_BD',
-        type: 'website',
-        images: [{ url: '/icon-512.png', width: 512, height: 512 }],
-      },
-      twitter: {
-        card: 'summary_large_image',
-        title: DEFAULT_SEO.title,
-        description: DEFAULT_SEO.description,
-        images: ['/icon-512.png'],
-      },
-      robots: { index: true, follow: true },
-      other: {
-        'mobile-web-app-capable': 'yes',
-        'apple-mobile-web-app-capable': 'yes',
-        'apple-mobile-web-app-status-bar-style': 'default',
-      },
-    }
+    return buildMetadata(DEFAULT_SEO)
   }
 }
 
@@ -143,9 +117,6 @@ export default async function RootLayout({
     staleTime: 300_000,
   })
   const dehydratedState = dehydrate(queryClient)
-  const [reqHeaders, cookieStore] = await Promise.all([headers(), cookies()])
-  const nonce = cookieStore.get('x-csp-nonce')?.value ?? reqHeaders.get('x-csp-nonce') ?? ''
-
   return (
     <html lang="bn" suppressHydrationWarning>
       <head>
@@ -158,42 +129,25 @@ export default async function RootLayout({
         <link rel="preconnect" href="https://utfs.io" />
         <link rel="dns-prefetch" href="https://eylbmvqyrtkfcnfsienv.supabase.co" />
         <link rel="dns-prefetch" href="https://utfs.io" />
-        <script
-          nonce={nonce}
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+        <Script
+          id="service-worker-reg"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
-            __html: sanitizeHtml(`
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', () => {
-                  navigator.serviceWorker.register('/sw.js')
-                })
-              }
-              window.MathJax = {
-                tex: {
-                  inlineMath: [['$', '$'], ['\\\\(', '\\\\)']]
-                },
-                mml: {
-                  displayAlign: 'center',
-                  displayIndent: '0em'
-                },
-                options: {
-                  skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
-                },
-                startup: {
-                  pageReady: () => MathJax.startup.defaultPageReady()
-                }
-              };
-              // Defer MathJax load to after first paint (reduces LCP blocking)
-              window.addEventListener('load', () => {
-                setTimeout(() => {
-                  var s = document.createElement('script');
-                  s.id = 'MathJax-script';
-                  s.async = true;
-                  s.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js';
-                  document.head.appendChild(s);
-                }, 2000);
-              })              ;
-            `),
+            __html: `if('serviceWorker'in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('/sw.js')})}`,
           }}
+        />
+        <Script
+          id="mathjax-config"
+          strategy="lazyOnload"
+          dangerouslySetInnerHTML={{
+            __html: `window.MathJax={tex:{inlineMath:[['$','$'],['\\\\(','\\\\)']]},mml:{displayAlign:'center',displayIndent:'0em'},options:{skipHtmlTags:['script','noscript','style','textarea','pre']},startup:{pageReady:()=>MathJax.startup.defaultPageReady()}}`,
+          }}
+        />
+        <Script
+          id="mathjax-loader"
+          strategy="lazyOnload"
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"
         />
       </head>
       <body

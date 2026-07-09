@@ -455,7 +455,7 @@ function AdminContent() {
   )
 }
 
-export default function AdminLayout() {
+function AdminLayoutContent() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const { config } = useSiteConfig()
@@ -571,5 +571,13 @@ export default function AdminLayout() {
         </main>
       </div>
     </div>
+  )
+}
+
+export default function AdminLayout() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>}>
+      <AdminLayoutContent />
+    </Suspense>
   )
 }

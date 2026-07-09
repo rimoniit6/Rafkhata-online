@@ -14,7 +14,6 @@ import {
   PaymentError,
   logError,
   handleApiError,
-  asyncHandler,
 } from '@/lib/errors'
 
 // ====================================================================
@@ -408,28 +407,4 @@ describe('logError', () => {
   })
 })
 
-// ====================================================================
-// asyncHandler
-// ====================================================================
 
-describe('asyncHandler', () => {
-  it('returns the handler result on success', async () => {
-    const handler = async () => NextResponse.json({ success: true, data: 'ok' })
-    const wrapped = asyncHandler(handler)
-
-    const response = await wrapped()
-    const body = await response.json()
-    expect(body).toEqual({ success: true, data: 'ok' })
-  })
-
-  it('catches errors and returns a structured error response', async () => {
-    const handler = async () => { throw new NotFoundError() }
-    const wrapped = asyncHandler(handler, 'Get Resource')
-
-    const response = await wrapped()
-    const body = await response.json()
-    expect(response.status).toBe(404)
-    expect(body.success).toBe(false)
-    expect(body.code).toBe('NOT_FOUND')
-  })
-})

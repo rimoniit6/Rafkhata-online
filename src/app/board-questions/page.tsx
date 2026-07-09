@@ -4,6 +4,8 @@ import { getSiteUrl } from '@/lib/urls'
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
+export const dynamic = 'force-dynamic'
+
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()
   return {

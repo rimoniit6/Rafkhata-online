@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase/client'
+import { useShallow } from 'zustand/react/shallow'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import type { Role } from '@prisma/client'
 
-interface User {
+export interface User {
   id: string
   email: string
   name: string
@@ -18,7 +19,7 @@ interface User {
   premiumExpiry?: string
 }
 
-interface AuthState {
+export interface AuthState {
   user: User | null
   supabaseUser: SupabaseUser | null
   isAuthenticated: boolean
@@ -56,8 +57,16 @@ export const useAuthStore = create<AuthState>()(
     name: 'edu-auth',
     partialize: (state) => ({
       user: state.user,
-      supabaseUser: state.supabaseUser,
       isAuthenticated: state.isAuthenticated,
     }),
   }
 ))
+
+export const useAuthUser = () => useAuthStore((s) => s.user)
+export const useIsAuthenticated = () => useAuthStore((s) => s.isAuthenticated)
+export const useAuthLoading = () => useAuthStore((s) => s.isLoading)
+export const useShallowAuth = () => useAuthStore(useShallow((s) => ({
+  user: s.user,
+  isAuthenticated: s.isAuthenticated,
+  isLoading: s.isLoading,
+})))

@@ -100,6 +100,15 @@ const ROUTE_DEFS: Record<RoutePath, RouteDef> = {
 
 const PARAM_REGEX = /\{(\w+)\}/g
 
+// Pre-sort once at module load: longer paths (more specific) match before shorter ones
+const SORTED_ROUTE_ENTRIES = (Object.entries(ROUTE_DEFS) as [RoutePath, RouteDef][]).sort(
+  (a, b) => {
+    const aDepth = (a[1].path.match(/\//g) || []).length
+    const bDepth = (b[1].path.match(/\//g) || []).length
+    return bDepth - aDepth
+  }
+)
+
 export function routeToUrl(route: RoutePath, params: RouteParams): string {
   const def = ROUTE_DEFS[route]
   if (!def) return '/'
@@ -153,15 +162,7 @@ export function parseUrl(
   pathname: string,
   searchParams?: URLSearchParams,
 ): { route: RoutePath; params: RouteParams } | null {
-  const entries = Object.entries(ROUTE_DEFS) as [RoutePath, RouteDef][]
-
-  entries.sort((a, b) => {
-    const aDepth = (a[1].path.match(/\//g) || []).length
-    const bDepth = (b[1].path.match(/\//g) || []).length
-    return bDepth - aDepth
-  })
-
-  for (const [route, def] of entries) {
+  for (const [route, def] of SORTED_ROUTE_ENTRIES) {
     const pathParams = matchPath(pathname, def.path)
     if (pathParams === null) continue
 
@@ -171,7 +172,7 @@ export function parseUrl(
       for (const key of def.queryParams) {
         const val = searchParams.get(key)
         if (val !== null) {
-          ;(params as any)[key] = val
+          (params as Record<string, string>)[key] = val
         }
       }
     }

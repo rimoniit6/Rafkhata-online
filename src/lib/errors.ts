@@ -209,20 +209,6 @@ export function handleApiError(error: unknown, context?: string): NextResponse {
   )
 }
 
-// ============ ASYNC ERROR WRAPPER ============
-
-type AsyncHandler = (...args: unknown[]) => Promise<NextResponse>
-
-export function asyncHandler(handler: AsyncHandler, context?: string): AsyncHandler {
-  return async (...args: unknown[]) => {
-    try {
-      return await handler(...args)
-    } catch (error) {
-      return handleApiError(error, context)
-    }
-  }
-}
-
 // ============ DATABASE TRANSACTION WRAPPER ============
 
 export async function safeTransaction<T>(
@@ -232,16 +218,14 @@ export async function safeTransaction<T>(
   let lastError: unknown
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return await (db as any).$transaction(fn, {
+      return await db.$transaction(fn, {
         maxWait: 5000,
         timeout: 10000,
       })
     } catch (error) {
       lastError = error
-      // Only retry on transaction conflicts or connection errors
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2034') { // Transaction conflict
+        if (error.code === 'P2034') {
           continue
         }
       }

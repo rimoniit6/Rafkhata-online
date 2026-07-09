@@ -108,8 +108,6 @@ function addSecurityHeaders(response: NextResponse, nonce?: string): NextRespons
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  const cspNonce = generateNonce()
-
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/static') ||
@@ -118,8 +116,10 @@ export async function proxy(request: NextRequest) {
     pathname === '/manifest.json' ||
     pathname === '/sw.js'
   ) {
-    return addSecurityHeaders(NextResponse.next(), cspNonce)
+    return addSecurityHeaders(NextResponse.next())
   }
+
+  const cspNonce = generateNonce()
 
   if (isPublicPageRoute(pathname)) {
     request.headers.set('x-csp-nonce', cspNonce)
@@ -180,6 +180,13 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL('/login', request.url)
     loginUrl.searchParams.set('redirect', pathname)
     return NextResponse.redirect(loginUrl)
+  }
+
+  if (pathname.startsWith('/admin/')) {
+    const role = user.user_metadata?.role || 'STUDENT'
+    if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
+      return NextResponse.redirect(new URL('/', request.url))
+    }
   }
 
   request.headers.set('x-csp-nonce', cspNonce)

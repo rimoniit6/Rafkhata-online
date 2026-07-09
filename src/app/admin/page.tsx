@@ -1,12 +1,7 @@
-'use client'
+import AdminShell from '@/components/admin/AdminShell'
 
-import { Suspense } from 'react'
-import AdminLayout from '@/components/admin/AdminLayout'
+export const dynamic = 'force-dynamic'
 
 export default function AdminPage() {
-  return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" /></div>}>
-      <AdminLayout />
-    </Suspense>
-  )
+  return <AdminShell />
 }

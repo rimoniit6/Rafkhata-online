@@ -76,8 +76,7 @@ export function rateLimitExceeded(result: RateLimitResult) {
 
 export function validateBody<T>(schema: ZodSchema<T>, body: unknown): { data: T } | { error: NextResponse } {
   try {
-    const data = schema.parse(body)
-    return { data }
+    return { data: schema.parse(body) }
   } catch (err) {
     if (err instanceof ZodError) {
       const errors = err.issues.map((e) => ({
@@ -86,7 +85,7 @@ export function validateBody<T>(schema: ZodSchema<T>, body: unknown): { data: T 
       }))
       return { error: apiError('ইনপুট ভ্যালিডেশন ব্যর্থ', 422, 'VALIDATION_ERROR', errors) }
     }
-    return { error: apiError('ইনপুট ভ্যালিডেশন ব্যর্থ', 422, 'VALIDATION_ERROR') }
+    throw err
   }
 }
 

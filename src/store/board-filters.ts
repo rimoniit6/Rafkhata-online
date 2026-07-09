@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import type { BoardQuestionFilters, FilterChip } from '@/types/board-questions'
 
 const initialState: BoardQuestionFilters = {
@@ -85,7 +86,7 @@ interface BoardFilterState extends BoardQuestionFilters {
   getActiveFilterKeys: () => string[]
 }
 
-export const useBoardFilterStore = create<BoardFilterState>((set, get) => ({
+export const useBoardFilterStore = create<BoardFilterState>()((set, get) => ({
   ...initialState,
   labelMap: DEFAULT_LABELS,
 
@@ -95,8 +96,7 @@ export const useBoardFilterStore = create<BoardFilterState>((set, get) => ({
 
   toggleFilter: (key, value) => {
     const current = get()[key] as string[]
-    const isArray = Array.isArray(current)
-    if (isArray) {
+    if (Array.isArray(current)) {
       const next = current.includes(value)
         ? current.filter((v) => v !== value)
         : [...current, value]
@@ -124,11 +124,10 @@ export const useBoardFilterStore = create<BoardFilterState>((set, get) => ({
 
     const addChips = (key: keyof BoardQuestionFilters, values: string[], labelSection: keyof FilterLabelMap) => {
       for (const v of values) {
-        const labelMap = state.labelMap[labelSection]
         chips.push({
           key: `${key}:${v}`,
           value: v,
-          label: labelMap[v] || v,
+          label: state.labelMap[labelSection][v] || v,
           onRemove: () => get().removeFilterValue(key, v),
         })
       }
@@ -157,36 +156,46 @@ export const useBoardFilterStore = create<BoardFilterState>((set, get) => ({
   },
 
   getFilterCount: () => {
-    const state = get()
+    const s = get()
     return (
-      state.classLevels.length +
-      state.boards.length +
-      state.years.length +
-      state.subjects.length +
-      state.chapters.length +
-      state.questionTypes.length +
-      state.difficulty.length +
-      state.topics.length +
-      state.status.length +
-      (state.contentAccess !== 'all' ? 1 : 0) +
-      (state.searchQuery ? 1 : 0)
+      s.classLevels.length + s.boards.length + s.years.length +
+      s.subjects.length + s.chapters.length + s.questionTypes.length +
+      s.difficulty.length + s.topics.length + s.status.length +
+      (s.contentAccess !== 'all' ? 1 : 0) + (s.searchQuery ? 1 : 0)
     )
   },
 
   getActiveFilterKeys: () => {
-    const state = get()
     const keys: string[] = []
-    if (state.classLevels.length) keys.push('classLevels')
-    if (state.boards.length) keys.push('boards')
-    if (state.years.length) keys.push('years')
-    if (state.subjects.length) keys.push('subjects')
-    if (state.chapters.length) keys.push('chapters')
-    if (state.questionTypes.length) keys.push('questionTypes')
-    if (state.difficulty.length) keys.push('difficulty')
-    if (state.topics.length) keys.push('topics')
-    if (state.status.length) keys.push('status')
-    if (state.contentAccess !== 'all') keys.push('contentAccess')
-    if (state.searchQuery) keys.push('searchQuery')
+    const s = get()
+    if (s.classLevels.length) keys.push('classLevels')
+    if (s.boards.length) keys.push('boards')
+    if (s.years.length) keys.push('years')
+    if (s.subjects.length) keys.push('subjects')
+    if (s.chapters.length) keys.push('chapters')
+    if (s.questionTypes.length) keys.push('questionTypes')
+    if (s.difficulty.length) keys.push('difficulty')
+    if (s.topics.length) keys.push('topics')
+    if (s.status.length) keys.push('status')
+    if (s.contentAccess !== 'all') keys.push('contentAccess')
+    if (s.searchQuery) keys.push('searchQuery')
     return keys
   },
 }))
+
+export const useBoardSearchQuery = () => useBoardFilterStore((s) => s.searchQuery)
+export const useBoardClassLevels = () => useBoardFilterStore((s) => s.classLevels)
+export const useBoardFilterCount = () => useBoardFilterStore((s) => s.getFilterCount())
+export const useShallowBoardFilters = () => useBoardFilterStore(useShallow((s) => ({
+  classLevels: s.classLevels,
+  boards: s.boards,
+  years: s.years,
+  subjects: s.subjects,
+  chapters: s.chapters,
+  questionTypes: s.questionTypes,
+  difficulty: s.difficulty,
+  topics: s.topics,
+  status: s.status,
+  contentAccess: s.contentAccess,
+  sortBy: s.sortBy,
+})))

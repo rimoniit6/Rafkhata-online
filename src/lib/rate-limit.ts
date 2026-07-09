@@ -14,9 +14,12 @@ const DEFAULT_LIMITS = {
 }
 
 let cachedLimits: typeof DEFAULT_LIMITS | null = null
+let cachedLimitsTime = 0
+const LIMITS_CACHE_TTL = 5 * 60_000 // 5 minutes
 
 async function loadLimits(): Promise<typeof DEFAULT_LIMITS> {
-  if (cachedLimits) return cachedLimits
+  const now = Date.now()
+  if (cachedLimits && now - cachedLimitsTime < LIMITS_CACHE_TTL) return cachedLimits
   try {
     const settings = await db.siteSetting.findMany({
       where: { key: { in: ['rate_limit_api_max', 'rate_limit_upload_max', 'rate_limit_auth_max'] } },
@@ -29,6 +32,7 @@ async function loadLimits(): Promise<typeof DEFAULT_LIMITS> {
       upload: { windowMs: 60_000, maxRequests: parseInt(map.rate_limit_upload_max) || DEFAULT_LIMITS.upload.maxRequests },
       auth: { windowMs: 15 * 60 * 1000, maxRequests: parseInt(map.rate_limit_auth_max) || DEFAULT_LIMITS.auth.maxRequests },
     }
+    cachedLimitsTime = now
     return cachedLimits
   } catch {
     return DEFAULT_LIMITS
@@ -77,15 +81,18 @@ export class RateLimiter {
 class LazyRateLimiter {
   private key: keyof typeof DEFAULT_LIMITS
   private instance: RateLimiter | null = null
+  private instanceTime = 0
 
   constructor(key: keyof typeof DEFAULT_LIMITS) {
     this.key = key
   }
 
   async limit(identifier: string): Promise<RateLimitResult> {
-    if (!this.instance) {
+    const now = Date.now()
+    if (!this.instance || now - this.instanceTime >= LIMITS_CACHE_TTL) {
       const limits = await loadLimits()
       this.instance = new RateLimiter(limits[this.key])
+      this.instanceTime = now
     }
     return this.instance.limit(identifier)
   }

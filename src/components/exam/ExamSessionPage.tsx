@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -52,6 +52,109 @@ interface MCQQuestion {
 }
 
 const BATCH_SIZE = 20
+
+interface BatchIndicatorProps {
+  totalBatches: number
+  currentBatch: number
+  currentBatchRange: { start: number; end: number }
+}
+
+function BatchIndicator({ totalBatches, currentBatch, currentBatchRange }: BatchIndicatorProps) {
+  if (totalBatches <= 1) return null
+  return (
+    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <Layers className="size-3.5" />
+      <span>ব্যাচ {currentBatch + 1}/{totalBatches}</span>
+      <span className="text-muted-foreground/60">
+        (প্রশ্ন {currentBatchRange.start}-{currentBatchRange.end})
+      </span>
+    </div>
+  )
+}
+
+interface QuestionPaletteProps {
+  totalBatches: number
+  paletteBatch: number
+  setPaletteBatch: (fn: (prev: number) => number) => void
+  getBatchQuestions: Array<{ q: MCQQuestion; globalIndex: number }>
+  answers: Record<string, string>
+  visitedQuestions: Set<string>
+  currentIndex: number
+  setCurrentIndex: (i: number) => void
+  setVisitedQuestions: (fn: (prev: Set<string>) => Set<string>) => void
+}
+
+function QuestionPalette({
+  totalBatches,
+  paletteBatch,
+  setPaletteBatch,
+  getBatchQuestions,
+  answers,
+  visitedQuestions,
+  currentIndex,
+  setCurrentIndex,
+  setVisitedQuestions,
+}: QuestionPaletteProps) {
+  return (
+    <>
+      {totalBatches > 1 && (
+        <div className="flex items-center justify-between mb-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1 px-2"
+            disabled={paletteBatch === 0}
+            onClick={() => setPaletteBatch(prev => Math.max(0, prev - 1))}
+          >
+            <ChevronLeft className="size-3" />
+            আগের
+          </Button>
+          <span className="text-xs text-muted-foreground font-medium">
+            {paletteBatch + 1}/{totalBatches}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs gap-1 px-2"
+            disabled={paletteBatch >= totalBatches - 1}
+            onClick={() => setPaletteBatch(prev => Math.min(totalBatches - 1, prev + 1))}
+          >
+            পরের
+            <ChevronRight className="size-3" />
+          </Button>
+        </div>
+      )}
+      <div className="grid grid-cols-5 gap-2">
+        {getBatchQuestions.map(({ q, globalIndex }) => {
+          const isAnswered = !!answers[q.id]
+          const isVisited = visitedQuestions.has(q.id)
+          const isCurrent = globalIndex === currentIndex
+          return (
+            <button
+              key={q.id}
+              className={`flex items-center justify-center size-9 rounded-lg text-sm font-medium transition-colors ${
+                isCurrent
+                  ? 'bg-primary text-primary-foreground'
+                  : isAnswered
+                  ? 'bg-emerald-500 text-white'
+                  : isVisited
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+              onClick={() => {
+                setCurrentIndex(globalIndex)
+                setVisitedQuestions(prev => new Set([...prev, q.id]))
+                setPaletteBatch(() => Math.floor(globalIndex / BATCH_SIZE))
+              }}
+            >
+              {globalIndex + 1}
+            </button>
+          )
+        })}
+      </div>
+    </>
+  )
+}
 
 export default function ExamSessionPage() {
   const { params, navigate, goBack } = useRouterStore()
@@ -317,6 +420,18 @@ export default function ExamSessionPage() {
     return questions.slice(start, end).map((q, i) => ({ q, globalIndex: start + i }))
   }, [paletteBatch, questions])
 
+  const paletteProps = {
+    totalBatches,
+    paletteBatch,
+    setPaletteBatch,
+    getBatchQuestions,
+    answers,
+    visitedQuestions,
+    currentIndex,
+    setCurrentIndex,
+    setVisitedQuestions,
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -346,20 +461,7 @@ export default function ExamSessionPage() {
     return 'border-border hover:border-primary/50 hover:bg-muted/50'
   }
 
-  const BatchIndicator = () => {
-    if (totalBatches <= 1) return null
-    return (
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Layers className="size-3.5" />
-        <span>
-          ব্যাচ {currentBatch + 1}/{totalBatches}
-        </span>
-        <span className="text-muted-foreground/60">
-          (প্রশ্ন {currentBatchRange.start}-{currentBatchRange.end})
-        </span>
-      </div>
-    )
-  }
+
 
   // ─── Custom Exam Result View (early return — hides exam UI) ───
   if (isCustomExam && showCustomResult && customResult) {
@@ -476,67 +578,6 @@ export default function ExamSessionPage() {
     )
   }
 
-  const QuestionPalette = () => (
-    <>
-      {totalBatches > 1 && (
-        <div className="flex items-center justify-between mb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1 px-2"
-            disabled={paletteBatch === 0}
-            onClick={() => setPaletteBatch(prev => Math.max(0, prev - 1))}
-          >
-            <ChevronLeft className="size-3" />
-            আগের
-          </Button>
-          <span className="text-xs text-muted-foreground font-medium">
-            {paletteBatch + 1}/{totalBatches}
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs gap-1 px-2"
-            disabled={paletteBatch >= totalBatches - 1}
-            onClick={() => setPaletteBatch(prev => Math.min(totalBatches - 1, prev + 1))}
-          >
-            পরের
-            <ChevronRight className="size-3" />
-          </Button>
-        </div>
-      )}
-
-      <div className="grid grid-cols-5 gap-2">
-        {getBatchQuestions.map(({ q, globalIndex }) => {
-          const isAnswered = !!answers[q.id]
-          const isVisited = visitedQuestions.has(q.id)
-          const isCurrent = globalIndex === currentIndex
-          return (
-            <button
-              key={q.id}
-              className={`flex items-center justify-center size-9 rounded-lg text-sm font-medium transition-colors ${
-                isCurrent
-                  ? 'bg-primary text-primary-foreground'
-                  : isAnswered
-                  ? 'bg-emerald-500 text-white'
-                  : isVisited
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-              onClick={() => {
-                setCurrentIndex(globalIndex)
-                setVisitedQuestions((prev) => new Set([...prev, q.id]))
-                setPaletteBatch(Math.floor(globalIndex / BATCH_SIZE))
-              }}
-            >
-              {globalIndex + 1}
-            </button>
-          )
-        })}
-      </div>
-    </>
-  )
-
   return (
     <div>
       {/* Header */}
@@ -552,7 +593,7 @@ export default function ExamSessionPage() {
                 <p className="text-xs text-muted-foreground">
                   {answeredCount}/{questions.length} উত্তর দেওয়া হয়েছে
                 </p>
-                <BatchIndicator />
+                <BatchIndicator totalBatches={totalBatches} currentBatch={currentBatch} currentBatchRange={currentBatchRange} />
               </div>
             </div>
           </div>
@@ -708,7 +749,7 @@ export default function ExamSessionPage() {
             <Card className="sticky top-[5rem]">
               <CardContent className="p-4">
                 <h4 className="font-semibold text-sm mb-3">প্রশ্ন প্যালেট</h4>
-                <QuestionPalette />
+                <QuestionPalette totalBatches={totalBatches} paletteBatch={paletteBatch} setPaletteBatch={setPaletteBatch} getBatchQuestions={getBatchQuestions} answers={answers} visitedQuestions={visitedQuestions} currentIndex={currentIndex} setCurrentIndex={setCurrentIndex} setVisitedQuestions={setVisitedQuestions} />
                 <Separator className="my-3" />
                 <div className="space-y-2 text-xs">
                   <div className="flex items-center gap-2">
@@ -754,7 +795,7 @@ export default function ExamSessionPage() {
                 <ChevronRight className="size-4" />
               </Button>
             </div>
-            <QuestionPalette />
+            <QuestionPalette totalBatches={totalBatches} paletteBatch={paletteBatch} setPaletteBatch={setPaletteBatch} getBatchQuestions={getBatchQuestions} answers={answers} visitedQuestions={visitedQuestions} currentIndex={currentIndex} setCurrentIndex={setCurrentIndex} setVisitedQuestions={setVisitedQuestions} />
             {totalBatches > 1 && (
               <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
                 {Array.from({ length: totalBatches }).map((_, i) => {

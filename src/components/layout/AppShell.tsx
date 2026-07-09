@@ -15,8 +15,7 @@ interface AppShellProps {
 }
 
 export default function AppShell({ children }: AppShellProps) {
-  const { currentRoute } = useRouterStore()
-  const isAdmin = isAdminRoute(currentRoute)
+  const isAdmin = useRouterStore((s) => isAdminRoute(s.currentRoute))
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">

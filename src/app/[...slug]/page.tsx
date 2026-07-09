@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic'
 import { useRouterStore, RoutePath, isAdminRoute } from '@/store/router'
 import { usePageMeta } from '@/hooks/use-page-meta'
 import AppShell from '@/components/layout/AppShell'
-import AdminLayout from '@/components/admin/AdminLayout'
 
 const HomePage = dynamic(() => import('@/components/home/HomePage'))
 const SocialLoginPage = dynamic(() => import('@/components/auth/SocialLoginPage'))
@@ -36,6 +35,7 @@ const CQExamResultPage = dynamic(() => import('@/components/cq-exam/CQExamResult
 const KnowledgeQuestionsPage = dynamic(() => import('@/components/knowledge/KnowledgeQuestionsPage'))
 const CourseListPage = dynamic(() => import('@/components/course/CourseListPage'))
 const StudentCourseDetailPage = dynamic(() => import('@/features/course/student/components/StudentCourseDetailPage'))
+const AdminLayout = dynamic(() => import('@/components/admin/AdminLayout'), { ssr: false })
 
 function StudentCourseDetailWrapper() {
   const { params } = useRouterStore()
