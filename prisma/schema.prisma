@@ -1,0 +1,1527 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  relationMode = "prisma"
+}
+
+// ============ ENUMS ============
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  STUDENT
+}
+
+// ============ USER SYSTEM ============
+
+model User {
+  id             String    @id @default(cuid())
+  supabaseUserId String?   @unique
+  email          String    @unique
+  name           String?
+  password       String?
+  role           Role      @default(STUDENT)
+  avatar         String?
+  phone          String?
+  institute      String?
+  classLevel     String? // class-6, class-7, class-8, ssc, hsc
+  board          String? // dhaka, rajshahi, etc.
+  isVerified     Boolean   @default(false)
+  isPremium      Boolean   @default(false) // kept for manual admin override; subscription system removed
+  premiumExpiry  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  payments              Payment[]
+  progress              Progress[]
+  bookmarks             Bookmark[]
+  examResults           ExamResult[]
+  notes                 Note[]
+  notifications         Notification[]
+  recentlyViewed        RecentlyViewed[]
+  subscriptions         UserSubscription[]
+  mcqExamResults        MCQExamSetResult[]
+  mcqExamPurchases      MCQExamPackagePurchase[]
+  feedbacks             UserFeedback[]
+  feedbackMessages      FeedbackMessage[]
+  cqExamPurchases       CQExamPackagePurchase[]
+  cqExamSubmissions     CQExamSubmission[]
+  cqExamRetakeRequests  CQExamRetakeRequest[]
+  mcqExamRetakeRequests MCQExamRetakeRequest[]
+  auditLogs             AuditLog[]
+  coursePurchases       CoursePurchase[]
+  courseEnrollments     CourseEnrollment[]
+  assignmentSubmissions AssignmentSubmission[]
+  createdExams          Exam[]
+}
+
+// ============ CONTENT STRUCTURE ============
+
+model ClassCategory {
+  id          String   @id @default(cuid())
+  name        String // Class 6, Class 7, Class 8, SSC, HSC
+  slug        String   @unique
+  order       Int      @default(0)
+  icon        String?
+  color       String?
+  gradient    String? // Tailwind gradient classes, e.g. "from-emerald-400 to-emerald-600"
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subjects        Subject[]
+  mcqExamPackages MCQExamPackage[]
+  cqExamPackages  CQExamPackage[]
+  Course          Course[]
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  classId     String
+  icon        String?
+  color       String?
+  description String?
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class         ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
+  chapters      Chapter[]
+  Course        Course[]
+
+  @@unique([slug, classId])
+  @@index([classId, isActive, order])
+}
+
+model Chapter {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  subjectId   String
+  order       Int      @default(0)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subject            Subject             @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  lectures           Lecture[]
+  mcqs               MCQ[]
+  cqs                CQ[]
+  knowledgeQuestions KnowledgeQuestion[]
+  suggestions        Suggestion[]        @relation("ChapterSuggestions")
+
+  topics Topic[]
+
+  @@unique([slug, subjectId])
+  @@index([subjectId, isActive, order])
+}
+
+// ============ TOPIC SYSTEM ============
+
+model Topic {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String
+  chapterId   String
+  order       Int      @default(0)
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@unique([slug, chapterId])
+  @@index([chapterId])
+}
+
+// ============ KNOWLEDGE & COMPREHENSION SYSTEM ============
+
+model KnowledgeQuestion {
+  id            String   @id @default(cuid())
+  chapterId     String
+  type          String // 'knowledge' or 'comprehension'
+  question      String
+  answer        String
+  questionImage String?
+  answerImage   String?
+  isPremium     Boolean  @default(false)
+  price         Float    @default(0)
+  order         Int      @default(0)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  @@index([chapterId, type, isActive])
+  @@index([isPremium, isActive])
+}
+
+// ============ LECTURE SYSTEM ============
+
+model Lecture {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String
+  chapterId String
+  content   String // Rich HTML content
+  videoUrl  String?
+  audioUrl  String?
+  pdfUrl    String?
+  thumbnail String?
+  duration  Int      @default(0) // minutes
+  order     Int      @default(0)
+  isPremium Boolean  @default(false)
+  price     Float    @default(0)
+  viewCount Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chapter   Chapter    @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  resources Resource[]
+
+  @@index([chapterId, isActive])
+  @@index([isPremium, isActive])
+}
+
+model Resource {
+  id        String   @id @default(cuid())
+  lectureId String
+  title     String
+  type      String // pdf, image, link, code, document
+  url       String
+  size      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@index([lectureId])
+}
+
+// ============ MCQ SYSTEM ============
+
+model MCQ {
+  id               String   @id @default(cuid())
+  question         String
+  questionImage    String? // URL for question image
+  optionA          String
+  optionAImage     String? // URL for option A image
+  optionB          String
+  optionBImage     String? // URL for option B image
+  optionC          String
+  optionCImage     String? // URL for option C image
+  optionD          String
+  optionDImage     String? // URL for option D image
+  correctAnswer    String // A, B, C, D
+  explanation      String?
+  explanationImage String? // URL for explanation image
+  chapterId        String
+  classLevel       String
+  subjectId        String
+  board            String? // dhaka, rajshahi, etc.
+  year             String?
+  topic            String? // specific topic/chapter section
+  difficulty       String   @default("medium") // easy, medium, hard
+  isPremium        Boolean  @default(false)
+  price            Float    @default(0)
+  tags             String? // comma separated
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  chapter          Chapter              @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  examSetQuestions MCQExamSetQuestion[]
+
+  @@index([isActive, classLevel, subjectId, chapterId])
+  @@index([classLevel, subjectId, chapterId, isActive])
+  @@index([chapterId, isActive])
+  @@index([board, year, isActive])
+  @@index([board, year, classLevel, isActive])
+}
+
+// ============ CQ SYSTEM ============
+
+model CQ {
+  id             String   @id @default(cuid())
+  uddeepok       String // Passage/Stem
+  uddeepokImage  String? // URL for uddeepok image
+  question1      String
+  question1Image String? // URL for question 1 image
+  question2      String
+  question2Image String?
+  question3      String
+  question3Image String?
+  question4      String
+  question4Image String?
+  answer1        String
+  answer1Image   String? // URL for answer 1 image
+  answer2        String
+  answer2Image   String?
+  answer3        String
+  answer3Image   String?
+  answer4        String
+  answer4Image   String?
+  chapterId      String
+  classLevel     String
+  subjectId      String
+  board          String?
+  year           String?
+  topic          String? // specific topic/chapter section
+  difficulty     String   @default("medium")
+  isPremium      Boolean  @default(false)
+  price          Float    @default(0)
+  tags           String?
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+
+  examSetQuestions CQExamSetQuestion[]
+
+  @@index([isActive, classLevel, subjectId, chapterId])
+  @@index([classLevel, subjectId, chapterId, isActive])
+  @@index([chapterId, isActive])
+  @@index([board, year, isActive])
+  @@index([board, year, classLevel, isActive])
+}
+
+// ============ EXAM SYSTEM ============
+
+model Exam {
+  id            String    @id @default(cuid())
+  title         String
+  description   String?
+  classLevel    String
+  subjectId     String?
+  chapterIds    String? // comma separated
+  type          String // mcq, cq, mixed
+  duration      Int // minutes
+  totalMarks    Int       @default(0)
+  marksPerMcq   Float     @default(1) // marks for each MCQ
+  negativeMarks Float     @default(0) // negative marks per wrong MCQ answer
+  isPremium     Boolean   @default(false)
+  price         Float     @default(0)
+  isActive      Boolean   @default(true)
+  status        String    @default("draft") // draft, published, archived
+  instructions  String? // exam instructions for students
+  startsAt      DateTime?
+  endsAt        DateTime?
+  creatorId     String? // user who created this exam (custom exam builder)
+  creator       User?     @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  questions ExamQuestion[]
+  results   ExamResult[]
+
+  @@index([classLevel, isActive])
+  @@index([subjectId])
+  @@index([status, isActive])
+  @@index([subjectId, classLevel, isActive])
+  @@index([isActive, createdAt])
+  @@index([creatorId])
+}
+
+model ExamQuestion {
+  id           String   @id @default(cuid())
+  examId       String
+  questionType String // mcq, cq
+  questionId   String // references MCQ.id or CQ.id
+  order        Int      @default(0)
+  marks        Float    @default(0)
+  createdAt    DateTime @default(now())
+
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, questionType, questionId])
+}
+
+model ExamResult {
+  id          String   @id @default(cuid())
+  userId      String
+  examId      String
+  score       Float    @default(0)
+  totalMarks  Float    @default(0)
+  timeTaken   Int      @default(0) // seconds
+  answers     Json // JSON object: {questionId: "A"}
+  idempotencyKey String? @unique // Client-generated UUID to prevent duplicate submission
+  createdAt   DateTime @default(now())
+  completedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, examId])
+  @@index([userId])
+  @@index([examId])
+}
+
+// ============ PROGRESS & BOOKMARKS ============
+
+model Progress {
+  id           String   @id @default(cuid())
+  userId       String
+  contentId    String
+  contentType  String // lecture, mcq, cq
+  progress     Float    @default(0) // 0-100
+  lastAccessed DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId, contentType])
+}
+
+model Bookmark {
+  id          String   @id @default(cuid())
+  userId      String
+  contentId   String
+  contentType String // mcq, cq, lecture
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId, contentType])
+}
+
+model Note {
+  id          String   @id @default(cuid())
+  userId      String
+  contentId   String
+  contentType String // lecture, mcq, cq
+  content     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, contentId, contentType])
+  @@index([userId])
+}
+
+model UserFeedback {
+  id        String   @id @default(cuid())
+  userId    String
+  subject   String
+  status    String   @default("pending") // pending, replied, closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages FeedbackMessage[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model FeedbackMessage {
+  id         String   @id @default(cuid())
+  feedbackId String
+  senderId   String
+  senderRole String // user, admin
+  message    String
+  createdAt  DateTime @default(now())
+
+  feedback UserFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+  sender   User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId])
+  @@index([senderId])
+}
+
+model RecentlyViewed {
+  id          String   @id @default(cuid())
+  userId      String
+  contentId   String
+  contentType String
+  title       String
+  viewedAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============ PAYMENT SYSTEM ============
+
+model Payment {
+  id             String    @id @default(cuid())
+  userId         String
+  amount         Float
+  method         String // bkash, nagad, rocket
+  transactionId  String
+  paymentNumber  String
+  screenshot     String?
+  contentType    String? // lecture, mcq, cq, exam, board-mcq, board-cq, bundle, suggestion, package
+  contentId      String?
+  contentTitle   String? // stored at payment creation for quick display
+  classLevel     String? // For package purchases: which class the user selected
+  status         String    @default("pending") // pending, approved, rejected
+  isActive       Boolean   @default(true) // false when admin deactivates purchase access
+  adminNote      String?
+  reviewedBy     String?
+  reviewedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  idempotencyKey String?   @unique // Client-generated key for idempotent payment creation
+
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coursePurchases      CoursePurchase[]
+
+  @@unique([userId, contentType, contentId, status])
+  @@index([userId, contentType, contentId])
+  @@index([status, createdAt])
+  @@index([contentType, contentId, status])
+  @@index([reviewedBy])
+}
+
+// ============ NOTIFICATION ============
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  title     String
+  message   String
+  type      String   @default("info") // info, success, warning, error
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead, createdAt])
+  @@index([isRead, createdAt])
+}
+
+// ============ AUDIT LOG ============
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action     String // payment_approve, payment_reject, grade_update, grade_bulk, user_update, user_delete, retake_approve, retake_reject, content_create, content_update, content_delete
+  entityType String // payment, submission, user, cq_question, cq_set, cq_package, mcq_question, lecture, bundle, package
+  entityId   String
+  oldData    Json? // JSON string of previous state
+  newData    Json? // JSON string of new state
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([adminId])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+// ============ BANNER ============
+
+model Banner {
+  id         String    @id @default(cuid())
+  title      String
+  subtitle   String?
+  image      String?
+  link       String?
+  buttonText String?
+  isActive   Boolean   @default(true)
+  order      Int       @default(0)
+  startDate  DateTime?
+  endDate    DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+}
+
+// ============ SUBSCRIPTION PLAN (REMOVED — per-content pricing only) ============
+
+// ============ FAQ ============
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String?
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ TESTIMONIAL ============
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  name      String
+  role      String?
+  avatar    String?
+  content   String
+  rating    Int      @default(5)
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============ NOTICE SYSTEM ============
+
+model Notice {
+  id         String   @id @default(cuid())
+  title      String
+  content    String? // Text content
+  pdfUrl     String? // PDF attachment URL
+  linkUrl    String? // External link URL
+  linkLabel  String? // Label for the external link
+  type       String   @default("text") // text, pdf, link
+  thumbnail  String? // Optional thumbnail image
+  classLevel String? // Optional: target class level
+  isPinned   Boolean  @default(false) // Pinned to top
+  isActive   Boolean  @default(true)
+  order      Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([isActive, type, order, createdAt])
+  @@index([classLevel, isActive])
+}
+
+// ============ SUGGESTION SYSTEM ============
+
+model Suggestion {
+  id        String   @id @default(cuid())
+  title     String
+  slug      String
+  content   String // JSON blocks (same as Lecture)
+  classId   String? // Optional class association
+  subjectId String? // Optional subject association
+  chapterId String? // Optional chapter association
+  thumbnail String?
+  pdfUrl    String? // Optional PDF attachment
+  isPremium Boolean  @default(false)
+  price     Float    @default(0)
+  viewCount Int      @default(0)
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chapter Chapter? @relation("ChapterSuggestions", fields: [chapterId], references: [id])
+
+  @@index([chapterId])
+  @@index([isActive, chapterId])
+  @@index([isActive, classId, subjectId])
+}
+
+// ============ BOARD & YEAR ============
+
+model Board {
+  id        String   @id @default(cuid())
+  name      String // ঢাকা, রাজশাহী, etc.
+  slug      String   @unique // dhaka, rajshahi, etc.
+  color     String   @default("rose") // Dynamic color: rose, emerald, sky, amber, violet, orange, teal, pink, indigo, cyan
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExamYear {
+  id        String   @id @default(cuid())
+  year      String   @unique // 2024, 2023, etc.
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model BoardYear {
+  id        String   @id @default(cuid())
+  board     String // dhaka, rajshahi, etc. (slug reference to Board)
+  year      String // 2024, 2023, etc.
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([board, year])
+}
+
+// ============ CONTENT TYPE SYSTEM ============
+
+model ContentType {
+  id                  String   @id @default(cuid())
+  key                 String   @unique // "lecture", "mcq", "cq", "board", "suggestion", "exam", "bundle", "package"
+  labelBn             String // "লেকচার"
+  labelEn             String // "Lecture"
+  description         String? // "ভিডিও ও লিখিত লেকচার"
+  icon                String // "PlayCircle" (Lucide icon name)
+  color               String // "bg-emerald-500"
+  lightColor          String? // "bg-emerald-50 dark:bg-emerald-950/30"
+  textColor           String? // "text-emerald-600 dark:text-emerald-400"
+  route               String? // "lecture-viewer" (client-side route name)
+  paramKey            String? // "lectureId" (route param key)
+  buttonLabel         String? // "লেকচার দেখুন" (action button text)
+  showInChapterDetail Boolean  @default(true) // Whether this content type shows in chapter detail page
+  isActive            Boolean  @default(true)
+  order               Int      @default(0)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+// ============ FEATURED CONTENT ============
+
+model FeaturedContent {
+  id          String   @id @default(cuid())
+  contentType String // lecture, mcq, cq, bundle, package, suggestion, exam
+  contentId   String // ID of the referenced content
+  title       String? // Optional override title
+  subtitle    String? // Optional subtitle (e.g. subject name, class name)
+  thumbnail   String? // Optional override thumbnail
+  section     String   @default("homepage") // which homepage section
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([section, contentType, contentId])
+}
+
+// ============ SITE SETTINGS ============
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  group     String? // Optional grouping: "seo", "homepage", "messages", "navigation", etc.
+  label     String? // Human-readable label for admin UI
+  updatedAt DateTime @updatedAt
+}
+
+// ============ NAVIGATION SYSTEM ============
+
+model Navigation {
+  id          String   @id @default(cuid())
+  label       String // Display label (Bengali)
+  route       String // Client-side route name
+  icon        String   @default("BookOpen") // Lucide icon name
+  location    String   @default("header") // header, footer, bottomNav
+  order       Int      @default(0)
+  isAuthOnly  Boolean  @default(false) // Show only when authenticated
+  isAdminOnly Boolean  @default(false) // Show only for admins
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============ BUNDLE SYSTEM ============
+
+model ContentBundle {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  description   String?
+  thumbnail     String?
+  price         Float    @default(0)
+  originalPrice Float    @default(0) // Total of individual prices
+  classLevel    String? // Optional: target class
+  board         String? // Optional: target board
+  year          String? // Optional: target year
+  type          String   @default("mixed") // mcq, cq, lecture, board, mixed
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items BundleItem[]
+}
+
+model BundleItem {
+  id          String   @id @default(cuid())
+  bundleId    String
+  contentType String // mcq, cq, lecture, suggestion, exam
+  contentId   String // ID of the content item
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  bundle ContentBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+
+  @@unique([bundleId, contentType, contentId])
+}
+
+// ============ PACKAGE SYSTEM (TIME-BASED SUBSCRIPTION) ============
+
+model ContentPackage {
+  id            String   @id @default(cuid())
+  title         String
+  slug          String   @unique
+  description   String?
+  thumbnail     String?
+  price         Float    @default(0)
+  originalPrice Float    @default(0)
+  duration      Int      @default(30) // Duration in days (30, 180, 365, etc.)
+  durationLabel String   @default("৩০ দিন") // Human-readable label ("৩০ দিন", "৬ মাস", "১ বছর")
+  classLevel    String? // optional: package can target a specific class, or null for any class
+  isActive      Boolean  @default(true)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subscriptions UserSubscription[]
+}
+
+// User's active subscription — created when payment for a package is approved
+model UserSubscription {
+  id         String   @id @default(cuid())
+  userId     String
+  packageId  String
+  classLevel String // The class the user subscribed to (required — selected at purchase time)
+  startDate  DateTime @default(now())
+  endDate    DateTime // Auto-calculated: startDate + package.duration
+  isActive   Boolean  @default(true) // Can be manually deactivated by admin
+  paymentId  String? // Link to the approved payment
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, packageId, classLevel]) // One subscription per user per package per class
+  @@index([paymentId])
+}
+
+// ============ MCQ EXAM PACKAGE SYSTEM ============
+
+model MCQExamPackage {
+  id            String        @id @default(cuid())
+  title         String
+  description   String?
+  classId       String // Links to ClassCategory
+  class         ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectIds    Json          @default("[]") // JSON array of subject IDs — empty means "all subjects"
+  price         Float         @default(0)
+  originalPrice Float         @default(0)
+  isPremium     Boolean       @default(true)
+  thumbnail     String?
+  totalSets     Int           @default(0) // number of exam sets in this package
+  status        String        @default("draft") // draft, published, archived
+  isActive      Boolean       @default(true)
+  order         Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  examSets  MCQExamSet[]
+  purchases MCQExamPackagePurchase[]
+
+  @@index([classId])
+}
+
+model MCQExamSet {
+  id             String         @id @default(cuid())
+  packageId      String
+  package        MCQExamPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  scheduledDate  DateTime // The date this exam set is available
+  startTime      String         @default("00:00") // Time window start (HH:mm)
+  endTime        String         @default("23:59") // Time window end (HH:mm)
+  duration       Int            @default(30) // Duration in minutes
+  marksPerQ      Float          @default(1)
+  negativeMarks  Float          @default(0)
+  totalMarks     Float          @default(0)
+  totalQuestions Int            @default(0)
+  instructions   String?
+  allowRetake    Boolean        @default(false)
+  status         String         @default("draft") // draft, published, completed
+  order          Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  questions      MCQExamSetQuestion[]
+  results        MCQExamSetResult[]
+  retakeRequests MCQExamRetakeRequest[]
+
+  @@index([scheduledDate])
+  @@index([packageId, status])
+}
+
+model MCQExamSetQuestion {
+  id    String     @id @default(cuid())
+  setId String
+  set   MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  mcqId String
+  mcq   MCQ        @relation(fields: [mcqId], references: [id], onDelete: Cascade)
+  marks Float      @default(1)
+  order Int        @default(0)
+
+  @@unique([setId, mcqId])
+}
+
+model MCQExamSetResult {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setId         String
+  set           MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  answers       Json       @default("{}") // JSON: {mcqId: "A"} — selected answer per question
+  totalCorrect  Int        @default(0)
+  totalWrong    Int        @default(0)
+  totalSkipped  Int        @default(0)
+  marksObtained Float      @default(0)
+  totalMarks    Float      @default(0)
+  timeTaken     Int        @default(0) // seconds taken
+  startedAt     DateTime?
+  submittedAt   DateTime?
+  status        String     @default("not-started") // not-started, in-progress, completed
+  canRetake     Boolean    @default(false) // Admin-granted individual retake permission
+
+  @@unique([userId, setId])
+  @@index([userId, status])
+}
+
+// ============ MCQ EXAM RETAKE REQUESTS ============
+
+model MCQExamRetakeRequest {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setId      String
+  set        MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  reason     String?
+  status     String     @default("pending") // pending, approved, rejected
+  reviewedBy String?
+  reviewedAt DateTime?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([userId, setId])
+  @@index([reviewedBy])
+}
+
+model MCQExamPackagePurchase {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageId   String
+  package     MCQExamPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  paymentId   String? // Link to Payment record
+  purchasedAt DateTime       @default(now())
+  isActive    Boolean        @default(true)
+
+  @@unique([userId, packageId])
+  @@index([paymentId])
+}
+
+// ============ CQ EXAM PACKAGE SYSTEM ============
+
+model CQExamPackage {
+  id            String        @id @default(cuid())
+  title         String
+  description   String?
+  classId       String // Links to ClassCategory
+  class         ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subjectIds    Json          @default("[]") // JSON array of subject IDs
+  price         Float         @default(0)
+  originalPrice Float         @default(0)
+  isPremium     Boolean       @default(true)
+  thumbnail     String?
+  totalSets     Int           @default(0)
+  status        String        @default("draft") // draft, published, archived
+  isActive      Boolean       @default(true)
+  order         Int           @default(0)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  examSets  CQExamSet[]
+  purchases CQExamPackagePurchase[]
+
+  @@index([status, isActive, order])
+  @@index([classId])
+}
+
+model CQExamSet {
+  id             String        @id @default(cuid())
+  packageId      String
+  package        CQExamPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  scheduledDate  DateTime
+  startTime      String        @default("00:00")
+  endTime        String        @default("23:59")
+  duration       Int           @default(30) // minutes
+  marksPerQ      Float         @default(1)
+  totalMarks     Float         @default(0)
+  totalQuestions Int           @default(0)
+  instructions   String?
+  status         String        @default("draft") // draft, published, completed
+  allowRetake    Boolean       @default(false)
+  order          Int           @default(0)
+
+  // ─── Dynamic Answer & Evaluation Controls ───
+  answerMode           String    @default("flexible") // flexible, text-only, image-only, complete-image-only
+  showAnnotatedImages  Boolean   @default(true) // Show admin-marked images to students on result page
+  autoPublishResults   Boolean   @default(false) // Auto-publish after all submissions are graded
+  maxImagesPerAnswer   Int       @default(5) // Max images a student can upload per answer slot
+  gradingDeadline      DateTime? // Optional deadline for grading
+  passMarks            Float     @default(0) // Minimum marks to pass (0 = not set)
+  showCorrectAnswers   Boolean   @default(false) // Show model answers after grading
+  enablePartialGrading Boolean   @default(true) // Allow partial marks for sub-questions
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  questions      CQExamSetQuestion[]
+  submissions    CQExamSubmission[]
+  retakeRequests CQExamRetakeRequest[]
+
+  @@index([packageId])
+  @@index([status])
+  @@index([scheduledDate])
+  @@index([packageId, status])
+}
+
+model CQExamSetQuestion {
+  id       String    @id @default(cuid())
+  setId    String
+  set      CQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  cqId     String?
+  cq       CQ?       @relation(fields: [cqId], references: [id], onDelete: Cascade)
+  marks    Float     @default(1)
+  order    Int       @default(0)
+  type     String    @default("cq") // cq, typed, mcq-single, mcq-multiple, fill-blanks, written
+  subMarks Json? // JSON array [a,b,c,d] marks per sub-question
+
+  // For non-CQ question types (mcq-single, mcq-multiple, fill-blanks, written)
+  stem      String? // Question stem (question text)
+  stemImage String? // Question stem image URL
+  config    Json    @default("{}") // JSON: {options:[], correctIndex:N} for MCQ, {blanks:[]} for fill-blanks
+
+  // For typed questions (type = "typed")
+  typedUddeepok       String? // Stimulus text
+  typedUddeepokImage  String? // Stimulus image URL
+  typedQuestion1      String?
+  typedQuestion1Image String?
+  typedQuestion2      String?
+  typedQuestion2Image String?
+  typedQuestion3      String?
+  typedQuestion3Image String?
+  typedQuestion4      String?
+  typedQuestion4Image String?
+
+  answers CQExamAnswer[]
+
+  @@unique([setId, cqId])
+  @@index([setId, order])
+}
+
+model CQExamPackagePurchase {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageId   String
+  package     CQExamPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  paymentId   String? // Link to Payment record
+  purchasedAt DateTime      @default(now())
+  isActive    Boolean       @default(true)
+
+  @@unique([userId, packageId])
+}
+
+model CQExamSubmission {
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setId         String
+  set           CQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  totalMarks    Float     @default(0)
+  obtainedMarks Float     @default(0)
+  timeTaken     Int       @default(0) // seconds
+  status        String    @default("not-started") // not-started, in-progress, submitted, graded, published
+  canRetake     Boolean   @default(false) // Admin-granted individual retake permission
+  startedAt     DateTime?
+  submittedAt   DateTime?
+  gradedAt      DateTime?
+  gradedBy      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  answers CQExamAnswer[]
+
+  @@unique([userId, setId])
+  @@index([setId, status])
+  @@index([setId, status, submittedAt])
+  @@index([userId, setId])
+  @@index([gradedBy])
+}
+
+model CQExamAnswer {
+  id            String            @id @default(cuid())
+  submissionId  String
+  submission    CQExamSubmission  @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  questionId    String // The CQExamSetQuestion id
+  question      CQExamSetQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  subIndex      Int               @default(0) // 0 = ক, 1 = খ, 2 = গ, 3 = ঘ
+  answerText    String? // Text answer written by user
+  obtainedMarks Float             @default(0) // Marks awarded by admin
+  maxMarks      Float             @default(0)
+  feedback      String? // Admin feedback/comment
+  gradedAt      DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  images CQExamAnswerImage[]
+
+  @@unique([submissionId, questionId, subIndex])
+  @@index([submissionId, questionId])
+  @@index([questionId, obtainedMarks])
+  @@index([submissionId, obtainedMarks])
+}
+
+model CQExamAnswerImage {
+  id          String       @id @default(cuid())
+  answerId    String
+  answer      CQExamAnswer @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  imageUrl    String
+  annotations Json? // JSON string of annotation data {shapes, marks, comments}
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([answerId])
+}
+
+// ============ CQ EXAM RETAKE REQUESTS ============
+
+model CQExamRetakeRequest {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setId      String
+  set        CQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  reason     String? // Optional: reason for retake
+  status     String    @default("pending") // pending, approved, rejected
+  reviewedBy String? // Admin ID who reviewed
+  reviewedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, setId])
+  @@index([reviewedBy])
+}
+
+// ============ RBAC PERMISSION SYSTEM ============
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique // e.g. "payment.approve", "content.manage", "users.manage"
+  description String?
+  group       String? // Logical grouping: "payment", "content", "users", "system"
+  createdAt   DateTime @default(now())
+
+  roles RolePermission[]
+
+  @@index([group])
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  role         Role
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([role, permissionId])
+  @@index([role])
+}
+
+// ============ TEACHERS & MODERATORS ============
+
+model TeacherModerator {
+  id          String   @id @default(cuid())
+  name        String
+  image       String?
+  title       String // e.g. "প্রভাষক", "সিনিয়র শিক্ষক", "মডারেটর"
+  institution String?
+  isActive    Boolean  @default(true)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ============ COURSE SYSTEM ============
+
+model Course {
+  id          String  @id @default(cuid())
+  title       String
+  slug        String  @unique
+  description String?
+  thumbnail   String?
+
+  // Pricing — sold separately, not tied to subscriptions
+  isPremium     Boolean @default(false)
+  price         Float   @default(0)
+  originalPrice Float   @default(0) // Higher price for discount display (crossed out)
+
+  // Status — draft or published only
+  status String @default("draft")
+
+  // Overview fields
+  teacherName     String?
+  features        String?  // HTML — course features
+  requirements    String?  // HTML — prerequisites
+  targetStudents  String?  // HTML — who this is for
+  hasCertificate  Boolean  @default(false)
+  duration        Int?     // Total course duration in days
+  language        String?  // "bangla", "english", etc.
+  difficulty      String?  // "beginner", "intermediate", "advanced"
+
+  // Relations
+  classId       String?
+  classCategory ClassCategory? @relation(fields: [classId], references: [id])
+  subjectId     String?
+  subject       Subject?       @relation(fields: [subjectId], references: [id])
+
+  // Lessons
+  lessons CourseLesson[]
+
+  // Exam Schedule (independent of lessons)
+  examSchedules CourseExamSchedule[]
+
+  // Purchases
+  purchases CoursePurchase[]
+
+  // Enrollments
+  enrollments CourseEnrollment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([classId, subjectId])
+}
+
+// ============ COURSE LESSON SYSTEM ============
+
+model CourseLesson {
+  id            String   @id @default(cuid())
+  courseId      String
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  lessonType    String   // LIVE, RECORDED
+
+  // LIVE-specific
+  meetingLink   String?
+  meetingId     String?
+  platform      String?
+  password      String?
+
+  // RECORDED-specific
+  videoUrl      String?
+  previewVideo  String?
+  duration      Int?     // minutes
+
+  // Ordering
+  displayOrder  Int      @default(0)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  exams       LessonExam[]
+  assignments LessonAssignment[]
+  schedules   LessonSchedule[]
+  notes       LessonNote[]
+  resources   LessonResource[]
+
+  @@index([courseId, displayOrder])
+}
+
+model LessonNote {
+  id          String       @id @default(cuid())
+  lessonId    String
+  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title       String
+  type        String       // richtext, pdf, link
+  content     String?
+  fileUrl     String?
+  link        String?
+  displayOrder Int         @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([lessonId, displayOrder])
+}
+
+model LessonResource {
+  id          String       @id @default(cuid())
+  lessonId    String
+  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title       String
+  type        String       // file, link
+  fileUrl     String?
+  link        String?
+  displayOrder Int         @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([lessonId, displayOrder])
+}
+
+// ============ COURSE EXAM SCHEDULE (independent of lessons) ============
+
+model CourseExamSchedule {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  examType    String   // MCQ, CQ
+  packageId   String   // references MCQExamPackage.id or CQExamPackage.id
+  examDate    DateTime
+  startTime   String   // HH:mm
+  endTime     String   // HH:mm
+  autoFilledFromPackage Boolean @default(false)
+  overrideAllowed       Boolean @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([courseId, examDate])
+  @@index([examType, packageId])
+}
+
+// ============ LESSON EXAM (deprecated — kept for backward compat) ============
+
+model LessonExam {
+  id          String   @id @default(cuid())
+  lessonId    String
+  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  examType    String   // MCQ, CQ
+  packageId   String   // references MCQExamPackage.id or CQExamPackage.id
+  displayOrder Int     @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([lessonId])
+  @@index([examType, packageId])
+}
+
+// ============ LESSON ASSIGNMENT ============
+
+model LessonAssignment {
+  id          String       @id @default(cuid())
+  lessonId    String
+  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  deadline    DateTime?
+  attachment  String?      // file URL
+  displayOrder Int         @default(0)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  submissions AssignmentSubmission[]
+
+  @@index([lessonId, displayOrder])
+}
+
+model AssignmentSubmission {
+  id           String          @id @default(cuid())
+  assignmentId String
+  assignment   LessonAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content      String?         // text answer
+  fileUrls     String?         // comma-separated file URLs
+  status       String          @default("submitted") // submitted, graded
+  marks        Float?
+  feedback     String?
+  gradedBy     String?         // admin/staff user ID
+  gradedAt     DateTime?
+  submittedAt  DateTime        @default(now())
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([assignmentId, userId])
+  @@index([assignmentId])
+  @@index([userId])
+}
+
+// ============ LESSON SCHEDULE ============
+
+model LessonSchedule {
+  id        String       @id @default(cuid())
+  lessonId  String
+  lesson    CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  date      DateTime?
+  startTime String?      // HH:mm
+  endTime   String?      // HH:mm
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([lessonId])
+  @@index([date])
+}
+
+// ============ LESSON PROGRESS ============
+
+model LessonProgress {
+  id            String    @id @default(cuid())
+  userId        String
+  enrollmentId  String?
+  lessonId      String
+  courseId      String
+  completed     Boolean   @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([userId, courseId])
+  @@index([enrollmentId])
+}
+
+model CourseEnrollment {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
+  type        String    @default("FREE") // FREE, PAID, GRANTED
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+}
+
+model CoursePurchase {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  paymentId   String?
+  payment     Payment? @relation(fields: [paymentId], references: [id])
+  purchasedAt DateTime @default(now())
+  isActive    Boolean  @default(true)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+// ============ ANALYTICS SYSTEM ============
+
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  userId      String?
+  eventType   String   // page_view, lecture_view, mcq_answer, exam_start, purchase, etc.
+  eventName   String
+  entityType  String?
+  entityId    String?
+  metadata    Json?
+  sessionId   String?
+  ipAddress   String?
+  userAgent   String?
+  referrer    String?
+  url         String?
+  deviceType  String?
+  browser     String?
+  os          String?
+  screenRes   String?
+  country     String?
+  division    String?
+  district    String?
+  timezone    String?
+  duration    Int?
+  value       Float?
+  createdAt   DateTime @default(now())
+
+  @@index([eventType, createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@index([sessionId])
+  @@index([createdAt])
+  @@index([deviceType])
+  @@index([country])
+  @@index([eventType, entityType, createdAt])
+}
+
+model AnalyticsSession {
+  id          String   @id @default(cuid())
+  userId      String?
+  startTime   DateTime @default(now())
+  endTime     DateTime?
+  duration    Int?
+  pageViews   Int      @default(0)
+  events      Int      @default(0)
+  deviceType  String?
+  browser     String?
+  os          String?
+  country     String?
+  city        String?
+  ipAddress   String?
+  referrer    String?
+  landingPage String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, startTime])
+  @@index([startTime])
+  @@index([isActive])
+}
+
+model AnalyticsSearchQuery {
+  id          String   @id @default(cuid())
+  userId      String?
+  query       String
+  resultCount Int      @default(0)
+  filters     Json?
+  clicked     Boolean  @default(false)
+  clickedId   String?
+  sessionId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([query, createdAt])
+  @@index([createdAt])
+}
+
+model AnalyticsAlert {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  metric      String
+  condition   String   // gt, lt, eq, gte, lte
+  threshold   Float
+  timeframe   String   // 1h, 24h, 7d, 30d
+  enabled     Boolean  @default(true)
+  lastTriggered DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model AnalyticsReport {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  type          String   // revenue, students, retention, conversion, etc.
+  config        Json?
+  format        String   // xlsx, csv, pdf
+  schedule      String?  // daily, weekly, monthly
+  recipients    Json?
+  lastGenerated DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}

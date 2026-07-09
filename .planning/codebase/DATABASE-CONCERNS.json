@@ -1,0 +1,625 @@
+{
+  "analysisMetadata": {
+    "schemaFile": "prisma/schema.prisma",
+    "totalLines": 1057,
+    "totalModels": 52,
+    "databaseProvider": "postgresql",
+    "relationMode": "prisma",
+    "analysisDate": "2026-06-14",
+    "focus": "database"
+  },
+
+  "modelsCompleteTable": [
+    { "name": "User", "relations": 17, "cascades": "N/A (parent)", "missingCascadeChildren": true, "hasIsActive": false, "hasDeletedAt": false, "indexes": 2 },
+    { "name": "ClassCategory", "relations": 3, "cascades": "N/A (parent)", "missingCascadeChildren": true, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Subject", "relations": 2, "cascades": "classId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Chapter", "relations": 5, "cascades": "subjectId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Topic", "relations": 1, "cascades": "chapterId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Lecture", "relations": 2, "cascades": "chapterId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 2 },
+    { "name": "Resource", "relations": 1, "cascades": "lectureId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "MCQ", "relations": 2, "cascades": "chapterId->CASCADE", "missingCascadeChildren": true, "hasIsActive": true, "hasDeletedAt": false, "indexes": 3 },
+    { "name": "CQ", "relations": 2, "cascades": "chapterId->CASCADE", "missingCascadeChildren": true, "hasIsActive": true, "hasDeletedAt": false, "indexes": 3 },
+    { "name": "Exam", "relations": 2, "cascades": "N/A (parent)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "ExamQuestion", "relations": 1, "cascades": "examId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "ExamResult", "relations": 2, "cascades": "userId->CASCADE, examId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Progress", "relations": 1, "cascades": "userId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Bookmark", "relations": 1, "cascades": "userId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Note", "relations": 1, "cascades": "userId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "UserFeedback", "relations": 2, "cascades": "userId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 2 },
+    { "name": "FeedbackMessage", "relations": 2, "cascades": "feedbackId->CASCADE, senderId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 1 },
+    { "name": "RecentlyViewed", "relations": 1, "cascades": "userId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Payment", "relations": 1, "cascades": "userId->NONE (MISSING)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 3 },
+    { "name": "Notification", "relations": 1, "cascades": "userId->CASCADE (optional)", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 2 },
+    { "name": "AuditLog", "relations": 1, "cascades": "adminId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 4 },
+    { "name": "Banner", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "FAQ", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Testimonial", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Notice", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Suggestion", "relations": 0, "cascades": "N/A (no FK relations despite having foreign key fields)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Board", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "ExamYear", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "BoardYear", "relations": 0, "cascades": "N/A (no FK relations despite board/year fields)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "ContentType", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "FeaturedContent", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "SiteSetting", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "Navigation", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "ContentBundle", "relations": 1, "cascades": "N/A (parent)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "BundleItem", "relations": 1, "cascades": "bundleId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "ContentPackage", "relations": 1, "cascades": "N/A (parent)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "UserSubscription", "relations": 2, "cascades": "userId->CASCADE, packageId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "MCQExamPackage", "relations": 3, "cascades": "classId->NONE (MISSING)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "MCQExamSet", "relations": 4, "cascades": "packageId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "MCQExamSetQuestion", "relations": 2, "cascades": "setId->CASCADE, mcqId->NONE (MISSING)", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "MCQExamSetResult", "relations": 2, "cascades": "userId->CASCADE, setId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 1 },
+    { "name": "MCQExamRetakeRequest", "relations": 2, "cascades": "userId->CASCADE, setId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "MCQExamPackagePurchase", "relations": 2, "cascades": "userId->CASCADE, packageId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "CQExamPackage", "relations": 3, "cascades": "classId->NONE (MISSING)", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 2 },
+    { "name": "CQExamSet", "relations": 4, "cascades": "packageId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 2 },
+    { "name": "CQExamSetQuestion", "relations": 3, "cascades": "setId->CASCADE, cqId->NONE (MISSING)", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 1 },
+    { "name": "CQExamPackagePurchase", "relations": 2, "cascades": "userId->CASCADE, packageId->CASCADE", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "CQExamSubmission", "relations": 3, "cascades": "userId->CASCADE, setId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 3 },
+    { "name": "CQExamAnswer", "relations": 3, "cascades": "submissionId->CASCADE, questionId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 4 },
+    { "name": "CQExamAnswerImage", "relations": 1, "cascades": "answerId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 1 },
+    { "name": "CQExamRetakeRequest", "relations": 2, "cascades": "userId->CASCADE, setId->CASCADE", "missingCascadeChildren": false, "hasIsActive": false, "hasDeletedAt": false, "indexes": 0 },
+    { "name": "TeacherModerator", "relations": 0, "cascades": "N/A", "missingCascadeChildren": false, "hasIsActive": true, "hasDeletedAt": false, "indexes": 0 }
+  ],
+
+  "missingCascadeDeletes": {
+    "summary": "4 relations missing cascade deletes — will cause foreign-key violations on delete",
+    "highPriority": [
+      {
+        "model": "Payment",
+        "field": "userId",
+        "line": 426,
+        "relationDef": "@relation(fields: [userId], references: [id])",
+        "issue": "NO cascade. Deleting a User with payments throws FK violation.",
+        "impact": "Admin cannot delete users with payment history. Requires manual cleanup first.",
+        "fix": "Add onDelete: Cascade"
+      },
+      {
+        "model": "MCQExamPackage",
+        "field": "classId",
+        "line": 742,
+        "relationDef": "@relation(fields: [classId], references: [id])",
+        "issue": "NO cascade. Deleting a ClassCategory referenced by MCQExamPackage fails.",
+        "impact": "Cannot delete class categories that have exam packages. Orphan risk on the reverse side.",
+        "fix": "Add onDelete: Cascade (or SetNull if package should survive class deletion)"
+      },
+      {
+        "model": "CQExamPackage",
+        "field": "classId",
+        "line": 857,
+        "relationDef": "@relation(fields: [classId], references: [id])",
+        "issue": "NO cascade. Same issue as MCQExamPackage.classId.",
+        "impact": "Cannot delete class categories that have CQ exam packages.",
+        "fix": "Add onDelete: Cascade (or SetNull)"
+      },
+      {
+        "model": "MCQExamSetQuestion",
+        "field": "mcqId",
+        "line": 790,
+        "relationDef": "@relation(fields: [mcqId], references: [id])",
+        "issue": "NO cascade. Deleting an MCQ used in an exam set question fails.",
+        "impact": "Cannot clean up MCQs that are referenced by exam sets. Data integrity risk.",
+        "fix": "Add onDelete: Cascade (or handle manually before MCQ deletion)"
+      },
+      {
+        "model": "CQExamSetQuestion",
+        "field": "cqId",
+        "line": 921,
+        "relationDef": "@relation(fields: [cqId], references: [id])",
+        "issue": "NO cascade. Deleting a CQ used in an exam set question fails.",
+        "impact": "Cannot clean up CQs that are referenced by exam set questions.",
+        "fix": "Add onDelete: Cascade (or handle manually)"
+      }
+    ]
+  },
+
+  "missingIndexes": {
+    "summary": "12 models lack indexes on commonly queried foreign key and filter fields",
+    "entries": [
+      {
+        "model": "Subject",
+        "missingIndex": "classId",
+        "why": "Frequently queried: get all subjects for a class. Unique compound [slug, classId] does not help for classId-only queries.",
+        "suggestedIndex": "@@index([classId])"
+      },
+      {
+        "model": "Chapter",
+        "missingIndex": "subjectId",
+        "why": "Frequently queried: get all chapters for a subject. Unique compound [slug, subjectId] does not optimize subjectId-only lookups.",
+        "suggestedIndex": "@@index([subjectId])"
+      },
+      {
+        "model": "Topic",
+        "missingIndex": "chapterId",
+        "why": "Frequently queried: get all topics for a chapter. Unique compound [slug, chapterId] does not optimize chapterId-only lookups.",
+        "suggestedIndex": "@@index([chapterId])"
+      },
+      {
+        "model": "Resource",
+        "missingIndex": "lectureId",
+        "why": "Frequently queried: get all resources for a lecture.",
+        "suggestedIndex": "@@index([lectureId])"
+      },
+      {
+        "model": "Note",
+        "missingIndex": "userId / contentId",
+        "why": "Frequently queried: get all notes for a user, or notes on a specific content item. Zero indexes currently.",
+        "suggestedIndex": "@@index([userId]) and @@index([contentId, contentType])"
+      },
+      {
+        "model": "RecentlyViewed",
+        "missingIndex": "userId",
+        "why": "Frequently queried: get recently viewed items for a user. Zero indexes currently.",
+        "suggestedIndex": "@@index([userId, viewedAt])"
+      },
+      {
+        "model": "Exam",
+        "missingIndex": "classLevel / type / status",
+        "why": "Frequently queried: filter exams by class, type, status. Zero indexes currently.",
+        "suggestedIndex": "@@index([classLevel, type, status]) and @@index([isActive, status])"
+      },
+      {
+        "model": "ExamQuestion",
+        "missingIndex": "examId",
+        "why": "Frequently queried: get all questions for an exam.",
+        "suggestedIndex": "@@index([examId])"
+      },
+      {
+        "model": "ExamResult",
+        "missingIndex": "userId / examId",
+        "why": "Frequently queried: get results for a user or exam.",
+        "suggestedIndex": "@@index([userId]) and @@index([examId])"
+      },
+      {
+        "model": "Suggestion",
+        "missingIndex": "classId/subjectId/chapterId",
+        "why": "Frequently filtered by class, subject, or chapter. Zero indexes currently.",
+        "suggestedIndex": "@@index([classId, isActive]), @@index([subjectId, isActive]), @@index([chapterId, isActive])"
+      },
+      {
+        "model": "ContentBundle",
+        "missingIndex": "classLevel / type / isActive",
+        "why": "Frequently queried: list bundles by class or type.",
+        "suggestedIndex": "@@index([classLevel, type, isActive])"
+      },
+      {
+        "model": "BundleItem",
+        "missingIndex": "bundleId",
+        "why": "Frequently queried: get all items in a bundle.",
+        "suggestedIndex": "@@index([bundleId])"
+      }
+    ]
+  },
+
+  "missingUniqueConstraints": {
+    "summary": "1 model missing expected unique constraint",
+    "entries": [
+      {
+        "model": "Suggestion",
+        "field": "slug",
+        "line": 544,
+        "issue": "slug is NOT marked @unique. Can have duplicate slugs.",
+        "risk": "Two suggestions with same slug causes routing/display collisions.",
+        "fix": "Add @unique to slug"
+      }
+    ],
+    "note": "BoardYear has @@unique([board, year]) ✓. Payment has @@unique([userId, contentType, contentId, status]) — could block multiple pending payments of same type; review if intentional."
+  },
+
+  "missingRelations": {
+    "summary": "11 places where foreign-key fields lack @relation definitions, meaning no FK constraints at the database level",
+    "entries": [
+      {
+        "model": "Suggestion",
+        "fields": ["classId", "subjectId", "chapterId"],
+        "lines": [546, 547, 548],
+        "issue": "Fields exist as optional Strings but have NO @relation decorators. No FK constraints enforced.",
+        "risk": "Suggestion can reference non-existent class/subject/chapter. No cascade behavior.",
+        "fix": "Add @relation to ClassCategory, Subject, Chapter respectively (or make nullable @relation with onDelete: SetNull)"
+      },
+      {
+        "model": "BoardYear",
+        "fields": ["board", "year"],
+        "lines": [584, 585],
+        "issue": "board and year are plain Strings with no relations to Board or ExamYear models.",
+        "risk": "BoardYear can reference board slugs that don't exist in Board table. No FK integrity.",
+        "fix": "Add @relation to Board and ExamYear models, or keep as-is if intentional loose coupling."
+      },
+      {
+        "model": "Payment",
+        "field": "reviewedBy",
+        "line": 420,
+        "issue": "String? with no relation to User (admin).",
+        "risk": "Can reference non-existent admin user ID.",
+        "fix": "Add optional @relation to User"
+      },
+      {
+        "model": "MCQExamRetakeRequest",
+        "field": "reviewedBy",
+        "line": 829,
+        "issue": "String? with no relation to User (admin).",
+        "risk": "Can reference non-existent admin user ID.",
+        "fix": "Add optional @relation to User"
+      },
+      {
+        "model": "CQExamRetakeRequest",
+        "field": "reviewedBy",
+        "line": 1035,
+        "issue": "String? with no relation to User (admin).",
+        "risk": "Can reference non-existent admin user ID.",
+        "fix": "Add optional @relation to User"
+      },
+      {
+        "model": "CQExamSubmission",
+        "field": "gradedBy",
+        "line": 977,
+        "issue": "String? with no relation to User (admin).",
+        "risk": "Can reference non-existent admin user ID.",
+        "fix": "Add optional @relation to User"
+      },
+      {
+        "model": "UserSubscription",
+        "field": "paymentId",
+        "line": 725,
+        "issue": "String? with no relation to Payment.",
+        "risk": "Can reference non-existent payment. No integrity check.",
+        "fix": "Add optional @relation to Payment"
+      },
+      {
+        "model": "MCQExamPackagePurchase",
+        "field": "paymentId",
+        "line": 843,
+        "issue": "String? with no relation to Payment.",
+        "risk": "Can reference non-existent payment.",
+        "fix": "Add optional @relation to Payment"
+      },
+      {
+        "model": "CQExamPackagePurchase",
+        "field": "paymentId",
+        "line": 956,
+        "issue": "String? with no relation to Payment.",
+        "risk": "Can reference non-existent payment.",
+        "fix": "Add optional @relation to Payment"
+      }
+    ]
+  },
+
+  "orphanRecordRisks": {
+    "summary": "Deleting parent records in several chains will either fail (no cascade) or leave orphan data with no cleanup path",
+    "chains": [
+      {
+        "parent": "User",
+        "risk": "HIGH",
+        "detail": "Payment lacks cascade — deleting a user with payments throws FK error. Must nullify or delete payments first.",
+        "affectedModel": "Payment",
+        "fix": "Add onDelete: Cascade to Payment.user relation, or add a cleanup step before user deletion"
+      },
+      {
+        "parent": "ClassCategory",
+        "risk": "HIGH",
+        "detail": "MCQExamPackage and CQExamPackage reference ClassCategory WITHOUT cascade. Deleting a ClassCategory with packages fails.",
+        "affectedModels": ["MCQExamPackage", "CQExamPackage"],
+        "fix": "Add onDelete: Cascade to both relations, or restrict deletion if packages exist"
+      },
+      {
+        "parent": "MCQ",
+        "risk": "MEDIUM",
+        "detail": "MCQExamSetQuestion.mcqId has no cascade. Deleting an MCQ used in exam sets fails.",
+        "affectedModel": "MCQExamSetQuestion",
+        "fix": "Add onDelete: Cascade, or require removing MCQ from all exam sets first"
+      },
+      {
+        "parent": "CQ",
+        "risk": "MEDIUM",
+        "detail": "CQExamSetQuestion.cqId has no cascade. Deleting a CQ used in exam sets fails.",
+        "affectedModel": "CQExamSetQuestion",
+        "fix": "Add onDelete: Cascade, or require removing CQ from all exam sets first"
+      },
+      {
+        "parent": "ClassCategory",
+        "risk": "LOW",
+        "detail": "Suggestion.classId has no relation at all (no FK). Deleting a ClassCategory leaves Suggestion records referencing a deleted class.",
+        "affectedModel": "Suggestion",
+        "fix": "Either add @relation with SetNull or clean up suggestions referencing deleted class"
+      },
+      {
+        "parent": "Board / ExamYear",
+        "risk": "LOW",
+        "detail": "BoardYear references boards/years by plain string — no FK. Deleting a board/year leaves dangling references in BoardYear.",
+        "affectedModel": "BoardYear",
+        "fix": "Either add @relation or handle manually"
+      }
+    ],
+    "cascadeChainClassCategory": {
+      "description": "Content hierarchy cascade chain is correctly configured end-to-end:",
+      "chain": "ClassCategory → Subject (CASCADE) → Chapter (CASCADE) → Topic/Lecture/MCQ/CQ (all CASCADE) → Resource (CASCADE from Lecture), MCQExamSetQuestion (NO CASCADE from MCQ — BUG)"
+    }
+  },
+
+  "fieldTypeIssues": {
+    "summary": "7 models use String fields to store structured JSON data — losing Postgres JSONB query capabilities and type safety",
+    "entries": [
+      {
+        "model": "MCQExamPackage",
+        "field": "subjectIds",
+        "line": 743,
+        "type": "String @default(\"[]\")",
+        "shouldBe": "Json @default(\"[]\")",
+        "why": "Stores a JSON array of subject IDs as a string. Cannot use Postgres JSON operators (jsonb_path_query, @> etc.). Manual parsing required in application code."
+      },
+      {
+        "model": "CQExamPackage",
+        "field": "subjectIds",
+        "line": 858,
+        "type": "String @default(\"[]\")",
+        "shouldBe": "Json @default(\"[]\")",
+        "why": "Same issue as MCQExamPackage.subjectIds."
+      },
+      {
+        "model": "ExamResult",
+        "field": "answers",
+        "line": 315,
+        "type": "String",
+        "shouldBe": "Json",
+        "why": "Stores JSON answer data as plain string. No query support, no validation."
+      },
+      {
+        "model": "MCQExamSetResult",
+        "field": "answers",
+        "line": 803,
+        "type": "String @default(\"{}\")",
+        "shouldBe": "Json @default(\"{}\")",
+        "why": "Stores JSON map of {mcqId: answer} as string."
+      },
+      {
+        "model": "MCQ",
+        "field": "tags",
+        "line": 208,
+        "type": "String?",
+        "shouldBe": "String[] (array) or Json",
+        "why": "Comma-separated string pretending to be an array. Cannot query individual tags."
+      },
+      {
+        "model": "CQ",
+        "field": "tags",
+        "line": 252,
+        "type": "String?",
+        "shouldBe": "String[] (array) or Json",
+        "why": "Same as MCQ.tags."
+      },
+      {
+        "model": "Exam",
+        "field": "chapterIds",
+        "line": 274,
+        "type": "String?",
+        "shouldBe": "String[] or many-to-many relation table",
+        "why": "Comma-separated list of chapter IDs. Cannot query or join. Should be a proper ExamChapter junction table for referential integrity."
+      },
+      {
+        "model": "CQExamSetQuestion",
+        "field": "subMarks",
+        "line": 925,
+        "type": "String?",
+        "shouldBe": "Json",
+        "why": "Stores JSON array [a,b,c,d] marks as string."
+      },
+      {
+        "model": "CQExamSetQuestion",
+        "field": "config",
+        "line": 930,
+        "type": "String @default(\"{}\")",
+        "shouldBe": "Json @default(\"{}\")",
+        "why": "Stores JSON config for non-CQ question types as string."
+      },
+      {
+        "model": "CQExamAnswerImage",
+        "field": "annotations",
+        "line": 1017,
+        "type": "String?",
+        "shouldBe": "Json",
+        "why": "Stores JSON annotation data as string."
+      },
+      {
+        "model": "CQExamSet",
+        "field": "showAnnotatedImages",
+        "line": 897,
+        "type": "Boolean",
+        "note": "Field name 'showAnnotatedImages' has a typo: 'Annotated' should be 'Annotated' (correct: Annotated). Minor but could cause API inconsistency.",
+        "shouldBe": "showAnnotatedImages (fix typo)"
+      }
+    ]
+  },
+
+  "softDeleteAnalysis": {
+    "summary": "0 models have deletedAt. 12 models lack isActive. No soft-delete capability anywhere in schema.",
+    "modelsMissingIsActive": [
+      { "name": "User", "impact": "Cannot disable/lock user accounts without deleting them entirely." },
+      { "name": "ExamQuestion", "impact": "Acceptable — child of Exam, cascade delete handles it." },
+      { "name": "ExamResult", "impact": "Acceptable — audit/historical data." },
+      { "name": "Progress", "impact": "Can accumulate stale progress entries with no way to hide." },
+      { "name": "Bookmark", "impact": "Minor — users can delete bookmarks directly." },
+      { "name": "Note", "impact": "Minor — users manage their own notes." },
+      { "name": "UserFeedback", "impact": "Cannot archive/hide feedback without deleting." },
+      { "name": "FeedbackMessage", "impact": "Acceptable — child of UserFeedback." },
+      { "name": "RecentlyViewed", "impact": "Minor — old entries naturally age out." },
+      { "name": "Notification", "impact": "Cannot soft-delete notifications. Users see all." },
+      { "name": "AuditLog", "impact": "Acceptable — audit data should be append-only." },
+      { "name": "BundleItem", "impact": "Acceptable — child of ContentBundle." },
+      { "name": "MCQExamSet", "impact": "Has 'status' field (draft/published/completed) instead of isActive." },
+      { "name": "MCQExamSetQuestion", "impact": "Acceptable — child of MCQExamSet." },
+      { "name": "MCQExamSetResult", "impact": "Acceptable — historical exam data." },
+      { "name": "MCQExamRetakeRequest", "impact": "Acceptable — request lifecycle is status-based." },
+      { "name": "CQExamSet", "impact": "Has 'status' field instead of isActive." },
+      { "name": "CQExamSetQuestion", "impact": "Acceptable — child of CQExamSet." },
+      { "name": "CQExamSubmission", "impact": "Acceptable — historical exam data." },
+      { "name": "CQExamAnswer", "impact": "Acceptable — child of CQExamSubmission." },
+      { "name": "CQExamAnswerImage", "impact": "Acceptable — child of CQExamAnswer." },
+      { "name": "CQExamRetakeRequest", "impact": "Acceptable — request lifecycle is status-based." },
+      { "name": "SiteSetting", "impact": "Cannot disable a setting, only delete it." }
+    ],
+    "recommendations": [
+      {
+        "model": "User",
+        "action": "Add 'isActive Boolean @default(true)' and optionally 'deletedAt DateTime?' for GDPR-style soft-delete.",
+        "priority": "HIGH"
+      },
+      {
+        "model": "Progress",
+        "action": "Add optional 'deletedAt DateTime?' to allow cleanup of stale progress without data loss.",
+        "priority": "LOW"
+      },
+      {
+        "model": "Notification",
+        "action": "Add 'isActive Boolean @default(true)' or 'deletedAt DateTime?' so users can dismiss/delete notifications.",
+        "priority": "MEDIUM"
+      },
+      {
+        "model": "SiteSetting",
+        "action": "Add 'isActive Boolean @default(true)' to allow disabling settings without deleting them.",
+        "priority": "LOW"
+      }
+    ]
+  },
+
+  "enumTypeAnalysis": {
+    "summary": "Only 1 Prisma enum (Role) is defined. 17+ string fields should be enums or DB-backed enum tables for type safety.",
+    "existingEnums": {
+      "Role": ["SUPER_ADMIN", "ADMIN", "STUDENT"]
+    },
+    "candidatesForPrismaEnum": [
+      { "field": "Payment.method", "values": ["bkash", "nagad", "rocket"], "priority": "HIGH" },
+      { "field": "Payment.status", "values": ["pending", "approved", "rejected"], "priority": "HIGH" },
+      { "field": "UserFeedback.status", "values": ["pending", "replied", "closed"], "priority": "MEDIUM" },
+      { "field": "FeedbackMessage.senderRole", "values": ["user", "admin"], "priority": "MEDIUM" },
+      { "field": "Resource.type", "values": ["pdf", "image", "link", "code", "document"], "priority": "MEDIUM" },
+      { "field": "Exam.type", "values": ["mcq", "cq", "mixed"], "priority": "HIGH" },
+      { "field": "Exam.status", "values": ["draft", "published", "archived"], "priority": "HIGH" },
+      { "field": "Notification.type", "values": ["info", "success", "warning", "error"], "priority": "LOW" },
+      { "field": "ContentBundle.type", "values": ["mcq", "cq", "lecture", "board", "mixed"], "priority": "MEDIUM" },
+      { "field": "MCQExamPackage.status", "values": ["draft", "published", "archived"], "priority": "HIGH" },
+      { "field": "MCQExamSet.status", "values": ["draft", "published", "completed"], "priority": "HIGH" },
+      { "field": "MCQExamSetResult.status", "values": ["not-started", "in-progress", "completed"], "priority": "HIGH" },
+      { "field": "MCQExamRetakeRequest.status", "values": ["pending", "approved", "rejected"], "priority": "MEDIUM" },
+      { "field": "CQExamSet.status", "values": ["draft", "published", "completed"], "priority": "HIGH" },
+      { "field": "CQExamSetQuestion.type", "values": ["cq", "typed", "mcq-single", "mcq-multiple", "fill-blanks", "written"], "priority": "HIGH" },
+      { "field": "CQExamSubmission.status", "values": ["not-started", "in-progress", "submitted", "graded", "published"], "priority": "HIGH" },
+      { "field": "CQExamRetakeRequest.status", "values": ["pending", "approved", "rejected"], "priority": "MEDIUM" },
+      { "field": "Navigation.location", "values": ["header", "footer", "bottomNav"], "priority": "MEDIUM" },
+      { "field": "Notice.type", "values": ["text", "pdf", "link"], "priority": "LOW" },
+      { "field": "Difficulty (MCQ/CQ)", "values": ["easy", "medium", "hard"], "priority": "LOW" }
+    ],
+    "dbDrivenValuesNote": "If settings or content types need runtime modification without schema migrations, use a lookup table approach (reference table with seeded values + admin CRUD UI) instead of Prisma enums. ContentType model already serves this pattern. Consider using it for: Payment.method, Board.color palette, Navigation.location."
+  },
+
+  "siteSettingModelReview": {
+    "adequacy": "ADEQUATE for basic key-value needs, LIMITED for complex configuration",
+    "strengths": [
+      "Simple key-value store with @unique key constraint",
+      "Optional 'group' field enables logical setting grouping (seo, homepage, navigation)",
+      "Optional 'label' field provides human-readable names for admin UI"
+    ],
+    "limitations": [
+      {
+        "issue": "value is plain String",
+        "detail": "Cannot natively store booleans, numbers, JSON objects, or arrays. Every value must be serialized/deserialized in application code. Booleans stored as 'true'/'false' strings with manual parsing.",
+        "fix": "Use Json type instead of String to support multiple data types natively"
+      },
+      {
+        "issue": "No type metadata",
+        "detail": "No field indicating what data type a setting value should be (string, number, boolean, json). Admin UI must guess or hardcode per-key rendering.",
+        "fix": "Add enum/string field: type (string | number | boolean | json)"
+      },
+      {
+        "issue": "No isActive field",
+        "detail": "Cannot disable/suspend a setting without deleting it. Deleting removes the record entirely with no recovery.",
+        "fix": "Add 'isActive Boolean @default(true)'"
+      },
+      {
+        "issue": "No createdAt timestamp",
+        "detail": "Only updatedAt is tracked. No creation audit trail for when settings were added.",
+        "fix": "Add 'createdAt DateTime @default(now())'"
+      },
+      {
+        "issue": "No validation or constraints on value",
+        "detail": "Any string can be stored in value regardless of what the key expects. No min/max, pattern, or type validation at DB level.",
+        "fix": "Validate at application layer; optionally add a JSON schema constraint"
+      }
+    ],
+    "complexSettingsNeeds": [
+      {
+        "useCase": "Feature flags map (e.g., {newDashboard: true, aiRecommendations: false})",
+        "limitation": "Cannot store as flat string — requires JSON serialization",
+        "workaround": "Store JSON string in value, parse manually"
+      },
+      {
+        "useCase": "Homepage hero section configuration (title, subtitle, CTA button, background image)",
+        "limitation": "Structured object requires JSON string storage",
+        "workaround": "Store as JSON string in value field"
+      },
+      {
+        "useCase": "Pricing tiers or package definitions",
+        "limitation": "Complex nested data not suitable for flat key-value",
+        "workaround": "Use separate models (ContentPackage already exists for this)"
+      }
+    ],
+    "overall": "The SiteSetting model works for flat key-value settings (site name, meta description, API keys for external services, toggle flags). For complex structured configuration, consider migrating value to Json type or using dedicated models."
+  },
+
+  "redundantIndexes": {
+    "summary": "2 models have explicit @@index on fields that are already uniquely indexed",
+    "entries": [
+      {
+        "model": "User",
+        "line": 59,
+        "index": "@@index([supabaseUserId])",
+        "why": "supabaseUserId is already @unique — PostgreSQL automatically creates a unique B-tree index. Redundant."
+      },
+      {
+        "model": "User",
+        "line": 60,
+        "index": "@@index([email])",
+        "why": "email is already @unique — PostgreSQL already indexes it. Redundant."
+      }
+    ]
+  },
+
+  "denormalizedFields": {
+    "summary": "Fields that duplicate data from related models, risking inconsistency",
+    "entries": [
+      {
+        "model": "MCQ",
+        "fields": ["classLevel", "subjectId"],
+        "lines": [200, 201],
+        "issue": "MCQ stores classLevel and subjectId directly, even though it already links to Chapter (which links to Subject, which links to ClassCategory). These are denormalized for query performance.",
+        "risk": "classLevel/subjectId on MCQ could become inconsistent with the Chapter's actual class/subject.",
+        "mitigation": "Application must ensure consistency when creating/updating MCQs. Alternatively, derive from the Chapter → Subject → ClassCategory chain."
+      },
+      {
+        "model": "CQ",
+        "fields": ["classLevel", "subjectId"],
+        "lines": [244, 245],
+        "issue": "Same pattern as MCQ. Denormalized for performance.",
+        "risk": "Same consistency risk as MCQ."
+      },
+      {
+        "model": "Exam",
+        "field": "classLevel",
+        "line": 272,
+        "issue": "Exam stores classLevel directly rather than deriving from related entities.",
+        "risk": "Data redundancy."
+      }
+    ]
+  },
+
+  "contentHierarchyIntegrity": {
+    "summary": "The core content hierarchy (ClassCategory → Subject → Chapter → Topic/Lecture/MCQ/CQ) has proper cascade chain but lacks some relational links",
+    "observations": [
+      "MCQ and CQ store subjectId and classLevel directly (denormalized) but have NO @relation to Subject or ClassCategory — they only relate to Chapter.",
+      "There is no direct relationship from MCQ/CQ to Subject or ClassCategory at the Prisma level.",
+      "Exam references classLevel as a string, and optionally subjectId (no relation), and chapterIds as a comma-separated string (no relation).",
+      "The denormalized fields make it possible for MCQs/CQs to have classLevel or subjectId that doesn't match the Chapter's class/subject."
+    ]
+  }
+}

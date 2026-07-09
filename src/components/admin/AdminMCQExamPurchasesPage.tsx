@@ -1,0 +1,421 @@
+'use client'
+
+import DataTable,{ type BulkAction,type ColumnDef } from '@/components/shared/DataTable'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card,CardContent } from '@/components/ui/card'
+import {
+Dialog,
+DialogContent,
+DialogDescription,
+DialogFooter,
+DialogHeader,
+DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import {
+Select,
+SelectContent,
+SelectItem,
+SelectTrigger,
+SelectValue,
+} from '@/components/ui/select'
+import { Skeleton } from '@/components/ui/skeleton'
+import { useTableSelection } from '@/hooks/use-table-selection'
+import { useToast } from '@/hooks/use-toast'
+import {
+Eye,
+Package,
+Search,
+ShoppingCart,
+Trash2,
+Users,
+UserX,
+XCircle
+} from 'lucide-react'
+import { useCallback,useEffect,useState } from 'react'
+
+interface PurchaseRecord {
+  id: string
+  userId: string
+  packageId: string
+  paymentId: string | null
+  purchasedAt: string
+  isActive: boolean
+  user: { id: string; name: string; email: string }
+  package: { id: string; title: string; price: number; isPremium: boolean }
+}
+
+interface PackageOption {
+  id: string
+  title: string
+}
+
+export default function AdminMCQExamPurchasesPage() {
+  const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [purchases, setPurchases] = useState<PurchaseRecord[]>([])
+  const [total, setTotal] = useState(0)
+  const [page, setPage] = useState(1)
+  const [packageFilter, setPackageFilter] = useState('all')
+  const [activeFilter, setActiveFilter] = useState('all')
+  const [userSearch, setUserSearch] = useState('')
+  const [stats, setStats] = useState({ totalPurchases: 0, activePurchases: 0, inactivePurchases: 0 })
+  const [detailPurchase, setDetailPurchase] = useState<PurchaseRecord | null>(null)
+  const [deactivateDialog, setDeactivateDialog] = useState<PurchaseRecord | null>(null)
+  const [processing, setProcessing] = useState(false)
+  const [packages, setPackages] = useState<PackageOption[]>([])
+  const limit = 20
+
+  const fetchPackages = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/mcq-exam-packages?limit=200')
+      if (res.ok) {
+        const json = await res.json()
+        setPackages((Array.isArray(json.data?.packages) ? json.data.packages : []).map((p: { id: string; title: string }) => ({ id: p.id, title: p.title })))
+      }
+    } catch { /* */ }
+  }, [])
+
+  const fetchPurchases = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams()
+      params.set('page', page.toString())
+      params.set('limit', limit.toString())
+      if (packageFilter !== 'all') params.set('packageId', packageFilter)
+      if (activeFilter !== 'all') params.set('isActive', activeFilter)
+      if (userSearch) params.set('userId', userSearch)
+
+      const res = await fetch(`/api/admin/mcq-exam-purchases?${params}`)
+      if (res.ok) {
+        const json = await res.json()
+        setPurchases(Array.isArray(json.data) ? json.data : [])
+        setTotal(json.pagination?.total || 0)
+        setStats(json.stats || { totalPurchases: 0, activePurchases: 0, inactivePurchases: 0 })
+      }
+    } catch {
+      toast({ title: 'ত্রুটি', description: 'ক্রয়ের তথ্য লোড করতে সমস্যা হয়েছে', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
+  }, [page, packageFilter, activeFilter, userSearch, toast])
+
+  useEffect(() => { fetchPackages() }, [fetchPackages])
+  useEffect(() => { fetchPurchases() }, [fetchPurchases])
+
+  const handleToggleActive = async (purchase: PurchaseRecord) => {
+    setProcessing(true)
+    try {
+      if (purchase.isActive) {
+        // Deactivate
+        const res = await fetch(`/api/admin/mcq-exam-purchases?id=${purchase.id}`, { method: 'DELETE' })
+        if (res.ok) {
+          toast({ title: 'ক্রয় নিষ্ক্রিয় করা হয়েছে', description: `${purchase.user?.name} এর ক্রয় নিষ্ক্রিয় করা হয়েছে` })
+          fetchPurchases()
+        } else {
+          const json = await res.json()
+          toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
+        }
+      }
+      // Note: reactivation not supported via DELETE, would need a PUT endpoint
+    } catch {
+      toast({ title: 'ত্রুটি', variant: 'destructive' })
+    } finally {
+      setProcessing(false)
+      setDeactivateDialog(null)
+    }
+  }
+
+  const selection = useTableSelection(purchases)
+
+  const handleBulkDelete = async (ids: string[]) => {
+    const res = await fetch(`/api/admin/mcq-exam-purchases?ids=${ids.join(',')}`, { method: 'DELETE' })
+    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+  }
+
+  const handleBulkDeactivate = async (ids: string[]) => {
+    const res = await fetch('/api/admin/mcq-exam-purchases', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, isActive: false }),
+    })
+    if (res.ok) { toast({ title: 'নিষ্ক্রিয় করা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+  }
+
+  const columns: ColumnDef<PurchaseRecord>[] = [
+    {
+      key: 'student',
+      header: 'শিক্ষার্থী',
+      render: (purchase) => (
+        <div>
+          <p className="font-medium text-sm">{purchase.user?.name || 'N/A'}</p>
+          <p className="text-xs text-muted-foreground">{purchase.user?.email || ''}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'package',
+      header: 'প্যাকেজ',
+      render: (purchase) => (
+        <div>
+          <p className="text-sm font-medium line-clamp-1">{purchase.package?.title || 'N/A'}</p>
+          {purchase.package?.isPremium && (
+            <Badge variant="outline" className="text-[9px] h-4 px-1 mt-0.5">প্রিমিয়াম</Badge>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'ক্রয়ের তারিখ',
+      headerClass: 'hidden sm:table-cell',
+      cellClass: 'hidden sm:table-cell',
+      render: (purchase) => <span className="text-sm">{new Date(purchase.purchasedAt).toLocaleDateString('bn-BD')}</span>,
+    },
+    {
+      key: 'status',
+      header: 'স্ট্যাটাস',
+      render: (purchase) => (
+        <Badge className={
+          purchase.isActive
+            ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+            : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+        }>
+          {purchase.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      cellClass: 'w-28',
+      render: (purchase) => (
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDetailPurchase(purchase)} aria-label="বিস্তারিত">
+            <Eye className="h-4 w-4" />
+          </Button>
+          {purchase.isActive && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive"
+              onClick={() => setDeactivateDialog(purchase)}
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    {
+      label: 'নিষ্ক্রিয়',
+      icon: <XCircle className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDeactivate,
+    },
+    {
+      label: 'মুছুন',
+      icon: <Trash2 className="size-4" />,
+      variant: 'destructive',
+      handler: handleBulkDelete,
+    },
+  ]
+
+  const filters = (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="ব্যবহারকারী ID দিয়ে খুঁজুন..."
+              value={userSearch}
+              onChange={(e) => { setUserSearch(e.target.value); setPage(1) }}
+              className="pl-9"
+            />
+          </div>
+          <Select value={packageFilter} onValueChange={(v) => { setPackageFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-56">
+              <SelectValue placeholder="প্যাকেজ নির্বাচন" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব প্যাকেজ</SelectItem>
+              {packages.map((pkg) => (
+                <SelectItem key={pkg.id} value={pkg.id}>{pkg.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={activeFilter} onValueChange={(v) => { setActiveFilter(v); setPage(1) }}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="স্ট্যাটাস" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">সব স্ট্যাটাস</SelectItem>
+              <SelectItem value="true">সক্রিয়</SelectItem>
+              <SelectItem value="false">নিষ্ক্রিয়</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </CardContent>
+    </Card>
+  )
+
+  if (loading && purchases.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Skeleton key={i} className="h-24" />
+          ))}
+        </div>
+        <Skeleton className="h-96" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <ShoppingCart className="h-6 w-6 text-emerald-600" /> MCQ এক্সাম প্যাকেজ ক্রয়
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">MCQ এক্সাম প্যাকেজ ক্রয়ের তথ্য পরিচালনা করুন</p>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30">
+              <Package className="h-5 w-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">মোট ক্রয়</p>
+              <p className="text-xl font-bold">{stats.totalPurchases.toLocaleString('bn-BD')}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-teal-50 dark:bg-teal-950/30">
+              <Users className="h-5 w-5 text-teal-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">সক্রিয় ক্রয়</p>
+              <p className="text-xl font-bold">{stats.activePurchases.toLocaleString('bn-BD')}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/30">
+              <UserX className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">নিষ্ক্রিয় ক্রয়</p>
+              <p className="text-xl font-bold">{stats.inactivePurchases.toLocaleString('bn-BD')}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <DataTable
+        columns={columns}
+        data={purchases}
+        total={total}
+        page={page}
+        pageSize={limit}
+        onPageChange={setPage}
+        loading={loading}
+        selectable
+        selectedIds={selection.selectedIds}
+        onToggleOne={selection.toggleOne}
+        onToggleAll={selection.toggleAll}
+        allVisibleSelected={selection.allVisibleSelected}
+        someVisibleSelected={selection.someVisibleSelected}
+        bulkActions={bulkActions}
+        emptyMessage="কোনো ক্রয়ের তথ্য পাওয়া যায়নি"
+        filters={filters}
+      />
+
+      {/* Detail Dialog */}
+      <Dialog open={!!detailPurchase} onOpenChange={() => setDetailPurchase(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>ক্রয়ের বিস্তারিত</DialogTitle>
+          </DialogHeader>
+          {detailPurchase && (
+            <div className="space-y-4">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">শিক্ষার্থী:</div>
+                  <div className="font-medium">{detailPurchase.user?.name || 'N/A'}</div>
+                  <div className="text-muted-foreground">ইমেইল:</div>
+                  <div className="font-medium text-xs">{detailPurchase.user?.email || '-'}</div>
+                </div>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-muted-foreground">প্যাকেজ:</div>
+                  <div className="font-medium">{detailPurchase.package?.title || '-'}</div>
+                  <div className="text-muted-foreground">মূল্য:</div>
+                  <div className="font-medium">৳{detailPurchase.package?.price || 0}</div>
+                  <div className="text-muted-foreground">ক্রয়ের তারিখ:</div>
+                  <div className="font-medium">{new Date(detailPurchase.purchasedAt).toLocaleDateString('bn-BD')}</div>
+                  <div className="text-muted-foreground">পেমেন্ট ID:</div>
+                  <div className="font-mono text-xs">{detailPurchase.paymentId || '-'}</div>
+                  <div className="text-muted-foreground">স্ট্যাটাস:</div>
+                  <div>
+                    <Badge
+                      className={
+                        detailPurchase.isActive
+                          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300'
+                          : 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
+                      }
+                    >
+                      {detailPurchase.isActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDetailPurchase(null)}>বন্ধ করুন</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Deactivate Dialog */}
+      <Dialog open={!!deactivateDialog} onOpenChange={() => setDeactivateDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <XCircle className="size-5 text-destructive" /> ক্রয় নিষ্ক্রিয় করুন
+            </DialogTitle>
+            <DialogDescription>
+              {deactivateDialog?.user?.name} এর &quot;{deactivateDialog?.package?.title}&quot; প্যাকেজ ক্রয় নিষ্ক্রিয় করতে চান?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeactivateDialog(null)}>বাতিল</Button>
+            <Button
+              variant="destructive"
+              className="gap-2"
+              onClick={() => deactivateDialog && handleToggleActive(deactivateDialog)}
+              disabled={processing}
+            >
+              <XCircle className="size-4" /> {processing ? 'প্রক্রিয়াধীন...' : 'নিষ্ক্রিয় করুন'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}

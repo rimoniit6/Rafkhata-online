@@ -1,0 +1,482 @@
+{
+  "auditDate": "2026-06-14",
+  "focus": "config",
+  "filesAnalyzed": [
+    "src/lib/config.ts",
+    "src/hooks/use-metadata.ts",
+    "src/app/api/config/route.ts",
+    "src/lib/rate-limit.ts",
+    "src/lib/messages.ts",
+    "src/lib/seo.ts",
+    "src/lib/db.ts",
+    "src/lib/csrf.ts",
+    "src/lib/cache-invalidate.ts",
+    "src/lib/file-url.ts",
+    "src/lib/query-keys.ts",
+    "src/app/layout.tsx",
+    "src/app/sitemap.ts",
+    "src/app/api/admin/settings/route.ts",
+    "src/app/api/admin/settings/seed/route.ts",
+    "src/app/api/payment/accounts/route.ts",
+    "src/app/api/favicon/route.ts",
+    "src/components/admin/AdminSettingsPage.tsx",
+    "src/components/layout/Header.tsx",
+    "src/components/layout/Footer.tsx",
+    "src/components/home/HeroSection.tsx",
+    "src/components/home/ClassCategories.tsx",
+    "src/components/home/PremiumBanner.tsx",
+    "src/components/home/FeaturedCourses.tsx",
+    "src/components/home/FAQSection.tsx",
+    "src/components/home/BoardQuestionSection.tsx",
+    "src/components/home/StatsSection.tsx",
+    "src/components/home/MCQPracticeSection.tsx",
+    "prisma/schema.prisma",
+    ".env"
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "file": "src/lib/config.ts",
+      "title": "src/lib/config.ts is partially DB-driven with hardcoded fallbacks",
+      "severity": "medium",
+      "detail": "Loads only 2 settings (maxUploadSize, premiumDurationDays) from SiteSetting. Falls back to hardcoded defaults. The AppSetting type only allows these two keys. Cache TTL is 5 minutes with manual invalidation.",
+      "code": {
+        "hardcodedDefaults": [
+          "maxUploadSize: String(10 * 1024 * 1024) — 10MB",
+          "premiumDurationDays: '30'"
+        ],
+        "dbKeys": ["maxUploadSize", "premiumDurationDays"],
+        "cacheTTL": "5 minutes (300000ms)",
+        "cacheInvalidation": "Manual via invalidateAppConfigCache()",
+        "caveat": "If DB query fails entirely (not just missing keys), falls back to all defaults silently"
+      },
+      "recommendation": "Extend AppSetting union type to include all configurable app settings. Consider removing the DB-or-fallback pattern or making it more granular per-key."
+    },
+    {
+      "id": "F2",
+      "file": "src/hooks/use-metadata.ts",
+      "title": "SiteConfig interface has 51+ fields with hardcoded fallbacks in every consumer",
+      "severity": "high",
+      "detail": "The SiteConfig interface defines massive config shape (51 fields including nested messages object). Every consumer component has its own hardcoded Bengali string fallback. The config is fetched client-side from /api/config with 30s staleTime.",
+      "code": {
+        "configFields": {
+          "siteName": "string — 'শিক্ষা বাংলা' fallback everywhere",
+          "siteDescription": "string — '' default in API, 'বাংলাদেশের সেরা শিক্ষা প্ল্যাটফর্ম' in admin UI",
+          "contactEmail": "string — '' default in API, 'info@shikhabangla.com' in admin UI",
+          "contactPhone": "string — '' default in API, '+৮৮০ ১৭০০-০০০০০০' in admin UI",
+          "contactAddress": "string — '' default in API",
+          "facebook": "string — '' default in API, 'https://facebook.com/shikhabangla' in admin UI",
+          "youtube": "string — '' default in API, 'https://youtube.com/@shikhabangla' in admin UI",
+          "telegram": "string — '' default in API, 'https://t.me/shikhabangla' in admin UI",
+          "bkash": "string — '' default in API, '01712345678' in admin UI",
+          "nagad": "string — '' default in API, '01812345678' in admin UI",
+          "rocket": "string — '' default in API, '01612345678' in admin UI",
+          "logo": "string — '' default",
+          "favicon": "string — '' default",
+          "heroBadge": "string — 'বাংলাদেশের সেরা অনলাইন শিক্ষা প্ল্যাটফর্ম' fallback in HeroSection",
+          "heroTitle": "string — 'বাংলাদেশের সেরা' fallback in HeroSection",
+          "heroSubtitle": "string — 'Class 6 থেকে HSC পর্যন্ত...' fallback in HeroSection",
+          "statsSubtitle": "string — '' default",
+          "footerDescription": "string — 'শিক্ষার্থীদের জন্য অনলাইন শিক্ষা প্ল্যাটফর্ম।' fallback in Footer",
+          "premiumFeatures": "string[] — 5 hardcoded feature strings in PremiumBanner",
+          "mcqFeatures": "string[] — '' fallback (empty)",
+          "searchSuggestions": "string[] — '' fallback (empty)",
+          "homepageClassesBadge": "string — 'শিক্ষা যাত্রা' fallback in ClassCategories",
+          "homepageClassesTitle": "string — 'আপনার ক্লাস বেছে নিন' fallback in ClassCategories",
+          "homepageClassesSubtitle": "string — 'আপনার শ্রেণি অনুযায়ী...' fallback in ClassCategories",
+          "homepageBoardTitle": "string — 'বোর্ড প্রশ্ন সমাধান' fallback in BoardQuestionSection",
+          "homepageBoardSubtitle": "string — 'সকল বোর্ডের বিগত বছরের...' fallback in BoardQuestionSection",
+          "homepageMcqTitle": "string — 'MCQ প্র্যাকটিস' fallback in MCQPracticeSection",
+          "homepageMcqSubtitle": "string — '' fallback",
+          "homepageFaqTitle": "string — 'সচরাচর জিজ্ঞাসা' fallback in FAQSection",
+          "homepageFaqSubtitle": "string — '' fallback",
+          "homepageTestimonialsTitle": "string — 'শিক্ষার্থীরা যা বলেন' fallback in TestimonialsSection",
+          "homepageTestimonialsSubtitle": "string — '' fallback",
+          "homepageStatsTitle": "string — 'আমাদের অর্জন' fallback in StatsSection",
+          "homepageStatsSubtitle": "string — '' fallback",
+          "homepageFeaturedTitle": "string — 'ফিচার্ড কন্টেন্ট' fallback in FeaturedCourses",
+          "homepageFeaturedSubtitle": "string — '' fallback",
+          "homepagePremiumTitle": "string — 'প্রিমিয়াম কন্টেন্ট' fallback in PremiumBanner",
+          "homepagePremiumSubtitle": "string — 'প্রতিটি কন্টেন্ট আলাদাভাবে...' fallback in PremiumBanner",
+          "paymentBkashInstructions": "string[] — '' fallback",
+          "paymentNagadInstructions": "string[] — '' fallback",
+          "paymentRocketInstructions": "string[] — '' fallback",
+          "messages": {
+            "contentComingSoon": "'কন্টেন্ট শীঘ্রই আসবে'",
+            "chaptersComingSoon": "'এই বিষয়ের অধ্যায়সমূহ শীঘ্রই যোগ করা হবে'",
+            "chapterContentSoon": "'এই অধ্যায়ের কন্টেন্ট শীঘ্রই যোগ করা হবে'",
+            "mcqComingSoon": "'শীঘ্রই নতুন প্রশ্ন যোগ করা হবে'",
+            "cqComingSoon": "'শীঘ্রই নতুন সৃজনশীল প্রশ্ন যোগ করা হবে'",
+            "lectureComingSoon": "'শীঘ্রই নতুন লেকচার যোগ করা হবে'",
+            "boardComingSoon": "'শীঘ্রই নতুন ক্লাস/প্রশ্ন যোগ করা হবে'",
+            "contentLoadError": "'কন্টেন্ট লোড করতে সমস্যা হয়েছে'",
+            "contentTypeSoon": "'শীঘ্রই কন্টেন্ট আসবে'",
+            "noQuestionsFound": "'কোনো প্রশ্ন পাওয়া যায়নি'",
+            "footerClassesSoon": "'শীঘ্রই শ্রেণি যোগ করা হবে'",
+            "footerContactSoon": "'শীঘ্রই যোগাযোগ তথ্য যোগ করা হবে'",
+            "subjectsComingSoon": "'এই শ্রেণির বিষয়সমূহ শীঘ্রই যোগ করা হবে'"
+          }
+        },
+        "totalHardcodedFallbacks": "~40+ distinct Bengali string literals duplicated across 10+ component files",
+        "fetchConfig": {
+          "endpoint": "/api/config",
+          "staleTime": "30000ms",
+          "refetchOnWindowFocus": true,
+          "validation": "throws if data.siteName missing"
+        },
+        "adminPageDefaultStates": [
+          {"field": "siteName", "default": "'শিক্ষা বাংল아'"},
+          {"field": "siteDescription", "default": "'বাংলাদেশের সেরা শিক্ষা প্ল্যাটফর্ম'"},
+          {"field": "contactEmail", "default": "'info@shikhabangla.com'"},
+          {"field": "contactPhone", "default": "'+৮৮০ ১৭০০-০০০০০০'"},
+          {"field": "facebook", "default": "'https://facebook.com/shikhabangla'"},
+          {"field": "youtube", "default": "'https://youtube.com/@shikhabangla'"},
+          {"field": "telegram", "default": "'https://t.me/shikhabangla'"},
+          {"field": "bkash", "default": "'01712345678'"},
+          {"field": "nagad", "default": "'01812345678'"},
+          {"field": "rocket", "default": "'01612345678'"}
+        ]
+      },
+      "recommendation": "Consolidate all fallback strings into src/lib/messages.ts and extend it to include all config defaults. Components should NEVER hardcode fallback strings — they should import from a single defaults source."
+    },
+    {
+      "id": "F3",
+      "file": "src/app/api/config/route.ts",
+      "title": "API config endpoint has extensive hardcoded defaults with dual key-naming support",
+      "severity": "medium",
+      "detail": "The GET /api/config endpoint defines a large defaultConfig object with Bengali fallback strings. It supports both camelCase (preferred) and snake_case (legacy) key names for backward compatibility. If the DB query fails entirely, it returns the full defaultConfig object.",
+      "code": {
+        "dualKeySupportPatterns": [
+          "siteName OR nothing (no legacy key supported)",
+          "config.bkash || config.default_bkash_number",
+          "config.nagad || config.default_nagad_number",
+          "config.rocket || config.default_rocket_number",
+          "config.heroBadge || config.homepage_hero_badge",
+          "config.heroTitle || config.homepage_hero_title",
+          "config.heroSubtitle || config.homepage_hero_subtitle",
+          "config.statsSubtitle || config.homepage_stats_subtitle",
+          "config.paymentBkashInstructions || config.payment_bkash_instructions",
+          "config.paymentNagadInstructions || config.payment_nagad_instructions",
+          "config.paymentRocketInstructions || config.payment_rocket_instructions",
+          "messages: config.msg_contentComingSoon || config.msgContentComingSoon || default"
+        ],
+        "totalHardcodedFields": 51,
+        "totalDbKeysQueried": "ALL (findMany with no where filter)",
+        "errorFallback": "Returns full defaultConfig on any DB error",
+        "note": "The data is nested under { success: true, data: { ... } } but the hook expects the config directly from fetchJSON<SiteConfig>('/api/config'), relying on the response directly"
+      },
+      "recommendation": "Remove snake_case legacy key support once confirmed no DB records use those keys. Consider returning config directly (without success/data wrapper) or adjust the hook to unwrap properly."
+    },
+    {
+      "id": "F4",
+      "file": "src/lib/rate-limit.ts",
+      "title": "Rate limiter is partially DB-driven but caches indefinitely",
+      "severity": "medium",
+      "detail": "Rate limit values are loaded from SiteSetting (keys: rate_limit_api_max, rate_limit_upload_max, rate_limit_auth_max) with hardcoded defaults. However, cachedLimits is set once and NEVER invalidated — the variable is module-scoped and only null-checked. There is no TTL or invalidation mechanism.",
+      "code": {
+        "hardcodedDefaults": {
+          "api": "{ windowMs: 60000, maxRequests: 60 }",
+          "upload": "{ windowMs: 60000, maxRequests: 10 }",
+          "auth": "{ windowMs: 900000, maxRequests: 10 }"
+        },
+        "dbKeysQueried": ["rate_limit_api_max", "rate_limit_upload_max", "rate_limit_auth_max"],
+        "cacheBehavior": "Loaded once per process lifetime — never re-reads from DB after first successful load",
+        "windowMs": "Still hardcoded (60s for api/upload, 15min for auth) — only maxRequests is DB-configurable",
+        "criticalIssue": "If admin updates rate limits in DB, the change is NEVER picked up without server restart"
+      },
+      "recommendation": "Add TTL cache invalidation similar to config.ts. Also make windowMs DB-configurable if needed. Consider exposing an admin endpoint to invalidate rate limit cache."
+    },
+    {
+      "id": "F5",
+      "file": ".env",
+      "title": "Environment variables used where DB-driven config would be better",
+      "severity": "info",
+      "detail": "The .env file contains 21 lines. Some values are truly runtime secrets (database URLs, API keys), but NEXT_PUBLIC_SITE_URL is used in 4 files as a config value that could potentially be DB-driven.",
+      "code": {
+        "envVarsPresent": [
+          "DATABASE_URL — infrastructure secret (correct)",
+          "DIRECT_URL — infrastructure secret (correct)",
+          "NEXT_PUBLIC_SUPABASE_URL — infrastructure (correct)",
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY — infrastructure secret (correct)",
+          "SUPABASE_SERVICE_ROLE_KEY — infrastructure secret (correct)",
+          "UPLOADTHING_SECRET — service secret (correct)",
+          "UPLOADTHING_APP_ID — service config (correct)",
+          "UPLOADTHING_TOKEN — service secret (correct)",
+          "NEXT_PUBLIC_SITE_URL — could be DB-driven (potential candidate)",
+          "SITE_URL — could be DB-driven (potential candidate)",
+          "GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI — auth config (correct)",
+          "UPSTASH_REDIS_REST_URL — infrastructure secret (correct)",
+          "UPSTASH_REDIS_REST_TOKEN — infrastructure secret (correct)",
+          "CSRF_SECRET — security secret (correct)"
+        ],
+        "envVarUsageInSource": {
+          "NEXT_PUBLIC_SITE_URL": {
+            "files": [
+              "src/app/sitemap.ts:3 — fallback 'https://sikkhabangla.com'",
+              "src/lib/file-url.ts:28 — fallback 'http://localhost:3000'",
+              "src/lib/seo.ts:169 — fallback 'https://sikkhabangla.com'",
+              "src/app/layout.tsx:59 — fallback 'https://sikkhabangla.com'"
+            ],
+            "couldBeDBDriven": "Potentially — SITE_URL could be stored as a site setting and read server-side"
+          },
+          "NODE_ENV": {
+            "files": [
+              "src/lib/errors.ts:160",
+              "src/lib/db.ts:35, 95",
+              "src/lib/csrf.ts:29"
+            ],
+            "couldBeDBDriven": "No — this is a standard Node.js runtime indicator"
+          },
+          "UPSTASH_REDIS_REST_URL/TOKEN": {
+            "files": [
+              "src/lib/rate-limit.ts:6-7",
+              "src/lib/cache-invalidate.ts:4-5",
+              "src/app/api/health/route.ts:36-39"
+            ],
+            "couldBeDBDriven": "No — these are infrastructure secrets"
+          },
+          "CSRF_SECRET": {
+            "files": ["src/lib/csrf.ts:6"],
+            "couldBeDBDriven": "No — security-critical, must be env var"
+          },
+          "SUPABASE_*": {
+            "files": [
+              "src/lib/supabase/server.ts:8-9, 33-34",
+              "src/lib/supabase/client.ts:7-8",
+              "src/lib/supabase/middleware.ts:8-9"
+            ],
+            "couldBeDBDriven": "No — infrastructure secrets"
+          },
+          "DATABASE_URL": {
+            "files": ["src/lib/db.ts:42"],
+            "couldBeDBDriven": "No — infrastructure secret"
+          }
+        }
+      },
+      "recommendation": "No urgent issues. NEXT_PUBLIC_SITE_URL is a borderline candidate for DB migration if multi-tenant is needed."
+    },
+    {
+      "id": "F6",
+      "file": "src/app/layout.tsx",
+      "title": "Root layout has hardcoded site name и fallback site URL",
+      "severity": "medium",
+      "detail": "The root layout uses unstable_cache with 5min revalidation to fetch SEO settings. However line 66 hardcodes appleWebApp title as 'শিক্ষা বাংলা', line 71 hardcodes OG siteName as 'শিক্ষা বাংলা', and line 59 uses process.env.NEXT_PUBLIC_SITE_URL with 'https://sikkhabangla.com' fallback.",
+      "code": {
+        "hardcodedStringsInLayout": [
+          "appleWebApp.title: 'শিক্ষা বাংলা' (line 66)",
+          "openGraph.siteName: 'শিক্ষা বাংলا' (line 71)",
+          "metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://sikkhabangla.com') (line 59)"
+        ],
+        "seoFetching": {
+          "method": "unstable_cache with db.siteSetting.findMany({ where: { group: 'seo' } })",
+          "revalidation": "300 seconds",
+          "fallback": "DEFAULT_SEO object with hardcoded Bengali strings"
+        }
+      },
+      "recommendation": "Consider reading siteName from DB settings for og:site_name and appleWebApp title. Add these fields to the seo_settings query or read from SiteSetting directly."
+    },
+    {
+      "id": "F7",
+      "file": "src/lib/seo.ts",
+      "title": "SEO metadata is entirely hardcoded with no DB integration",
+      "severity": "high",
+      "detail": "The entire routeMeta object in src/lib/seo.ts is hardcoded. SITE_NAME is a constant ('শিক্ষা বাংলা'). DEFAULT_DESC and DEFAULT_KEYWORDS are hardcoded. Each route's title/description is built using template literals with the hardcoded SITE_NAME. There is no DB-driven SEO per page. The only DB-integrated SEO is in app/layout.tsx for the root metadata.",
+      "code": {
+        "hardcodedConstants": [
+          "SITE_NAME = 'শিক্ষা বাংলা'",
+          "DEFAULT_DESC = 'Class 6 থেকে HSC পর্যন্ত সকল বিষয়ের লেকচার, MCQ, সৃজনশীল প্রশ্ন ও বোর্ড প্রশ্ন। বাংলাদেশের সেরা অনলাইন শিক্ষা প্ল্যাটফর্ম।'",
+          "DEFAULT_KEYWORDS = 'শিক্ষা বাংলা,অনলাইন শিক্ষা,MCQ,বোর্ড প্রশ্ন,HSC,SSC,বাংলাদেশ'"
+        ],
+        "getSiteUrl": "process.env.NEXT_PUBLIC_SITE_URL || 'https://sikkhabangla.com'",
+        "totalRoutesWithHardcodedMeta": 27,
+        "dbIntegration": "None — does not read from SiteSetting at all"
+      },
+      "recommendation": "Consider adding per-page SEO overrides to SiteSetting table and creating a server-side function that merges DB overrides with hardcoded defaults. The seed route (src/app/api/admin/settings/seed/route.ts) already seeds SEO settings — these could be extended."
+    },
+    {
+      "id": "F8",
+      "file": "src/lib/messages.ts",
+      "title": "DEFAULT_MESSAGES in messages.ts is the canonical fallback but not used everywhere",
+      "severity": "low",
+      "detail": "src/lib/messages.ts defines DEFAULT_MESSAGES with getMessages(override?) function. It is used in Footer.tsx (via getMessages(config?.messages)) but the same default strings are duplicated in src/app/api/config/route.ts and in every component directly. There is no single source of truth.",
+      "code": {
+        "usedIn": "Footer.tsx only (line 33: const msg = getMessages(config?.messages))",
+        "duplicatedIn": [
+          "src/app/api/config/route.ts — identical defaults in defaultConfig.messages",
+          "All homepage components — inline fallback strings"
+        ],
+        "recommendation": "Make src/lib/messages.ts the single source. Have /api/config import it, and have components import fallback strings from it rather than hardcoding."
+      },
+      "recommendation": "src/lib/messages.ts should be THE source. The /api/config endpoint should import from it, not redeclare."
+    },
+    {
+      "id": "F9",
+      "file": "src/app/api/payment/accounts/route.ts",
+      "title": "Payment accounts endpoint has hardcoded fallback phone numbers",
+      "severity": "medium",
+      "detail": "The GET /api/payment/accounts endpoint queries SiteSetting for payment keys but has hardcoded fallback numbers '017XXXXXXXX', '018XXXXXXXX', '016XXXXXXXX'. These are placeholder numbers that would break payments if the DB query fails or returns empty.",
+      "code": {
+        "queriedKeys": ["bkash", "nagad", "rocket", "default_bkash_number", "default_nagad_number", "default_rocket_number"],
+        "hardcodedFallbacks": {
+          "bkash": "'017XXXXXXXX'",
+          "nagad": "'018XXXXXXXX'",
+          "rocket": "'016XXXXXXXX'"
+        },
+        "keyMapping": "Maps legacy default_*_number keys to their modern equivalents"
+      },
+      "recommendation": "Consider returning empty accounts (or error) instead of placeholder numbers, or ensure the seed process creates real account settings."
+    },
+    {
+      "id": "F10",
+      "file": "src/app/api/favicon/route.ts",
+      "title": "Favicon endpoint has hardcoded CDN fallback URL",
+      "severity": "low",
+      "detail": "If no favicon is set in SiteSetting, redirects to 'https://z-cdn.chatglm.cn/z-ai/static/logo.svg' — an external CDN that may not be under the project's control.",
+      "code": {
+        "fallback": "'https://z-cdn.chatglm.cn/z-ai/static/logo.svg'",
+        "dbKey": "favicon"
+      },
+      "recommendation": "Replace with a local default favicon file in the public/ directory."
+    },
+    {
+      "id": "F11",
+      "file": "src/lib/csrf.ts",
+      "title": "CSRF secret uses env var but validates length",
+      "severity": "info",
+      "detail": "CSRF_SECRET env var is required at startup (length >= 32 check). Falls back to NODE_ENV for secure cookie flag.",
+      "code": {
+        "envVar": "CSRF_SECRET",
+        "validation": "Must be >= 32 characters or throws error at startup",
+        "secureFlag": "process.env.NODE_ENV === 'production'"
+      },
+      "recommendation": "No changes needed — this is correctly implemented."
+    },
+    {
+      "id": "F12",
+      "file": "prisma/schema.prisma",
+      "title": "SiteSetting model schema is appropriate",
+      "severity": "info",
+      "detail": "The SiteSetting model has key (unique), value, optional group, and optional label fields. This supports the admin UI grouping (seo, homepage, messages, legal, navigation).",
+      "code": {
+        "model": {
+          "id": "String @id @default(cuid())",
+          "key": "String @unique",
+          "value": "String",
+          "group": "String?",
+          "label": "String?"
+        },
+        "totalRowsInSchema": 1057
+      },
+      "recommendation": "No changes needed — model is well-designed for the hybrid config approach."
+    },
+    {
+      "id": "F13",
+      "file": "src/app/api/admin/settings/route.ts",
+      "title": "Admin settings CRUD has robust implementation with cache invalidation",
+      "severity": "info",
+      "detail": "The admin settings API supports GET, POST, PUT, and PATCH methods. PATCH handles batch upsert. All mutations call invalidateContentCache('settings'). GET returns both array and key-value map format.",
+      "code": {
+        "methods": ["GET (list)", "POST (create)", "PUT (update)", "PATCH (batch upsert)"],
+        "cacheInvalidation": "invalidateContentCache('settings') called on every mutation",
+        "returnFormats": "data: SiteSetting[], map: Record<string, string>"
+      },
+      "recommendation": "No changes needed — comprehensive implementation."
+    },
+    {
+      "id": "F14",
+      "file": "src\app\api\admin\settings\seed\route.ts",
+      "title": "SEO seed endpoint exists but only seeds 4 basic SEO keys",
+      "severity": "low",
+      "detail": "The seed endpoint creates/updates 4 SEO settings (seo_title, seo_description, seo_keywords, seo_author). These are only used in root layout metadata. No seed exists for all the homepage UI text fields or messages.",
+      "code": {
+        "seededKeys": ["seo_title", "seo_description", "seo_keywords", "seo_author"],
+        "notSeeded": [
+          "All 17+ homepage section text keys (homepage_classes_*)",
+          "All 13 msg_* keys",
+          "siteName, siteDescription, contactEmail, etc.",
+          "Payment account keys"
+        ]
+      },
+      "recommendation": "Create a comprehensive seed that pre-populates all SiteSetting keys with sensible defaults matching the current hardcoded fallbacks."
+    },
+    {
+      "id": "F15",
+      "file": "src/components/admin/AdminSettingsPage.tsx",
+      "title": "Admin settings page has inconsistent key naming (camelCase vs snake_case)",
+      "severity": "medium",
+      "detail": "The AdminSettingsPage saves some keys as camelCase (siteName, heroBadge, premiumFeatures, bkash) and others as snake_case (seo_title, homepage_classes_badge, msg_contentComingSoon, privacy_content). The /api/config endpoint supports both naming conventions for backward compatibility, but this creates confusion.",
+      "code": {
+        "camelCaseKeysInAdminSave": [
+          "siteName", "siteDescription", "contactEmail", "contactPhone",
+          "facebook", "youtube", "telegram", "bkash", "nagad", "rocket",
+          "heroBadge", "heroTitle", "heroSubtitle", "statsSubtitle",
+          "footerDescription", "premiumFeatures", "mcqFeatures",
+          "searchSuggestions", "logo", "favicon"
+        ],
+        "snake_caseKeysInAdminSave": [
+          "seo_title", "seo_description", "seo_keywords", "seo_author",
+          "privacy_content", "terms_content",
+          "homepage_classes_badge", "homepage_classes_title", "homepage_classes_subtitle",
+          "homepage_board_title", "homepage_board_subtitle",
+          "homepage_mcq_title", "homepage_mcq_subtitle",
+          "homepage_faq_title", "homepage_faq_subtitle",
+          "homepage_testimonials_title", "homepage_testimonials_subtitle",
+          "homepage_stats_title", "homepage_stats_subtitle",
+          "homepage_featured_title", "homepage_featured_subtitle",
+          "homepage_premium_title", "homepage_premium_subtitle"
+        ],
+        "msgKeysInAdminSave": "msg_contentComingSoon (dynamically from messages state record, which uses snake_case)",
+        "totalKeysSaved": 42,
+        "note": "The /api/config endpoint reads both naming conventions, so both work. But this inconsistency makes it hard to know the canonical key name."
+      },
+      "recommendation": "Standardize on one naming convention (snake_case recommended for DB keys). Migrate all camelCase keys to snake_case and update /api/config to prefer the canonical names."
+    },
+    {
+      "id": "F16",
+      "file": "src/app/api/config/route.ts",
+      "title": "Config endpoint response structure is inconsistent with client expectations",
+      "severity": "medium",
+      "detail": "The API returns { success: true, data: { ... } } but the client hook (src/hooks/use-metadata.ts line 229) calls fetchJSON<SiteConfig>('/api/config') and expects the response to BE the SiteConfig directly. This means the data path is not being unwrapped — the hook actually receives { success, data } but treats it as SiteConfig. The validation on line 230-232 checks for 'siteName' in data, which works because 'siteName' IS nested under data, but the type system is lying.",
+      "code": {
+        "apiResponse": "{ success: true, data: { siteName: '...', ... } }",
+        "clientExpectation": "fetchJSON<SiteConfig> expects top-level SiteConfig shape, not wrapped in { success, data }",
+        "currentBehavior": "Works accidentally because JS allows accessing nested properties — 'siteName' in { success, data } is false, but the fetchJSON might strip the wrapper, OR the actual response from /api/config IS the wrapper and the hook is reading it wrong",
+        "risk": "If someone adds response wrapping/transformation, config fetching breaks silently"
+      },
+      "recommendation": "Align API response structure with client expectations. Either: (1) return SiteConfig directly from API and remove success/data wrapper, or (2) update the hook to unwrap the response."
+    }
+  ],
+  "summary": {
+    "totalFindings": 16,
+    "bySeverity": {
+      "high": 2,
+      "medium": 8,
+      "low": 3,
+      "info": 3
+    },
+    "byCategory": {
+      "hardcodedConfigFallbacks": 8,
+      "inconsistentNaming": 1,
+      "cacheIssues": 2,
+      "securityAppropriate": 4,
+      "apiDesignIssues": 1
+    },
+    "criticalInsights": [
+      "The config system is HYBRID — DB-driven with hardcoded fallbacks everywhere. Every component has its own copy of Bengali fallback strings.",
+      "SiteSetting model supports arbitrary key-value pairs but the codebase uses ~50+ distinct keys across 2 naming conventions (camelCase and snake_case).",
+      "Rate limit config loads from DB once and never refreshes — admin changes are invisible without server restart.",
+      "The API config response structure is misaligned with the client hook's type expectations.",
+      "SEO metadata is almost entirely hardcoded in src/lib/seo.ts — only the root layout reads from DB (seo_title, seo_description, etc.).",
+      "src/lib/messages.ts exists as a canonical fallback source but is only used in Footer.tsx — all other components redeclare the same strings."
+    ],
+    "recommendedActions": [
+      "Consolidate all fallback strings into src/lib/config-defaults.ts (imported everywhere, never hardcoded in components).",
+      "Standardize SiteSetting key naming to snake_case across admin UI, API, and config reader.",
+      "Add TTL-based cache invalidation to rate-limit.ts loadLimits().",
+      "Create comprehensive seed data covering all 50+ SiteSetting keys.",
+      "Fix API response structure alignment between /api/config and useSiteConfig() hook.",
+      "Extend unstable_cache in layout.tsx to read siteName for OG/appleWebApp from DB.",
+      "Add per-page SEO overrides to SiteSetting table and merge them in src/lib/seo.ts."
+    ]
+  }
+}
