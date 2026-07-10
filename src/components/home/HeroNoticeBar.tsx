@@ -10,7 +10,7 @@ export default function HeroNoticeBar() {
   const { data: banners = [], isLoading: loading } = useBanners()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [dismissed, setDismissed] = useState(false)
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
 
   // Auto-rotate banners
   useEffect(() => {

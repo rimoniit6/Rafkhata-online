@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -33,25 +34,25 @@ export async function GET(request: Request) {
 
       const [currentRev, prevRev, topContent] = await Promise.all([
         db.payment.aggregate({
-          where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+          where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
           _sum: { amount: true },
           _count: true,
         }),
         db.payment.aggregate({
-          where: { status: 'approved', createdAt: { gte: prevFromDate, lte: prevToDate } },
+          where: { status: 'APPROVED', createdAt: { gte: prevFromDate, lte: prevToDate } },
           _sum: { amount: true },
         }),
         db.payment.groupBy({
           by: ['contentType'],
-          where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate }, contentType: { not: null } },
+          where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate }, contentType: { not: null } },
           _sum: { amount: true },
           orderBy: { _sum: { amount: 'desc' } },
           take: 1,
         }),
       ])
 
-      const currRev = currentRev._sum.amount || 0
-      const prevRevAmt = prevRev._sum.amount || 0
+      const currRev = toDecimal(currentRev._sum.amount || 0)
+      const prevRevAmt = toDecimal(prevRev._sum.amount || 0)
       const change = prevRevAmt > 0 ? Math.round(((currRev - prevRevAmt) / prevRevAmt) * 100) : 0
 
       if (change > 0) {
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
           id: 'top-source',
           type: 'neutral',
           title: 'Top Revenue Source',
-          description: `${contentTypeLabels[top.contentType || ''] || top.contentType} generated ৳${(top._sum.amount || 0).toLocaleString('bn-BD')} in revenue.`,
+          description: `${contentTypeLabels[top.contentType || ''] || top.contentType} generated ৳${toDecimal(top._sum.amount || 0).toLocaleString('bn-BD')} in revenue.`,
           metric: 'top_source',
           change: 0,
         })
@@ -123,7 +124,7 @@ export async function GET(request: Request) {
       const today = new Date()
       const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
       const pendingCount = await db.payment.count({
-        where: { status: 'pending', createdAt: { gte: todayStart } },
+        where: { status: 'PENDING', createdAt: { gte: todayStart } },
       })
 
       if (pendingCount > 5) {

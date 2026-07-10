@@ -28,7 +28,7 @@ const createBoardMcqSchema = z.object({
   topic: z.string().nullable().optional(),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   tags: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 })
@@ -61,7 +61,7 @@ const createBoardCqSchema = z.object({
   topic: z.string().nullable().optional(),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   tags: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 })
@@ -144,7 +144,7 @@ export async function GET(request: Request) {
       },
     }
 
-    if (type === 'mcq') {
+    if (type === 'MCQ') {
       const where = buildWhere(['question', 'explanation', 'tags', 'topic'])
       const [records, total] = await Promise.all([
         db.mCQ.findMany({ where, include: { chapter: chapterInclude }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
@@ -153,7 +153,7 @@ export async function GET(request: Request) {
       return paginatedApiResponse(records.map((r) => mapMCQ(r as unknown as Record<string, unknown>)), { page, limit, total, totalPages: Math.ceil(total / limit) })
     }
 
-    if (type === 'cq') {
+    if (type === 'CQ') {
       const where = buildWhere(['uddeepok', 'question1', 'question2', 'question3', 'question4', 'topic'])
       const [records, total] = await Promise.all([
         db.cQ.findMany({ where, include: { chapter: chapterInclude }, orderBy: { createdAt: 'desc' }, skip: (page - 1) * limit, take: limit }),
@@ -195,7 +195,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { type } = body
 
-    if (type === 'mcq') {
+    if (type === 'MCQ') {
       const validation = validateBody(createBoardMcqSchema, body)
       if ('error' in validation) return validation.error
       const { question, questionImage, optionA, optionAImage, optionB, optionBImage, optionC, optionCImage, optionD, optionDImage, correctAnswer, explanation, explanationImage, chapterId, classLevel, subjectId, board, year, topic, difficulty, isPremium, price, tags, isActive } = validation.data
@@ -210,7 +210,7 @@ export async function POST(request: Request) {
           correctAnswer, explanation: explanation || null, explanationImage: explanationImage || null,
           chapterId, classLevel, subjectId,
           board: board || null, year: year || null, topic: topic || null,
-          difficulty: difficulty || 'medium',
+          difficulty: (difficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD',
           isPremium: isPremium ?? false, price: price ?? 0,
           tags: tags || null, isActive: isActive ?? true,
         },
@@ -237,7 +237,7 @@ export async function POST(request: Request) {
         answer4: answer4 || '', answer4Image: answer4Image || null,
         chapterId, classLevel, subjectId,
         board: board || null, year: year || null, topic: topic || null,
-        difficulty: difficulty || 'medium',
+        difficulty: (difficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD',
         isPremium: isPremium ?? false, price: price ?? 0,
         tags: tags || null, isActive: isActive ?? true,
       },

@@ -47,10 +47,10 @@ export class PurchaseService {
         contentId: data.contentId,
         contentTitle: title || '',
         amount: data.amount,
-        method: data.method || 'bkash',
+        method: (data.method?.toUpperCase() as 'BKASH' | 'NAGAD' | 'ROCKET' | 'OTHER') || 'BKASH',
         paymentNumber: data.paymentNumber || '',
         transactionId: data.transactionId || '',
-        status: 'pending',
+        status: 'PENDING',
       },
     })
   }
@@ -71,7 +71,7 @@ export class PurchaseService {
 
   static async getUserPurchases(userId: string) {
     return db.payment.findMany({
-      where: { userId, status: 'approved', isActive: true },
+      where: { userId, status: 'APPROVED', isActive: true },
       orderBy: { createdAt: 'desc' },
     })
   }

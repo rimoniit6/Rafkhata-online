@@ -32,6 +32,7 @@ export interface BulkAction {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary'
   handler: (selectedIds: string[]) => Promise<void>
   requiresSelection?: boolean
+  disabled?: boolean
 }
 
 export interface DataTableProps<T extends { id: string }> {
@@ -200,6 +201,7 @@ function DataTableInner<T extends { id: string }>({
               size="sm"
               className="gap-1.5"
               onClick={() => action.handler(selectedIds)}
+              disabled={action.disabled}
             >
               {action.icon}
               {action.label}

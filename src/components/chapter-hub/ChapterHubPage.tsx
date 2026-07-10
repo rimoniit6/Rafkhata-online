@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 
 import { useChapterData } from '@/hooks/use-chapter-data'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { ChapterHeader } from './ChapterHeader'
 import { ChapterSkeleton } from './ChapterSkeleton'
 import { ChapterStats } from './ChapterStats'
@@ -17,7 +17,7 @@ import { McqTab } from './tabs/McqTab'
 import { SuggestionsTab } from './tabs/SuggestionsTab'
 
 export default function ChapterHubPage() {
-  const { params } = useRouterStore()
+  const params = useRouteParams()
   const chapterId = params.chapterId
   const { data: chapter, isLoading, error } = useChapterData(chapterId)
   const [activeTab, setActiveTab] = useState('all')

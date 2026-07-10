@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { fetchCsrfToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useIsAuthenticated } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { AlertCircle,BookOpen,CheckCircle2,ChevronRight,Crown,FlaskConical,GraduationCap,Layers,Loader2,Lock,Sparkles } from 'lucide-react'
 import { useEffect,useMemo,useState } from 'react'
@@ -47,7 +47,7 @@ interface HierarchyData {
 }
 
 export default function CreateExamPage() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
 
   const [hierarchy, setHierarchy] = useState<HierarchyData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -88,7 +88,7 @@ export default function CreateExamPage() {
     fetchHierarchy()
   }, [])
 
-  const { isAuthenticated } = useAuthStore()
+  const isAuthenticated = useIsAuthenticated()
 
   // Check subscription when class changes
   useEffect(() => {

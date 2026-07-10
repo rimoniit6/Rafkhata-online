@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
-import { useAuthStore } from '@/store/auth'
+import { useShallowAuth } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { Check,Loader2,Save } from 'lucide-react'
 import { useCallback,useEffect,useRef,useState } from 'react'
@@ -13,8 +13,8 @@ interface NoteEditorProps {
 }
 
 export default function NoteEditor({ contentId, contentType }: NoteEditorProps) {
-  const { user, isAuthenticated } = useAuthStore()
-  const { navigate } = useRouterStore()
+  const { user, isAuthenticated } = useShallowAuth()
+  const navigate = useRouterStore((s) => s.navigate)
   const { toast } = useToast()
   const [content, setContent] = useState('')
   const [_noteId, setNoteId] = useState<string | null>(null)

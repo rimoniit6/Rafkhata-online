@@ -34,7 +34,7 @@ const QUICK_ACCESS = [
 ]
 
 export default function ClassCategories() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { config } = useSiteConfig()
   const { data: classes = [], isLoading: loading, error: queryError } = useClassList()
   const error = queryError?.message ?? null

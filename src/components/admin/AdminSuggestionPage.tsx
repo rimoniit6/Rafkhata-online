@@ -154,7 +154,9 @@ export default function AdminSuggestionPage() {
   const [chapters, setChapters] = useState<ChapterItem[]>([])
 
   useEffect(() => {
-    fetch('/api/admin/classes').then(r => r.json()).then(j => setClasses(Array.isArray(j.data) ? j.data : [])).catch(() => {})
+    fetch('/api/admin/classes').then(r => r.json()).then(j => setClasses(Array.isArray(j.data) ? j.data : [])).catch((err) => {
+      console.error('[AdminSuggestion] Failed to load classes:', err)
+    })
   }, [])
 
   const fetchSubjects = useCallback(async (classId: string) => {

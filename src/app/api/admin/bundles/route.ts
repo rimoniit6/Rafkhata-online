@@ -4,14 +4,15 @@ import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { toDecimal } from '@/lib/decimal'
 
 const createBundleSchema = z.object({
   title: z.string().min(1, 'শিরোনাম আবশ্যক'),
   slug: z.string().optional(),
   description: z.string().nullable().optional(),
   thumbnail: z.string().nullable().optional(),
-  price: z.number().min(0).optional(),
-  originalPrice: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
+  originalPrice: z.coerce.number().min(0).optional(),
   classLevel: z.string().nullable().optional(),
   board: z.string().nullable().optional(),
   year: z.string().nullable().optional(),
@@ -86,8 +87,8 @@ export async function POST(request: Request) {
 
     let calculatedOriginalPrice = originalPrice || 0
     if (items && items.length > 0 && !originalPrice) {
-      const mcqIds = items.filter((i: { contentType: string }) => i.contentType === 'mcq').map((i: { contentId: string }) => i.contentId)
-      const cqIds = items.filter((i: { contentType: string }) => i.contentType === 'cq').map((i: { contentId: string }) => i.contentId)
+      const mcqIds = items.filter((i: { contentType: string }) => i.contentType === 'MCQ').map((i: { contentId: string }) => i.contentId)
+      const cqIds = items.filter((i: { contentType: string }) => i.contentType === 'CQ').map((i: { contentId: string }) => i.contentId)
       const lectureIds = items.filter((i: { contentType: string }) => i.contentType === 'lecture').map((i: { contentId: string }) => i.contentId)
       const suggestionIds = items.filter((i: { contentType: string }) => i.contentType === 'suggestion').map((i: { contentId: string }) => i.contentId)
       const examIds = items.filter((i: { contentType: string }) => i.contentType === 'exam').map((i: { contentId: string }) => i.contentId)
@@ -101,13 +102,13 @@ export async function POST(request: Request) {
       ])
 
       const priceMap = new Map<string, number>()
-      mcqs.forEach((m) => priceMap.set(m.id, m.price))
-      cqs.forEach((c) => priceMap.set(c.id, c.price))
-      lectures.forEach((l) => priceMap.set(l.id, l.price))
-      suggestions.forEach((s) => priceMap.set(s.id, s.price))
-      exams.forEach((e) => priceMap.set(e.id, e.price))
+      mcqs.forEach((m) => priceMap.set(m.id, Number(m.price)))
+      cqs.forEach((c) => priceMap.set(c.id, Number(c.price)))
+      lectures.forEach((l) => priceMap.set(l.id, Number(l.price)))
+      suggestions.forEach((s) => priceMap.set(s.id, Number(s.price)))
+      exams.forEach((e) => priceMap.set(e.id, Number(e.price)))
 
-      calculatedOriginalPrice = items.reduce((sum: number, item: { contentId: string }) => sum + (priceMap.get(item.contentId) || 0), 0)
+      calculatedOriginalPrice = items.reduce((sum: number, item: { contentId: string }) => sum + toDecimal(priceMap.get(item.contentId) || 0), 0)
     }
 
     const bundle = await db.contentBundle.create({
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
         description: description || null, thumbnail: thumbnail || null,
         price: price ?? 0, originalPrice: calculatedOriginalPrice,
         classLevel: classLevel || null, board: board || null, year: year || null,
-        type: type || 'mixed', isActive: isActive ?? true, order: order ?? 0,
+        type: (type || 'mixed') as 'MCQ' | 'CQ' | 'MIXED', isActive: isActive ?? true, order: order ?? 0,
         items: items && items.length > 0
           ? { create: items.map((item: { contentType: string; contentId: string; order?: number }) => ({ contentType: item.contentType, contentId: item.contentId, order: item.order || 0 })) }
           : undefined,
@@ -161,8 +162,8 @@ export async function PUT(request: Request) {
     }
 
     if (items !== undefined) {
-      const mcqIds = items.filter((i: { contentType: string }) => i.contentType === 'mcq').map((i: { contentId: string }) => i.contentId)
-      const cqIds = items.filter((i: { contentType: string }) => i.contentType === 'cq').map((i: { contentId: string }) => i.contentId)
+      const mcqIds = items.filter((i: { contentType: string }) => i.contentType === 'MCQ').map((i: { contentId: string }) => i.contentId)
+      const cqIds = items.filter((i: { contentType: string }) => i.contentType === 'CQ').map((i: { contentId: string }) => i.contentId)
       const lectureIds = items.filter((i: { contentType: string }) => i.contentType === 'lecture').map((i: { contentId: string }) => i.contentId)
       const suggestionIds = items.filter((i: { contentType: string }) => i.contentType === 'suggestion').map((i: { contentId: string }) => i.contentId)
       const examIds = items.filter((i: { contentType: string }) => i.contentType === 'exam').map((i: { contentId: string }) => i.contentId)
@@ -176,13 +177,13 @@ export async function PUT(request: Request) {
       ])
 
       const priceMap = new Map<string, number>()
-      mcqs.forEach((m) => priceMap.set(m.id, m.price))
-      cqs.forEach((c) => priceMap.set(c.id, c.price))
-      lectures.forEach((l) => priceMap.set(l.id, l.price))
-      suggestions.forEach((s) => priceMap.set(s.id, s.price))
-      exams.forEach((e) => priceMap.set(e.id, e.price))
+      mcqs.forEach((m) => priceMap.set(m.id, Number(m.price)))
+      cqs.forEach((c) => priceMap.set(c.id, Number(c.price)))
+      lectures.forEach((l) => priceMap.set(l.id, Number(l.price)))
+      suggestions.forEach((s) => priceMap.set(s.id, Number(s.price)))
+      exams.forEach((e) => priceMap.set(e.id, Number(e.price)))
 
-      data.originalPrice = items.reduce((sum: number, item: { contentId: string }) => sum + (priceMap.get(item.contentId) || 0), 0)
+      data.originalPrice = items.reduce((sum: number, item: { contentId: string }) => sum + toDecimal(priceMap.get(item.contentId) || 0), 0)
 
       await db.bundleItem.deleteMany({ where: { bundleId: id } })
 

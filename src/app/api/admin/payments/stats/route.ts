@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -11,17 +12,17 @@ export async function GET(request: Request) {
     const [totalRevenue, pendingCount, approvedCount, contentPurchaseCount, contentSalesTotal] =
       await Promise.all([
         db.payment.aggregate({
-          where: { status: 'approved' },
+          where: { status: 'APPROVED' },
           _sum: { amount: true },
         }),
-        db.payment.count({ where: { status: 'pending' } }),
-        db.payment.count({ where: { status: 'approved' } }),
+        db.payment.count({ where: { status: 'PENDING' } }),
+        db.payment.count({ where: { status: 'APPROVED' } }),
         db.payment.count({
           where: { contentType: { not: null } },
         }),
         db.payment.aggregate({
           where: {
-            status: 'approved',
+            status: 'APPROVED',
             contentType: { not: null },
           },
           _sum: { amount: true },
@@ -29,11 +30,11 @@ export async function GET(request: Request) {
       ])
 
     return apiResponse({
-      totalRevenue: totalRevenue._sum.amount || 0,
+      totalRevenue: toDecimal(totalRevenue._sum.amount || 0),
       pendingCount,
       approvedCount,
       contentPurchaseCount,
-      contentSalesTotal: contentSalesTotal._sum.amount || 0,
+      contentSalesTotal: toDecimal(contentSalesTotal._sum.amount || 0),
     })
   } catch (error) {
     return handleApiError(error, 'Admin Payment Stats error')

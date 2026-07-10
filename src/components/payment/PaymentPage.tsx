@@ -17,8 +17,8 @@ import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { useSiteConfig } from '@/hooks/use-metadata'
 import { useToast } from '@/hooks/use-toast'
 import { useUploadThing } from '@/lib/uploadthing/client'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useAuthStore, useAuthUser } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import {
 AlertCircle,
 ArrowLeft,ArrowRight,
@@ -67,8 +67,10 @@ const stepLabels: Record<PaymentStep, string> = {
 }
 
 export default function PaymentPage() {
-  const { params, navigate, goBack } = useRouterStore()
-  const { user, logout: _logout } = useAuthStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const user = useAuthUser()
   const { toast } = useToast()
   const { config } = useSiteConfig()
   const metadata = useHierarchyMetadata()

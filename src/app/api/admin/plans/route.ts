@@ -7,7 +7,7 @@ import { z } from 'zod'
 
 const createPlanSchema = z.object({
   title: z.string().min(1, 'নাম আবশ্যক'),
-  price: z.number().min(0, 'মূল্য অবশ্যই ০ বা তার বেশি হতে হবে'),
+  price: z.coerce.number().min(0, 'মূল্য অবশ্যই ০ বা তার বেশি হতে হবে'),
   duration: z.number().int().positive('সময়কাল আবশ্যক'),
   durationLabel: z.string().optional(),
   description: z.string().nullable().optional(),

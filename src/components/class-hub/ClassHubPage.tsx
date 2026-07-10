@@ -9,7 +9,7 @@ import { Card,CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { useQuery } from '@tanstack/react-query'
 import {
 ArrowRight,
@@ -70,7 +70,8 @@ const CLASS_THEMES: Record<string, { gradient: string; accent: string }> = {
 }
 
 export default function ClassHubPage() {
-  const { params, navigate } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
   const [search, setSearch] = useState('')
 
   const classSlug = params.classSlug

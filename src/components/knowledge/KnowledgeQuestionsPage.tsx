@@ -5,8 +5,8 @@ import PurchaseOptionsModal from '@/components/shared/PurchaseOptionsModal'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { KnowledgeItem } from '@/hooks/use-chapter-content'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useAuthUser } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { useQuery } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { useEffect,useState } from 'react'
@@ -17,9 +17,10 @@ interface PurchaseStatus {
 }
 
 export default function KnowledgeQuestionsPage() {
-  const { navigate, params } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const params = useRouteParams()
   const chapterId = params?.chapterId as string | undefined
-  const { user } = useAuthStore()
+  const user = useAuthUser()
 
   const [purchaseMap, setPurchaseMap] = useState<Record<string, PurchaseStatus>>({})
   const [purchaseModalOpen, setPurchaseModalOpen] = useState(false)

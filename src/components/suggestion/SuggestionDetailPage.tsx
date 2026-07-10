@@ -11,8 +11,8 @@ import { Card,CardContent } from '@/components/ui/card'
 import ContentBlockEditor,{ ContentBlock,deserializeBlocks } from '@/components/ui/content-block-editor'
 import { downloadPdf,getFilenameFromUrl } from '@/lib/pdf-download'
 import { getSuggestionFromCache } from '@/lib/suggestion-cache'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useAuthUser } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import {
 ArrowLeft,
 BookOpen,
@@ -48,8 +48,10 @@ interface SuggestionData {
 }
 
 export default function SuggestionDetailPage() {
-  const { params, navigate, goBack } = useRouterStore()
-  const { user } = useAuthStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const user = useAuthUser()
   const [suggestionData, setSuggestionData] = useState<SuggestionData | null>(null)
   const [loading, setLoading] = useState(true)
   const [blocks, setBlocks] = useState<ContentBlock[]>([])

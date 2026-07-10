@@ -27,7 +27,6 @@ Upload,
 X,
 } from 'lucide-react'
 import React,{ useCallback,useEffect,useRef,useState } from 'react'
-import * as XLSX from 'xlsx'
 
 import DataTable from '@/components/shared/DataTable'
 import ImageUploader from '@/components/ui/image-uploader'
@@ -333,7 +332,8 @@ export default function AdminKnowledgeQuestionsPage() {
     }
   }, [selection, fetchQuestions, toast])
 
-  const downloadDemoFile = () => {
+  const downloadDemoFile = async () => {
+    const XLSX = await import('xlsx')
     const data = [
       { question: 'পানির রাসায়নিক সংকেত কী?', answer: 'H₂O', isPremium: 'false', price: 0, order: 1 },
       { question: 'পানি কেন জীবনের জন্য অপরিহার্য?', answer: 'পানি খাদ্য পরিপাকে, দেহের তাপমাত্রা নিয়ন্ত্রণে সহায়তা করে।', isPremium: 'false', price: 0, order: 2 },

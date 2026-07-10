@@ -4,6 +4,7 @@ import { requireAuth } from '@/lib/auth'
 import { apiError, withCsrf } from '@/lib/api-utils'
 import { getExamTimeMs, getDhakaOffsetMs } from '@/lib/date-utils'
 import { resolveCourseLayerAccess } from '@/lib/course-access-resolver'
+import { toDecimal } from '@/lib/decimal'
 
 // ============================================================================
 // GET handler — all read operations for MCQ Exam Packages (public-facing)
@@ -89,7 +90,7 @@ async function handleList(searchParams: URLSearchParams) {
   const skip = (page - 1) * limit
 
   const where: Record<string, unknown> = {
-    status: 'published',
+    status: 'PUBLISHED',
     isActive: true,
   }
 
@@ -115,7 +116,7 @@ async function handleList(searchParams: URLSearchParams) {
           select: { id: true, name: true, slug: true },
         },
         examSets: {
-          where: { status: 'published' },
+          where: { status: 'PUBLISHED' },
           orderBy: [{ scheduledDate: 'asc' }, { order: 'asc' }],
           select: {
             id: true,
@@ -187,7 +188,7 @@ async function handleList(searchParams: URLSearchParams) {
 
     // Calculate totals from ALL exam sets (not just first 5)
     const totalExamSets = pkg.examSets.length
-    const totalMarks = pkg.examSets.reduce((sum, s) => sum + s.totalMarks, 0)
+    const totalMarks = pkg.examSets.reduce((sum, s) => sum + toDecimal(s.totalMarks), 0)
     const totalQuestions = pkg.examSets.reduce((sum, s) => sum + s.totalQuestions, 0)
 
     // Remove examSets from the output (we only fetched them for summary calculation)
@@ -240,7 +241,7 @@ async function handleDetail(searchParams: URLSearchParams, request: NextRequest)
         select: { id: true, name: true, slug: true },
       },
       examSets: {
-        where: { status: 'published' },
+        where: { status: 'PUBLISHED' },
         orderBy: [{ scheduledDate: 'asc' }, { order: 'asc' }],
         select: {
           id: true,
@@ -267,7 +268,7 @@ async function handleDetail(searchParams: URLSearchParams, request: NextRequest)
     },
   })
 
-  if (!pkg || pkg.status !== 'published' || !pkg.isActive) {
+  if (!pkg || pkg.status !== 'PUBLISHED' || !pkg.isActive) {
     return apiError('প্যাকেজ খুঁজে পাওয়া যায়নি', 404)
   }
 
@@ -344,7 +345,7 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
     },
   })
 
-  if (!examSet || examSet.status !== 'published') {
+  if (!examSet || examSet.status !== 'PUBLISHED') {
     return apiError('পরীক্ষার সেট খুঁজে পাওয়া যায়নি', 404)
   }
 
@@ -399,14 +400,14 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
 
   // If completed and retake is allowed (set-level or individual), delete old result and start fresh
   const hadCanRetake = existingResult?.canRetake || false
-  if (existingResult && existingResult.status === 'completed' && (examSet.allowRetake || existingResult.canRetake)) {
+  if (existingResult && existingResult.status === ('COMPLETED' as const) && (examSet.allowRetake || existingResult.canRetake)) {
     await db.mCQExamSetResult.delete({ where: { id: existingResult.id } })
     existingResult = null
     // Fall through to create new result below
   }
 
   // If completed, return the result (no retake allowed)
-  if (existingResult && existingResult.status === 'completed') {
+  if (existingResult && existingResult.status === ('COMPLETED' as const)) {
     // Get questions with answers for review
     const setQuestions = await db.mCQExamSetQuestion.findMany({
       where: { setId },
@@ -485,7 +486,7 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
   }
 
   // If in-progress, resume it
-  if (existingResult && existingResult.status === 'in-progress') {
+  if (existingResult && existingResult.status === 'IN_PROGRESS') {
     const setQuestions = await db.mCQExamSetQuestion.findMany({
       where: { setId },
       orderBy: { order: 'asc' },
@@ -586,7 +587,7 @@ async function handleTakeExam(searchParams: URLSearchParams, request: NextReques
     data: {
       userId: auth.user.id,
       setId: setId,
-      status: 'in-progress',
+      status: 'IN_PROGRESS',
       startedAt: new Date(),
           answers: {},
       totalMarks: examSet.totalMarks,
@@ -678,7 +679,7 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
     return apiError('এই ফলাফল আপনার নয়', 403, 'FORBIDDEN')
   }
 
-  if (result.status !== 'in-progress') {
+  if (result.status !== ('IN_PROGRESS' as const)) {
     return apiError('এই পরীক্ষা ইতিমধ্যে জমা দেওয়া হয়েছে', 400, 'ALREADY_SUBMITTED')
   }
 
@@ -750,11 +751,11 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
     } else if (userAnswer.toUpperCase() === sq.mcq.correctAnswer.toUpperCase()) {
       // Correct
       totalCorrect++
-      marksObtained += sq.marks
+      marksObtained += toDecimal(sq.marks)
     } else {
       // Wrong
       totalWrong++
-      marksObtained -= examSet.negativeMarks
+      marksObtained -= toDecimal(examSet.negativeMarks)
     }
   }
 
@@ -767,14 +768,14 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
     // real question count/marks so the percentage denominator is correct.
     const actualTotalQuestions = setQuestions.length
     const actualTotalMarks = setQuestions.reduce(
-      (sum, sq) => sum + (sq.marks || 0),
+      (sum, sq) => sum + toDecimal(sq.marks || 0),
       0
     )
 
     // Keep the set's cached totals consistent with the live questions.
     if (
       examSet.totalQuestions !== actualTotalQuestions ||
-      examSet.totalMarks !== actualTotalMarks
+      toDecimal(examSet.totalMarks) !== actualTotalMarks
     ) {
       await db.mCQExamSet.update({
         where: { id: setId },
@@ -789,7 +790,7 @@ async function handleSubmitExam(body: Record<string, unknown>, request: NextRequ
     const updatedResult = await db.mCQExamSetResult.update({
       where: { id: resultId },
       data: {
-        status: 'completed',
+        status: 'COMPLETED' as const,
         submittedAt: new Date(),
           answers: answers,
         totalCorrect,
@@ -886,7 +887,7 @@ async function handleMyResults(searchParams: URLSearchParams, request: NextReque
   let totalAttempted = 0
   const packageMap = new Map<string, string>()
   for (const r of allRows) {
-    const pct = r.totalMarks > 0 ? (r.marksObtained / r.totalMarks) * 100 : 0
+    const pct = toDecimal(r.totalMarks) > 0 ? (toDecimal(r.marksObtained) / toDecimal(r.totalMarks)) * 100 : 0
     totalPercentage += pct
     if (pct > highestScore) highestScore = pct
     totalCorrect += r.totalCorrect
@@ -909,7 +910,7 @@ async function handleMyResults(searchParams: URLSearchParams, request: NextReque
     .map((r) => ({
       id: r.id,
       title: r.set?.title || 'পরীক্ষা',
-      percentage: r.totalMarks > 0 ? Math.round((r.marksObtained / r.totalMarks) * 100) : 0,
+      percentage: toDecimal(r.totalMarks) > 0 ? Math.round((toDecimal(r.marksObtained) / toDecimal(r.totalMarks)) * 100) : 0,
       date: r.submittedAt
         ? r.submittedAt.toISOString()
         : r.startedAt
@@ -1121,7 +1122,7 @@ async function handleWeaknessAnalysis(searchParams: URLSearchParams, request: Ne
     where: {
       userId: auth.user.id,
       setId: { in: setIds },
-      status: 'completed',
+      status: 'COMPLETED' as const,
     },
     select: {
       id: true,
@@ -1151,7 +1152,7 @@ async function handleWeaknessAnalysis(searchParams: URLSearchParams, request: Ne
     where: {
       userId: auth.user.id,
       setId: { in: setIds },
-      status: 'completed',
+      status: 'COMPLETED' as const,
     },
     select: {
       totalCorrect: true,
@@ -1165,7 +1166,7 @@ async function handleWeaknessAnalysis(searchParams: URLSearchParams, request: Ne
   const totalCorrect = resultsWithDetails.reduce((sum, r) => sum + r.totalCorrect, 0)
   const totalWrong = resultsWithDetails.reduce((sum, r) => sum + r.totalWrong, 0)
   const avgScore = totalExams > 0
-    ? resultsWithDetails.reduce((sum, r) => sum + (r.totalMarks > 0 ? (r.marksObtained / r.totalMarks) * 100 : 0), 0) / totalExams
+    ? resultsWithDetails.reduce((sum, r) => sum + (toDecimal(r.totalMarks) > 0 ? (toDecimal(r.marksObtained) / toDecimal(r.totalMarks)) * 100 : 0), 0) / totalExams
     : 0
 
   // Build a map of mcqId -> userAnswer from all results
@@ -1333,7 +1334,7 @@ async function handleCheckPurchase(searchParams: URLSearchParams, request: NextR
         userId: auth.user.id,
         contentType: 'mcq-exam-package',
         contentId: packageId,
-        status: 'pending',
+        status: 'PENDING',
       },
       select: { id: true },
     })
@@ -1386,7 +1387,7 @@ async function handleLeaderboard(searchParams: URLSearchParams, request: NextReq
     },
   })
 
-  if (!examSet || examSet.package.status !== 'published' || !examSet.package.isActive) {
+  if (!examSet || examSet.package.status !== 'PUBLISHED' || !examSet.package.isActive) {
     return apiError('পরীক্ষার সেট খুঁজে পাওয়া যায়নি', 404)
   }
 
@@ -1399,7 +1400,7 @@ async function handleLeaderboard(searchParams: URLSearchParams, request: NextReq
     db.mCQExamSetResult.findMany({
       where: {
         setId,
-        status: 'completed',
+        status: 'COMPLETED' as const,
       },
       orderBy: [
         { marksObtained: 'desc' },
@@ -1421,7 +1422,7 @@ async function handleLeaderboard(searchParams: URLSearchParams, request: NextReq
     db.mCQExamSetResult.count({
       where: {
         setId,
-        status: 'completed',
+        status: 'COMPLETED' as const,
       },
     }),
   ])
@@ -1443,12 +1444,12 @@ async function handleLeaderboard(searchParams: URLSearchParams, request: NextReq
   })
 
   let myRank: number | null = null
-  if (userResult && userResult.status === 'completed') {
+  if (userResult && userResult.status === ('COMPLETED' as const)) {
     // Count how many results have higher marksObtained, or same marks but less time
     const higherCount = await db.mCQExamSetResult.count({
       where: {
         setId,
-        status: 'completed',
+        status: 'COMPLETED' as const,
         OR: [
           { marksObtained: { gt: userResult.marksObtained } },
           {
@@ -1519,7 +1520,7 @@ async function handleExamSetStatus(searchParams: URLSearchParams, request: NextR
     where: { id: packageId },
     include: {
       examSets: {
-        where: { status: 'published' },
+        where: { status: 'PUBLISHED' },
         orderBy: [{ scheduledDate: 'asc' }, { order: 'asc' }],
         select: {
           id: true,
@@ -1536,7 +1537,7 @@ async function handleExamSetStatus(searchParams: URLSearchParams, request: NextR
     },
   })
 
-  if (!pkg || pkg.status !== 'published' || !pkg.isActive) {
+  if (!pkg || pkg.status !== 'PUBLISHED' || !pkg.isActive) {
     return apiError('প্যাকেজ খুঁজে পাওয়া যায়নি', 404)
   }
 
@@ -1578,9 +1579,9 @@ async function handleExamSetStatus(searchParams: URLSearchParams, request: NextR
 
     let status: 'completed' | 'not-started' | 'in-progress' | 'missed' | 'upcoming'
 
-    if (result && result.status === 'completed') {
+    if (result && result.status === ('COMPLETED' as const)) {
       status = 'completed'
-    } else if (result && result.status === 'in-progress') {
+    } else if (result && result.status === 'IN_PROGRESS') {
       status = 'in-progress'
     } else if (nowMs < examStartMs) {
       status = 'upcoming'
@@ -1666,9 +1667,9 @@ async function handleCheckRetake(searchParams: URLSearchParams, request: NextReq
   return NextResponse.json({
     success: true,
     data: {
-      canRetake: !!((result?.canRetake || examSet?.allowRetake) && result?.status === 'completed'),
-      hasPendingRequest: retakeRequest?.status === 'pending',
-      hasApprovedRequest: retakeRequest?.status === 'approved',
+      canRetake: !!((result?.canRetake || examSet?.allowRetake) && result?.status === ('COMPLETED' as const)),
+      hasPendingRequest: retakeRequest?.status === 'PENDING',
+      hasApprovedRequest: retakeRequest?.status === 'APPROVED',
       requestStatus: retakeRequest?.status || null,
       resultStatus: result?.status || null,
     },
@@ -1726,16 +1727,16 @@ async function handleRequestRetake(body: Record<string, unknown>, request: NextR
   })
 
   if (existing) {
-    if (existing.status === 'pending') {
+    if (existing.status === 'PENDING') {
       return apiError('ইতিমধ্যে একটি অনুরোধ জমা দেওয়া হয়েছে', 400)
     }
-    if (existing.status === 'approved') {
+    if (existing.status === 'APPROVED') {
       return apiError('ইতিমধ্যে পুনরায় পরীক্ষার অনুমতি দেওয়া হয়েছে', 400)
     }
     // If rejected, allow re-request
     const updated = await db.mCQExamRetakeRequest.update({
       where: { id: existing.id },
-      data: { status: 'pending', reason: reason || null, reviewedBy: null, reviewedAt: null },
+      data: { status: 'PENDING', reason: reason || null, reviewedBy: null, reviewedAt: null },
     })
     return NextResponse.json({ success: true, data: { request: updated } })
   }
@@ -1745,7 +1746,7 @@ async function handleRequestRetake(body: Record<string, unknown>, request: NextR
       userId: auth.user.id,
       setId,
       reason: reason || null,
-      status: 'pending',
+      status: 'PENDING',
     },
   })
 

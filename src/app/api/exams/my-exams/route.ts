@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { apiError } from '@/lib/api-utils'
+import { toDecimal } from '@/lib/decimal'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
     const data = exams.map((exam) => {
       const attemptCount = exam.results.length
       const scores = exam.results.map((r) =>
-        r.totalMarks > 0 ? (r.score / r.totalMarks) * 100 : 0
+        toDecimal(r.totalMarks) > 0 ? (toDecimal(r.score) / toDecimal(r.totalMarks)) * 100 : 0
       )
       const highestScore = scores.length > 0 ? Math.max(...scores) : 0
       const averageScore =

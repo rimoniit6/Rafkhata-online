@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
     const [monthlyPayments, monthlySignups, topCourseSales, totalStudents] = await Promise.all([
       db.payment.findMany({
-        where: { status: 'approved', createdAt: { gte: sixMonthsAgo } },
+        where: { status: 'APPROVED', createdAt: { gte: sixMonthsAgo } },
         select: { amount: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       db.user.count({ where: { role: 'STUDENT' } }),
     ])
 
-    const monthlyRevenue = aggregateMonthly(monthlyPayments.map((p) => ({ date: p.createdAt, value: p.amount })))
+    const monthlyRevenue = aggregateMonthly(monthlyPayments.map((p) => ({ date: p.createdAt, value: Number(p.amount) })))
     const monthlyStudents = aggregateMonthly(monthlySignups.map((u) => ({ date: u.createdAt, value: 1 })))
 
     const forecastRev = simpleForecast(monthlyRevenue)

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Progress } from '@/components/ui/progress'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { cn, toBengaliNumerals } from '@/lib/utils'
 
 interface ProgressIndicatorProps {
@@ -22,7 +22,7 @@ export default function ProgressIndicator({
   className,
   size = 'sm',
 }: ProgressIndicatorProps) {
-  const { user } = useAuthStore()
+  const user = useAuthUser()
   const [fetchedProgress, setFetchedProgress] = useState<number | null>(null)
 
   // Use initialProgress if provided, otherwise use fetched value, fallback to 0

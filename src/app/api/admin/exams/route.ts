@@ -3,6 +3,7 @@ import { apiResponse, paginatedApiResponse, apiError, withAdmin, parseIdsParam, 
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { toDecimal } from '@/lib/decimal'
 
 const createExamSchema = z.object({
   title: z.string().min(1, 'পরীক্ষার নাম আবশ্যক'),
@@ -16,7 +17,7 @@ const createExamSchema = z.object({
   marksPerMcq: z.number().min(0).optional(),
   negativeMarks: z.number().min(0).optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   isActive: z.boolean().optional(),
   status: z.string().optional(),
   instructions: z.string().nullable().optional(),
@@ -96,10 +97,10 @@ export async function POST(request: Request) {
     const exam = await db.exam.create({
       data: {
         title, description: description || null, classLevel, subjectId: subjectId || null,
-        chapterIds: chapterIds || null, type, duration,
+        chapterIds: chapterIds || null, type: type as 'MCQ' | 'CQ' | 'MIXED', duration,
         totalMarks: totalMarks ?? 0, marksPerMcq: marksPerMcq ?? 1, negativeMarks: negativeMarks ?? 0,
         isPremium: isPremium ?? false, price: price ?? 0, isActive: isActive ?? true,
-        status: status ?? 'draft', instructions: instructions || null,
+        status: (status ?? 'DRAFT') as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED', instructions: instructions || null,
         startsAt: startsAt ? new Date(startsAt) : null,
         endsAt: endsAt ? new Date(endsAt) : null,
         questions: questions && questions.length > 0
@@ -110,7 +111,7 @@ export async function POST(request: Request) {
     })
 
     if (exam.totalMarks === 0 && exam.questions.length > 0) {
-      const calcMarks = exam.questions.reduce((sum, q) => sum + q.marks, 0)
+      const calcMarks = exam.questions.reduce((sum, q) => sum + toDecimal(q.marks), 0)
       await db.exam.update({ where: { id: exam.id }, data: { totalMarks: calcMarks } })
       exam.totalMarks = calcMarks
     }
@@ -156,7 +157,7 @@ export async function PUT(request: Request) {
             questionType: q.questionType, questionId: q.questionId, marks: q.marks || 0, order: q.order || 0,
           })),
         }
-        updateFields.totalMarks = questions.reduce((sum: number, q: { marks: number }) => sum + (q.marks || 0), 0)
+        updateFields.totalMarks = questions.reduce((sum: number, q: { marks: number }) => sum + toDecimal(q.marks || 0), 0)
       }
     }
 

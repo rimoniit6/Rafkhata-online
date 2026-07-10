@@ -10,7 +10,7 @@ export default function NoticeBar() {
   const { data: notices = [] } = useNotices(10)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [dismissed, setDismissed] = useState(false)
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
 
   // Auto-rotate notices every 5 seconds
   useEffect(() => {

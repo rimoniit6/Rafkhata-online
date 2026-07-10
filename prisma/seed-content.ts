@@ -58,7 +58,7 @@ async function seedContent() {
       answer2: 'স্লাইড ক্যালিপার্সের লঘিষ্ঠ গণন = ০.০১ cm বা ০.১ mm',
       answer3: 'উপযুক্ত যন্ত্রপাতি ব্যবহার ও একাধিকবার মাপ নিয়ে গড় বের করে নির্ভুলতা বাড়ানো যায়।',
       answer4: 'দৈর্ঘ্যের SI একক মিটার (m)',
-      board: 'dhaka', year: '2024', difficulty: 'medium', isPremium: false,
+      board: 'dhaka', year: '2024', difficulty: 'MEDIUM', isPremium: false,
     },
     // SSC Chemistry - Rajshahi Board 2023 (premium)
     {
@@ -72,7 +72,7 @@ async function seedContent() {
       answer2: 'CaCO₃ → CaO + CO₂ (ইতিমধ্যে সমন্বিত)',
       answer3: '100g CaCO₃ = 1 mole, 1 mole CaCO₃ থেকে 1 mole CaO = 56g',
       answer4: '1 mole CO₂ = 22.4 L STP তে',
-      board: 'rajshahi', year: '2023', difficulty: 'hard', isPremium: true,
+      board: 'rajshahi', year: '2023', difficulty: 'HARD', isPremium: true,
     },
     // SSC Math - Dhaka Board 2024
     {
@@ -86,7 +86,7 @@ async function seedContent() {
       answer2: 'A ∪ B = {1, 2, 3, 5, 10, 15}',
       answer3: 'A ∩ B = {1, 5}',
       answer4: 'n(A)=4, n(B)=4, n(A∩B)=2, n(A∪B)=6 ; 4+4-2 = 6 (প্রমাণিত)',
-      board: 'dhaka', year: '2024', difficulty: 'medium', isPremium: false,
+      board: 'dhaka', year: '2024', difficulty: 'MEDIUM', isPremium: false,
     },
     // HSC Physics - Dhaka Board 2024 (premium)
     {
@@ -100,7 +100,7 @@ async function seedContent() {
       answer2: 'cosθ = (F₁·F₂)/(|F₁||F₂|) = (15-8)/(5×√29) = 7/(5√29)',
       answer3: 'tanα = 2/8 = 0.25; α = tan⁻¹(0.25)',
       answer4: 'F₁ বরাবর একক ভেক্টর = (3i+4j)/5',
-      board: 'dhaka', year: '2024', difficulty: 'hard', isPremium: true,
+      board: 'dhaka', year: '2024', difficulty: 'HARD', isPremium: true,
     },
   ]
 
@@ -122,7 +122,7 @@ async function seedContent() {
           answer1: cq.answer1, answer2: cq.answer2,
           answer3: cq.answer3, answer4: cq.answer4,
           chapterId: chapter.id, classLevel: cq.classSlug, subjectId: subject.id,
-          difficulty: cq.difficulty, isPremium: cq.isPremium,
+          difficulty: cq.difficulty as 'EASY' | 'MEDIUM' | 'HARD', isPremium: cq.isPremium,
           price: cq.isPremium ? 20 : 0,
           board: cq.board, year: cq.year,
           isActive: true,
@@ -150,7 +150,7 @@ async function seedContent() {
           originalPrice: 0,
           isPremium: false,
           totalSets: 2,
-          status: 'published',
+          status: 'PUBLISHED',
           isActive: true,
           order: 1,
         },
@@ -182,7 +182,7 @@ async function seedContent() {
             marksPerQ: 5,
             totalMarks: cqs.length * 5,
             totalQuestions: cqs.length,
-            status: 'published',
+            status: 'PUBLISHED',
             allowRetake: false,
             order: setNum + 1,
           },
@@ -195,7 +195,7 @@ async function seedContent() {
               cqId: cqs[q].id,
               marks: 5,
               order: q + 1,
-              type: 'cq',
+              type: 'CQ',
               subMarks: [1, 1, 1.5, 1.5],
             },
           })
@@ -221,7 +221,7 @@ async function seedContent() {
           originalPrice: 199,
           isPremium: true,
           totalSets: 2,
-          status: 'published',
+          status: 'PUBLISHED',
           isActive: true,
           order: 2,
         },
@@ -253,7 +253,7 @@ async function seedContent() {
               answer2: 's = ut + ½at²',
               answer3: 'বেগ-সময় লেখচিত্র একটি সরলরেখা হবে।',
               answer4: 'লেখচিত্রের ঢাল = ত্বরণ',
-              difficulty: 'medium', isPremium: true,
+              difficulty: 'MEDIUM', isPremium: true,
             },
             {
               uddeepok: `একটি ${chapter.name} বিষয়ক আরেকটি উদ্দীপক। F = ma সূত্রটি বিবেচনা করো।`,
@@ -265,7 +265,7 @@ async function seedContent() {
               answer2: 'বলের সাথে ত্বরণের সম্পর্ক সমানুপাতিক।',
               answer3: 'ভরবেগের পরিবর্তনের হার = বল',
               answer4: '1 N = 1 kg × 1 m/s²',
-              difficulty: 'medium', isPremium: true,
+              difficulty: 'MEDIUM', isPremium: true,
             },
           ]
 
@@ -277,6 +277,7 @@ async function seedContent() {
                   ...cq,
                   chapterId: chapter.id, classLevel: 'hsc', subjectId: hscPhysics.id,
                   price: 0, isActive: true,
+                  difficulty: cq.difficulty as 'EASY' | 'MEDIUM' | 'HARD',
                 },
               })
               cqs.push(created)
@@ -297,7 +298,7 @@ async function seedContent() {
             marksPerQ: 10,
             totalMarks: cqs.length * 10,
             totalQuestions: cqs.length,
-            status: 'published',
+            status: 'PUBLISHED',
             allowRetake: false,
             order: setNum + 1,
           },
@@ -310,7 +311,7 @@ async function seedContent() {
               cqId: cqs[q].id,
               marks: 10,
               order: q + 1,
-              type: 'cq',
+              type: 'CQ',
               subMarks: [2, 2, 3, 3],
             },
           })
@@ -335,7 +336,7 @@ async function seedContent() {
         price: 0,
         originalPrice: 0,
         classLevel: 'ssc',
-        type: 'mixed',
+        type: 'MIXED',
         isActive: true,
         order: 2,
       },
@@ -391,7 +392,7 @@ async function seedContent() {
         originalPrice: 0,
         isPremium: false,
         totalSets: 1,
-        status: 'published',
+        status: 'PUBLISHED',
         isActive: true,
         order: 2,
       },
@@ -414,7 +415,7 @@ async function seedContent() {
           marksPerQ: 1,
           totalMarks: freeMcqs.length,
           totalQuestions: freeMcqs.length,
-          status: 'published',
+          status: 'PUBLISHED',
           order: 1,
         },
       })
@@ -448,14 +449,14 @@ async function seedContent() {
           title: 'এসএসসি পদার্থবিজ্ঞান CQ মডেল টেস্ট (প্রিমিয়াম)',
           classLevel: 'ssc',
           subjectId: sscPhysics.id,
-          type: 'mixed',
+          type: 'MIXED',
           duration: 60,
           totalMarks: 30,
           marksPerMcq: 1,
           negativeMarks: 0.25,
           isPremium: true,
           price: 50,
-          status: 'published',
+          status: 'PUBLISHED',
           isActive: true,
           description: 'সম্পূর্ণ মডেল টেস্ট MCQ ও CQ উভয় অংশসহ',
           instructions: 'MCQ অংশে ২০টি প্রশ্ন থাকবে। প্রতিটি ভুল উত্তরের জন্য ০.২৫ নম্বর কাটা যাবে। CQ অংশে ২টি সৃজনশীল প্রশ্ন থাকবে।',
@@ -539,7 +540,7 @@ async function seedContent() {
           originalPrice: 149,
           isPremium: true,
           totalSets: 2,
-          status: 'published',
+          status: 'PUBLISHED',
           isActive: true,
           order: 3,
         },
@@ -571,7 +572,7 @@ async function seedContent() {
             marksPerQ: 1,
             totalMarks: chapterMcqs.length,
             totalQuestions: chapterMcqs.length,
-            status: 'published',
+            status: 'PUBLISHED',
             order: setNum + 1,
           },
         })

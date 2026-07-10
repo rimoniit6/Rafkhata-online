@@ -41,7 +41,6 @@ Upload,
 XCircle,
 } from 'lucide-react'
 import React,{ useCallback,useEffect,useRef,useState } from 'react'
-import * as XLSX from 'xlsx'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -128,7 +127,9 @@ export default function BulkImportDialog({
       fetch('/api/admin/classes')
         .then((res) => res.json())
         .then((json) => setClasses(Array.isArray(json.data) ? json.data : []))
-        .catch(() => {})
+        .catch((err) => {
+          console.error('[BulkImport] Failed to fetch classes:', err)
+        })
     }
   }, [open])
 
@@ -138,7 +139,9 @@ export default function BulkImportDialog({
       fetch(`/api/admin/subjects?classId=${classId}`)
         .then((res) => res.json())
         .then((json) => setSubjects(Array.isArray(json.data) ? json.data : []))
-        .catch(() => {})
+        .catch((err) => {
+          console.error('[BulkImport] Failed to fetch subjects:', err)
+        })
       setSubjectId('')
       setChapterId('')
     } else {
@@ -153,7 +156,9 @@ export default function BulkImportDialog({
       fetch(`/api/admin/chapters?subjectId=${subjectId}`)
         .then((res) => res.json())
         .then((json) => setChapters(Array.isArray(json.data) ? json.data : []))
-        .catch(() => {})
+        .catch((err) => {
+          console.error('[BulkImport] Failed to fetch chapters:', err)
+        })
       setChapterId('')
     } else {
       setChapters([])
@@ -218,7 +223,8 @@ export default function BulkImportDialog({
   }
 
   // ─── Generate demo file ─────────────────────────────────────
-  const downloadDemoFile = () => {
+  const downloadDemoFile = async () => {
+    const XLSX = await import('xlsx')
     let data: Record<string, string | number | boolean>[]
     let filename: string
 

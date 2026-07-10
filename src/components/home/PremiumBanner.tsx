@@ -13,7 +13,7 @@ function formatBengaliPrice(amount: number): string {
 const defaultFeatures = ['প্রিমিয়াম লেকচার ও কোর্স', 'বিস্তারিত MCQ ব্যাখ্যা', 'সৃজনশীল প্রশ্নের সমাধান', 'বিশেষ সাজেশন ও গাইড', 'সকল বোর্ড প্রশ্ন সমাধান']
 
 export default function PremiumBanner() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { config } = useSiteConfig()
   const { data: prices } = usePremiumPrices()
   const minContentPrice = prices?.minContentPrice ?? null

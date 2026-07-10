@@ -4,6 +4,7 @@ import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import { parseAnalyticsDateRange } from '@/lib/analytics-date-range'
 import type { CourseAnalytics } from '@/types/analytics'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -49,7 +50,7 @@ export async function GET(request: Request) {
         db.payment.findMany({
           where: {
             contentType: 'course',
-            status: 'approved',
+            status: 'APPROVED',
             createdAt: { gte: fromDate, lte: toDate },
           },
           select: { contentId: true, amount: true },
@@ -62,7 +63,7 @@ export async function GET(request: Request) {
     const revenueByCourseMap = new Map<string, number>()
     coursePayments.forEach(p => {
       const key = p.contentId ?? ''
-      revenueByCourseMap.set(key, (revenueByCourseMap.get(key) || 0) + p.amount)
+      revenueByCourseMap.set(key, (revenueByCourseMap.get(key) || 0) + toDecimal(p.amount))
     })
 
     const courseStats = courses.map(c => ({

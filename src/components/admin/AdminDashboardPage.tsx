@@ -30,7 +30,15 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { Stats } from './AdminDashboardCharts'
 
-const AdminDashboardCharts = dynamic(() => import('./AdminDashboardCharts'), { ssr: false })
+const AdminDashboardCharts = dynamic(() => import('./AdminDashboardCharts'), {
+  ssr: false,
+  loading: () => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="h-[300px] rounded-xl bg-muted animate-pulse" />
+      <div className="h-[300px] rounded-xl bg-muted animate-pulse" />
+    </div>
+  ),
+})
 
 const METHOD_LABELS: Record<string, string> = {
   bkash: 'বিকাশ',

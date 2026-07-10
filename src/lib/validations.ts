@@ -3,8 +3,8 @@ import { z } from 'zod'
 // ============ PAYMENT SCHEMAS ============
 
 export const createPaymentSchema = z.object({
-  amount: z.number().min(0, 'পরিমাণ ০ বা তার বেশি হতে হবে'),
-  method: z.enum(['bkash', 'nagad', 'rocket'] as const, { message: 'অবৈধ পেমেন্ট মেথড' }),
+  amount: z.coerce.number().min(0, 'পরিমাণ ০ বা তার বেশি হতে হবে'),
+  method: z.enum(['BKASH', 'NAGAD', 'ROCKET'] as const, { message: 'অবৈধ পেমেন্ট মেথড' }),
   transactionId: z.string().min(1, 'ট্রানজেকশন আইডি প্রয়োজন').max(100),
   paymentNumber: z.string().min(1, 'পেমেন্ট নম্বর প্রয়োজন').max(20),
   screenshot: z.string().optional(),
@@ -17,7 +17,7 @@ export const createPaymentSchema = z.object({
 
 export const reviewPaymentSchema = z.object({
   id: z.string().min(1, 'পেমেন্ট ID আবশ্যক'),
-  status: z.enum(['approved', 'rejected'] as const, { message: 'স্ট্যাটাস approved বা rejected হতে হবে' }),
+  status: z.enum(['APPROVED', 'REJECTED'] as const, { message: 'স্ট্যাটাস APPROVED বা REJECTED হতে হবে' }),
   adminNote: z.string().optional(),
 })
 
@@ -39,9 +39,9 @@ export const mcqSchema = z.object({
   chapterId: z.string().min(1, 'অধ্যায় নির্বাচন করুন'),
   classLevel: z.string().min(1, 'শ্রেণি নির্বাচন করুন'),
   subjectId: z.string().min(1, 'বিষয় নির্বাচন করুন'),
-  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
   isPremium: z.boolean().default(false),
-  price: z.number().min(0).default(0),
+  price: z.coerce.number().min(0).default(0),
 })
 
 export const cqSchema = z.object({
@@ -57,9 +57,9 @@ export const cqSchema = z.object({
   chapterId: z.string().min(1, 'অধ্যায় নির্বাচন করুন'),
   classLevel: z.string().min(1, 'শ্রেণি নির্বাচন করুন'),
   subjectId: z.string().min(1, 'বিষয় নির্বাচন করুন'),
-  difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
   isPremium: z.boolean().default(false),
-  price: z.number().min(0).default(0),
+  price: z.coerce.number().min(0).default(0),
 })
 
 // ============ USER SCHEMAS ============
@@ -101,7 +101,7 @@ export const adminContentSchema = z.object({
   title: z.string().min(1, 'শিরোনাম প্রয়োজন').max(500).optional(),
   isActive: z.boolean().optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   order: z.number().int().min(0).optional(),
 })
 

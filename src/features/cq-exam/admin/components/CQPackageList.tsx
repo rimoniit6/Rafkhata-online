@@ -3,6 +3,7 @@
 import Image from 'next/image'
 import { Plus, Search, FileText, GraduationCap, BookOpen, Users, Power, Edit, Trash2, BookMarked } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { toDecimal } from '@/lib/decimal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -162,7 +163,7 @@ export function CQPackageList({
       ) : (
         <div className="space-y-3">
           {packages.map((pkg) => {
-            const discount = pkg.originalPrice > 0 ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100) : 0
+            const discount = toDecimal(pkg.originalPrice) > 0 ? Math.round(((toDecimal(pkg.originalPrice) - toDecimal(pkg.price)) / toDecimal(pkg.originalPrice)) * 100) : 0
 
             return (
               <Card key={pkg.id} className={cn(

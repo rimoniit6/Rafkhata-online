@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouterStore } from '@/store/router'
+import { useCurrentRoute } from '@/store/router'
 import { getSiteUrl } from '@/lib/seo'
 import { sanitizeHtml } from '@/lib/sanitize'
 
@@ -131,7 +131,7 @@ export function ArticleJsonLd({
 }
 
 export default function GlobalStructuredData() {
-  const { currentRoute } = useRouterStore()
+  const currentRoute = useCurrentRoute()
 
   useEffect(() => {
     const existing = document.getElementById('seo-schema')

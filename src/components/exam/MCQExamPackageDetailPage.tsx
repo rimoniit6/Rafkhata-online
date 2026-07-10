@@ -26,8 +26,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useShallowAuth } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { fetchCsrfToken } from '@/lib/api-client'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
@@ -305,8 +305,10 @@ function getDaysUntil(dateStr: string): number {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function MCQExamPackageDetailPage() {
-  const { params, goBack, navigate } = useRouterStore()
-  const { user, isAuthenticated } = useAuthStore()
+  const params = useRouteParams()
+  const goBack = useRouterStore((s) => s.goBack)
+  const navigate = useRouterStore((s) => s.navigate)
+  const { user, isAuthenticated } = useShallowAuth()
   const { toast } = useToast()
 
   const packageId = params.packageId || ''

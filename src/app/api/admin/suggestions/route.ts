@@ -15,7 +15,7 @@ const createSuggestionSchema = z.object({
   thumbnail: z.string().nullable().optional(),
   pdfUrl: z.string().nullable().optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   order: z.number().min(0).optional(),
   isActive: z.boolean().optional(),
 })

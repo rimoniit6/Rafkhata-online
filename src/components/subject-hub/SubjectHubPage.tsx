@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { fetchJSON } from '@/lib/fetch-json'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import {
 ArrowRight,
 Award,
@@ -84,7 +84,8 @@ const CONTENT_TYPES = [
 // ─── SubjectHubPage ───
 
 export default function SubjectHubPage() {
-  const { params, navigate } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
   const { classLevelLabels, metadata } = useHierarchyMetadata()
   const [search, setSearch] = useState('')
 

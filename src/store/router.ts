@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
+import { routeToUrl } from '@/lib/urls'
 
 const MAX_HISTORY = 50
 let _scrollTimeout: ReturnType<typeof setTimeout> | null = null
@@ -30,7 +31,6 @@ export type RoutePath =
   | 'create-exam'
   | 'exam-center'
   | 'exam-session'
-  | 'exam-result'
   | 'mcq-exam-package-list'
   | 'mcq-exam-package-detail'
   | 'mcq-exam-history'
@@ -220,7 +220,11 @@ export const useRouterStore = create<RouterState>()((set, get) => ({
       params,
       history: [...history.slice(-(MAX_HISTORY - 1)), { route: currentRoute, params: currentParams }],
     })
-    _onNavigate?.(route, params)
+    if (_onNavigate) {
+      _onNavigate(route, params)
+    } else if (typeof window !== 'undefined') {
+      window.location.href = routeToUrl(route, params)
+    }
     if (params.scrollTarget) {
       if (_scrollTimeout) clearTimeout(_scrollTimeout)
       _scrollTimeout = setTimeout(() => {

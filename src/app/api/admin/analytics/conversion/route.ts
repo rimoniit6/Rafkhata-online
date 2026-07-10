@@ -46,7 +46,7 @@ export async function GET(request: Request) {
       }).then(r => r.length),
       db.payment.groupBy({
         by: ['userId'],
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
       }).then(r => r.length),
       db.courseEnrollment.groupBy({
         by: ['userId'],

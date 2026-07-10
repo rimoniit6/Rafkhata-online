@@ -25,7 +25,7 @@ function getClassGradient(slug: string, classLevels: Array<{ slug: string; gradi
 // ─── Component ───────────────────────────────────────────────────────
 
 export default function BoardQuestionSection() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { config } = useSiteConfig()
   const [selectedClass, setSelectedClass] = useState<string | null>(null)
   const { data: filterData = null, isLoading: loading } = useBoardQuestionFilters()

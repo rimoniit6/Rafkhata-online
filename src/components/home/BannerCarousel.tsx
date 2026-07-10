@@ -18,7 +18,7 @@ import Image from 'next/image'
 import { useCallback,useEffect,useState } from 'react'
 
 export default function BannerCarousel() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { data: banners = [], isLoading: loading } = useBanners()
   const [api, setApi] = useState<CarouselApi>()
   const [current, setCurrent] = useState(0)

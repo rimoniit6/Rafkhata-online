@@ -3,6 +3,7 @@ import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import type { CqAnalytics } from '@/types/analytics'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -35,9 +36,9 @@ export async function GET(request: Request) {
     const totalSubmissions = submissions.length
 
     // averageMarks
-    const scoredSubmissions = submissions.filter(s => s.totalMarks > 0)
+    const scoredSubmissions = submissions.filter(s => toDecimal(s.totalMarks) > 0)
     const averageMarks = scoredSubmissions.length > 0
-      ? Math.round(scoredSubmissions.reduce((sum, s) => sum + s.obtainedMarks, 0) / scoredSubmissions.length * 100) / 100
+      ? Math.round(scoredSubmissions.reduce((sum, s) => sum + toDecimal(s.obtainedMarks), 0) / scoredSubmissions.length * 100) / 100
       : 0
 
     // teacherReviewTime: avg time between submittedAt and gradedAt (in hours)
@@ -52,12 +53,12 @@ export async function GET(request: Request) {
       : 0
 
     // pendingReview: count where status='submitted' (submitted but not graded)
-    const pendingReview = submissions.filter(s => s.status === 'submitted').length
+    const pendingReview = submissions.filter(s => s.status === 'SUBMITTED').length
 
     // passRate / failRate: percentage with obtainedMarks >= 40% of totalMarks
-    const meaningful = submissions.filter(s => s.totalMarks > 0)
-    const passed = meaningful.filter(s => s.obtainedMarks >= s.totalMarks * 0.4).length
-    const failed = meaningful.filter(s => s.obtainedMarks < s.totalMarks * 0.4).length
+    const meaningful = submissions.filter(s => toDecimal(s.totalMarks) > 0)
+    const passed = meaningful.filter(s => toDecimal(s.obtainedMarks) >= toDecimal(s.totalMarks) * 0.4).length
+    const failed = meaningful.filter(s => toDecimal(s.obtainedMarks) < toDecimal(s.totalMarks) * 0.4).length
     const passRate = meaningful.length > 0 ? Math.round((passed / meaningful.length) * 10000) / 100 : 0
     const failRate = meaningful.length > 0 ? Math.round((failed / meaningful.length) * 10000) / 100 : 0
 

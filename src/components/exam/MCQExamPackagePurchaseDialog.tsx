@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card,CardContent } from '@/components/ui/card'
+import { toDecimal } from '@/lib/decimal'
 import {
 Dialog,
 DialogClose,
@@ -17,7 +18,7 @@ import { useCsrf,withCsrfHeaders } from '@/hooks/use-csrf'
 import { useToast } from '@/hooks/use-toast'
 import { useUploadThing } from '@/lib/uploadthing/client'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useAuthStore, useIsAuthenticated } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
@@ -146,8 +147,8 @@ export default function MCQExamPackagePurchaseDialog({
   onOpenChange,
   packageDetail,
 }: MCQExamPackagePurchaseDialogProps) {
-  const { navigate } = useRouterStore()
-  const { isAuthenticated } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const isAuthenticated = useIsAuthenticated()
   const { toast } = useToast()
   const { token: csrfToken, refreshToken } = useCsrf()
 
@@ -377,8 +378,8 @@ export default function MCQExamPackagePurchaseDialog({
   // ─── Computed ───────────────────────────────────────────────────────────
 
   const discount =
-    packageDetail.originalPrice > packageDetail.price
-      ? Math.round(((packageDetail.originalPrice - packageDetail.price) / packageDetail.originalPrice) * 100)
+    toDecimal(packageDetail.originalPrice) > toDecimal(packageDetail.price)
+      ? Math.round(((toDecimal(packageDetail.originalPrice) - toDecimal(packageDetail.price)) / toDecimal(packageDetail.originalPrice)) * 100)
       : 0
 
   const sortedExamSets = [...packageDetail.examSets].sort((a, b) => a.order - b.order)

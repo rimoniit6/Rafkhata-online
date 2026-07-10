@@ -217,7 +217,7 @@ export async function GET(
 
     // Exam counts per chapter — single pass with chapterId→count map
     const allExams = await db.exam.findMany({
-      where: { isActive: true, status: 'published' },
+      where: { isActive: true, status: 'PUBLISHED' },
       select: { chapterIds: true },
     })
     const examCountMap = new Map<string, number>()

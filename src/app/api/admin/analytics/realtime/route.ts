@@ -30,7 +30,7 @@ export async function GET(request: Request) {
         where: { role: 'STUDENT', createdAt: { gte: todayStart } },
       }),
       db.payment.count({
-        where: { status: 'approved', createdAt: { gte: todayStart } },
+        where: { status: 'APPROVED', createdAt: { gte: todayStart } },
       }),
       db.courseEnrollment.count({
         where: { enrolledAt: { gte: todayStart } },

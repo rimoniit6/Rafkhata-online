@@ -32,7 +32,7 @@ export default function SearchBar({ className, expanded: controlledExpanded, onE
   const [showSuggestions, setShowSuggestions] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
 
   // DB-driven search suggestions via SiteConfig
   const { config } = useSiteConfig()

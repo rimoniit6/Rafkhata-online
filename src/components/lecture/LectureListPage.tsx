@@ -8,8 +8,8 @@ import { Card,CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getMessages } from '@/lib/messages'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useAuthUser } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
 AlertCircle,
@@ -58,8 +58,10 @@ interface PurchaseStatus {
 // ─── Main Component ─────────────────────────────────────────────
 
 export default function LectureListPage() {
-  const { params, navigate, goBack } = useRouterStore()
-  const { user } = useAuthStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const user = useAuthUser()
   const msg = getMessages()
 
   // Route params

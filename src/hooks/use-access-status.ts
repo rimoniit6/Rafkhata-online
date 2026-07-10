@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { api } from '@/lib/api-client'
 import type {
   BoardQuestionItem,
@@ -24,7 +24,7 @@ interface BundlesForApiResult {
 }
 
 export function useAccessStatus(questions: BoardQuestionItem[]): Record<string, AccessStatus> {
-  const { user } = useAuthStore()
+  const user = useAuthUser()
   const [accessMap, setAccessMap] = useState<Record<string, AccessStatus>>({})
   const fetchingRef = useRef(false)
   const prevQuestionsRef = useRef('')

@@ -41,11 +41,11 @@ export async function GET(request: Request) {
       }).then(r => new Set(r.map(x => x.userId))),
       db.payment.groupBy({
         by: ['userId'],
-        where: { status: 'approved' },
+        where: { status: 'APPROVED' },
       }).then(r => new Set(r.map(x => x.userId))),
       db.payment.groupBy({
         by: ['userId'],
-        where: { status: { in: ['pending', 'rejected'] } },
+        where: { status: { in: ['PENDING', 'REJECTED'] } },
       }).then(r => new Set(r.map(x => x.userId))),
       db.examResult.groupBy({
         by: ['userId'],

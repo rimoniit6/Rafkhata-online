@@ -3,6 +3,7 @@ import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import { parseAnalyticsDateRange } from '@/lib/analytics-date-range'
+import { toDecimal } from '@/lib/decimal'
 import { cacheControlHeader } from '@/lib/analytics-cache'
 
 export async function GET(request: Request) {
@@ -44,7 +45,7 @@ export async function GET(request: Request) {
       }),
       // Student lifetime value = total approved revenue / total students.
       db.payment.aggregate({
-        where: { status: 'approved' },
+        where: { status: 'APPROVED' },
         _sum: { amount: true },
       }),
       // Average session duration from AnalyticsSession.
@@ -177,7 +178,7 @@ export async function GET(request: Request) {
 
     // --- studentLifetimeValue ---
     const studentLifetimeValue = totalStudents > 0
-      ? Math.round(((totalRevenueAgg._sum.amount || 0) / totalStudents) * 100) / 100
+      ? Math.round(((toDecimal(totalRevenueAgg._sum.amount || 0)) / totalStudents) * 100) / 100
       : 0
 
     // --- retentionCurve: day1/7/14/30/60/90 retention for the cohort signed up in-window ---

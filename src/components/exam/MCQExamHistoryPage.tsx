@@ -15,7 +15,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useShallowAuth } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
@@ -519,8 +519,9 @@ function PerformanceTrend({ trend }: PerformanceTrendProps) {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function MCQExamHistoryPage() {
-  const { navigate, goBack } = useRouterStore()
-  const { isAuthenticated, user } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const { user, isAuthenticated } = useShallowAuth()
   const { toast: _toast } = useToast()
 
   // State

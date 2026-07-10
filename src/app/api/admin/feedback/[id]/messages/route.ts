@@ -78,7 +78,7 @@ export async function POST(
       }),
       db.userFeedback.update({
         where: { id },
-        data: { status: 'replied', updatedAt: new Date() },
+        data: { status: 'REPLIED', updatedAt: new Date() },
       }),
     ])
 

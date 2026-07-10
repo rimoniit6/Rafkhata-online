@@ -102,7 +102,7 @@ export async function POST(request: Request) {
         pdfUrl: pdfUrl || null,
         linkUrl: linkUrl || null,
         linkLabel: linkLabel || null,
-        type: noticeType,
+        type: (noticeType || 'TEXT').toUpperCase() as 'TEXT' | 'PDF' | 'LINK',
         thumbnail: thumbnail || null,
         classLevel: classLevel || null,
         isPinned: isPinned ?? false,

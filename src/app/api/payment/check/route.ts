@@ -126,7 +126,7 @@ export async function GET(request: Request) {
         userId,
         contentType: { in: contentTypesToCheck },
         contentId,
-        status: 'approved',
+        status: 'APPROVED',
         isActive: true,
       },
       select: {
@@ -140,7 +140,7 @@ export async function GET(request: Request) {
         userId,
         contentType: { in: contentTypesToCheck },
         contentId,
-        status: 'pending',
+        status: 'PENDING',
       },
       select: {
         id: true,
@@ -175,7 +175,7 @@ export async function GET(request: Request) {
             userId,
             contentType: 'bundle',
             contentId: { in: bundleIds },
-            status: 'approved',
+            status: 'APPROVED',
             isActive: true,
           },
           select: {
@@ -203,7 +203,7 @@ export async function GET(request: Request) {
             userId,
             contentType: 'bundle',
             contentId: { in: bundleIds },
-            status: 'pending',
+            status: 'PENDING',
           },
           select: { id: true },
         })
@@ -236,7 +236,7 @@ export async function GET(request: Request) {
                 userId,
                 contentType: bundleItem.contentType,
                 contentId: bundleItem.contentId,
-                status: 'approved',
+                status: 'APPROVED',
                 isActive: true,
               },
             })

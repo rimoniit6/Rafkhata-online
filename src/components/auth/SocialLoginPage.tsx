@@ -5,14 +5,15 @@ import { Card,CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
-import { useAuthStore } from '@/store/auth'
+import { useAuthStore, useAuthLoading } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { Chrome,GraduationCap,Lock,Mail,Shield } from 'lucide-react'
 import { useState } from 'react'
 
 export default function SocialLoginPage() {
-  const { login: _login, setLoading, isLoading } = useAuthStore()
-  const { navigate } = useRouterStore()
+  const isLoading = useAuthLoading()
+  const setLoading = useAuthStore((s) => s.setLoading)
+  const navigate = useRouterStore((s) => s.navigate)
   const [showAdminLogin, setShowAdminLogin] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

@@ -60,7 +60,8 @@ const typeBadgeConfig: Record<
 // ─── Component ──────────────────────────────────────────────────
 
 export default function NoticesPage() {
-  const { navigate, goBack } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
   const { classOptions, classLevelLabels } = useHierarchyMetadata()
   const allClassOptions = [{ value: 'all', label: 'সকল শ্রেণি' }, ...classOptions]
   const [loading, setLoading] = useState(true)

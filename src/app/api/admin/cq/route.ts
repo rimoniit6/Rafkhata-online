@@ -33,7 +33,7 @@ const createCqSchema = z.object({
   topic: z.string().nullable().optional(),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   tags: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 })
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
         answer4: answer4 || '', answer4Image: answer4Image || null,
         chapterId, classLevel, subjectId,
         board: board || null, year: year || null, topic: topic || null,
-        difficulty: difficulty || 'medium',
+        difficulty: (difficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD',
         isPremium: isPremium ?? false, price: price ?? 0,
         tags: tags || null, isActive: isActive ?? true,
       },

@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -33,11 +34,11 @@ export async function GET(request: Request) {
       db.classCategory.count({ where: { isActive: true } }),
       db.subject.count({ where: { isActive: true } }),
       db.chapter.count({ where: { isActive: true } }),
-      db.payment.count({ where: { status: 'pending' } }),
+      db.payment.count({ where: { status: 'PENDING' } }),
       db.payment.count(),
-      db.payment.count({ where: { status: 'approved' } }),
+      db.payment.count({ where: { status: 'APPROVED' } }),
       db.payment.aggregate({
-        where: { status: 'approved' },
+        where: { status: 'APPROVED' },
         _sum: { amount: true },
       }),
       db.user.count({
@@ -66,7 +67,7 @@ export async function GET(request: Request) {
 
     const payments = await db.payment.findMany({
       where: {
-        status: 'approved',
+        status: 'APPROVED',
         createdAt: { gte: sixMonthsAgo },
       },
       select: {
@@ -78,7 +79,7 @@ export async function GET(request: Request) {
     const monthlyRevenue: Record<string, number> = {}
     payments.forEach((payment) => {
       const monthKey = payment.createdAt.toISOString().slice(0, 7) // YYYY-MM
-      monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + payment.amount
+      monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + toDecimal(payment.amount)
     })
 
     return apiResponse({
@@ -101,7 +102,7 @@ export async function GET(request: Request) {
           total: totalPayments,
           pending: pendingPayments,
           approved: approvedPayments,
-          totalRevenue: totalRevenue._sum.amount || 0,
+          totalRevenue: toDecimal(totalRevenue._sum.amount || 0),
         },
         recentPayments,
         monthlyRevenue,

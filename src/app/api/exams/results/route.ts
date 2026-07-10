@@ -3,6 +3,7 @@ import { verifyAuth } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { apiError, applyRateLimit } from '@/lib/api-utils'
 import { apiLimiter } from '@/lib/rate-limit'
+import { toDecimal } from '@/lib/decimal'
 
 export async function POST(request: Request) {
   try {
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       return apiError('পরীক্ষা খুঁজে পাওয়া যায়নি', 404)
     }
 
-    if (!exam.isActive || exam.status !== 'published') {
+    if (!exam.isActive || exam.status !== 'PUBLISHED') {
       return apiError('এই পরীক্ষাটি বর্তমানে উপলব্ধ নয়', 400)
     }
 
@@ -85,8 +86,8 @@ export async function POST(request: Request) {
       else wrong++
     }
 
-    const marksPerMcq = exam.marksPerMcq ?? 1
-    const negativeMarks = exam.negativeMarks ?? 0
+    const marksPerMcq = toDecimal(exam.marksPerMcq ?? 1)
+    const negativeMarks = toDecimal(exam.negativeMarks ?? 0)
     const calculatedScore = correct * marksPerMcq - wrong * negativeMarks
     const totalMarks = examQuestions.length * marksPerMcq
 

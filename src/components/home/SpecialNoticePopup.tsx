@@ -14,7 +14,7 @@ export default function SpecialNoticePopup() {
   const { data: banners = [], isLoading: loading } = useBanners()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
 
   useEffect(() => {
     if (loading || banners.length === 0) return

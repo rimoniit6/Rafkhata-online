@@ -138,17 +138,29 @@ export default function AdminContentPurchasesPage() {
   const selection = useTableSelection(purchases)
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/content-purchases?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+    if (processing) return
+    setProcessing(true)
+    try {
+      const res = await fetch(`/api/admin/content-purchases?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const handleBulkDeactivate = async (ids: string[]) => {
-    const res = await fetch('/api/admin/content-purchases', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, isActive: false }),
-    })
-    if (res.ok) { toast({ title: 'নিষ্ক্রিয় করা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+    if (processing) return
+    setProcessing(true)
+    try {
+      const res = await fetch('/api/admin/content-purchases', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, isActive: false }),
+      })
+      if (res.ok) { toast({ title: 'নিষ্ক্রিয় করা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const columns: ColumnDef<PurchaseRecord>[] = [
@@ -242,12 +254,14 @@ export default function AdminContentPurchasesPage() {
       icon: <XCircle className="size-4" />,
       variant: 'destructive',
       handler: handleBulkDeactivate,
+      disabled: processing,
     },
     {
       label: 'মুছুন',
       icon: <Trash2 className="size-4" />,
       variant: 'destructive',
       handler: handleBulkDelete,
+      disabled: processing,
     },
   ]
 

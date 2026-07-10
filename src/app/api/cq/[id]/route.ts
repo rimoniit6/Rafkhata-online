@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { checkContentAccess } from '@/lib/access-control'
 import { apiError, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
+import { $Enums } from '@prisma/client'
 
 function transformCQ(cq: {
   id: string
@@ -27,6 +28,7 @@ function transformCQ(cq: {
   answer4Image?: string | null
   isPremium: boolean
   price: number
+  difficulty: $Enums.Difficulty
   board: string | null
   year: string | null
   chapterId: string
@@ -154,7 +156,7 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({ success: true, data: transformCQ(cq) })
+    return NextResponse.json({ success: true, data: transformCQ(cq as unknown as Parameters<typeof transformCQ>[0]) })
   } catch (error) {
     return handleApiError(error, 'Get CQ detail error')
   }

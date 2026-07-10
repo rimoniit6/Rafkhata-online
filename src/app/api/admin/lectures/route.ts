@@ -18,7 +18,7 @@ const createLectureSchema = z.object({
   duration: z.number().min(0).optional(),
   order: z.number().min(0).optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   isActive: z.boolean().optional(),
 })
 

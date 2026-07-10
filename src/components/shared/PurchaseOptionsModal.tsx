@@ -3,12 +3,13 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card,CardContent } from '@/components/ui/card'
+import { toDecimal } from '@/lib/decimal'
 import { Dialog,DialogClose,DialogContent,DialogHeader,DialogTitle } from '@/components/ui/dialog'
 import SafeImage from '@/components/ui/safe-image'
 import { useContentTypes } from '@/hooks/use-content-types'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useIsAuthenticated } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { motion } from 'framer-motion'
 import {
@@ -103,8 +104,8 @@ export default function PurchaseOptionsModal({
   contentPrice,
   classLevel,
 }: PurchaseOptionsModalProps) {
-  const { navigate } = useRouterStore()
-  const { isAuthenticated } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const isAuthenticated = useIsAuthenticated()
   const metadata = useHierarchyMetadata()
   const { contentTypesWithIcons, getLabel: _getLabel, getIcon } = useContentTypes()
 
@@ -177,8 +178,8 @@ export default function PurchaseOptionsModal({
         setPackages(d.packages || [])
         setHasBundles(d.hasBundles || false)
       }
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[PurchaseOptions] Failed to load purchase options:', err)
     } finally {
       setLoading(false)
     }
@@ -464,8 +465,8 @@ export default function PurchaseOptionsModal({
                                   </div>
                                   <div className="flex items-center justify-between mt-2">
                                     <div className="flex items-baseline gap-1.5">
-                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">৳{Math.round(bundle.price)}</span>
-                                      {bundle.originalPrice > bundle.price && (
+                                      <span className="font-bold text-emerald-600 dark:text-emerald-400">৳{Math.round(toDecimal(bundle.price))}</span>
+                                      {toDecimal(bundle.originalPrice) > toDecimal(bundle.price) && (
                                         <span className="text-xs text-muted-foreground line-through">৳{Math.round(bundle.originalPrice)}</span>
                                       )}
                                       <span className="text-[10px] text-muted-foreground">স্থায়ী</span>
@@ -603,8 +604,8 @@ export default function PurchaseOptionsModal({
                                     )}
                                     <div className="flex items-center justify-between mt-2">
                                       <div className="flex items-baseline gap-1.5">
-                                        <span className="font-bold text-teal-600 dark:text-teal-400">৳{Math.round(pkg.price)}</span>
-                                        {pkg.originalPrice > pkg.price && (
+                                        <span className="font-bold text-teal-600 dark:text-teal-400">৳{Math.round(toDecimal(pkg.price))}</span>
+                                        {toDecimal(pkg.originalPrice) > toDecimal(pkg.price) && (
                                           <span className="text-xs text-muted-foreground line-through">৳{Math.round(pkg.originalPrice)}</span>
                                         )}
                                       </div>

@@ -196,19 +196,31 @@ export default function AdminSubscriptionsPage() {
   }
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/subscriptions?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
-    else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+    if (processing) return
+    setProcessing(true)
+    try {
+      const res = await fetch(`/api/admin/subscriptions?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
+      else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const handleBulkToggle = async (ids: string[], isActive: boolean) => {
-    const res = await fetch('/api/admin/subscriptions', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, isActive }),
-    })
-    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
-    else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+    if (processing) return
+    setProcessing(true)
+    try {
+      const res = await fetch('/api/admin/subscriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, isActive }),
+      })
+      if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
+      else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const columns: ColumnDef<SubscriptionRecord>[] = [
@@ -312,16 +324,19 @@ export default function AdminSubscriptionsPage() {
       icon: <Trash2 className="size-4" />,
       variant: 'destructive',
       handler: handleBulkDelete,
+      disabled: processing,
     },
     {
       label: 'সক্রিয় করুন',
       icon: <Power className="size-4" />,
       handler: (ids) => handleBulkToggle(ids, true),
+      disabled: processing,
     },
     {
       label: 'নিষ্ক্রিয় করুন',
       icon: <XCircle className="size-4" />,
       handler: (ids) => handleBulkToggle(ids, false),
+      disabled: processing,
     },
   ]
 

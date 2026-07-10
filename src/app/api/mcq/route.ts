@@ -4,6 +4,7 @@ import { verifyAuth } from '@/lib/auth'
 import { apiError, withCsrf, applyRateLimit } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { apiLimiter } from '@/lib/rate-limit'
+import { $Enums } from '@prisma/client'
 
 // Transform raw MCQ Prisma object to frontend-expected format
 function transformMCQ(mcq: {
@@ -13,7 +14,7 @@ function transformMCQ(mcq: {
   optionB: string
   optionC: string
   optionD: string
-  correctAnswer: string
+  correctAnswer: $Enums.MCQAnswer
   explanation: string | null
   questionImage?: string | null
   optionAImage?: string | null
@@ -26,7 +27,7 @@ function transformMCQ(mcq: {
   subjectId: string
   isPremium: boolean
   price: number
-  difficulty: string
+  difficulty: $Enums.Difficulty
   board?: string | null
   year?: string | null
   chapter?: { id: string; name: string; slug: string } | null
@@ -52,7 +53,7 @@ function transformMCQ(mcq: {
     subjectId: mcq.subjectId || '',
     chapterId: mcq.chapterId || '',
     chapterName: mcq.chapter?.name || '',
-    difficulty: mcq.difficulty || 'medium',
+    difficulty: mcq.difficulty || 'MEDIUM',
     board: mcq.board || null,
     year: mcq.year || null,
   }
@@ -83,7 +84,7 @@ function transformMCQList(mcq: {
     subjectId: mcq.subjectId || '',
     chapterId: mcq.chapterId || '',
     chapterName: mcq.chapter?.name || '',
-    difficulty: mcq.difficulty || 'medium',
+    difficulty: mcq.difficulty || 'MEDIUM',
     board: mcq.board || null,
     year: mcq.year || null,
   }
@@ -152,7 +153,7 @@ export async function GET(request: Request) {
         db.mCQ.count({ where: { ...where, board: null } }),
       ])
 
-      const questions = mcqs.map(transformMCQList)
+      const questions = mcqs.map((mcq) => transformMCQList(mcq as unknown as Parameters<typeof transformMCQList>[0]))
       const totalPages = Math.ceil(total / listLimit)
 
       return NextResponse.json({
@@ -193,7 +194,7 @@ export async function GET(request: Request) {
 
       // Transform and remove correctAnswer from response for exam mode
       const examMcqs = shuffled.map(({ correctAnswer, explanation, ...rest }) => ({
-        ...transformMCQ({ ...rest, correctAnswer, explanation } as Parameters<typeof transformMCQ>[0]),
+        ...transformMCQ({ ...rest, correctAnswer, explanation } as unknown as Parameters<typeof transformMCQ>[0]),
         // In exam mode, don't send correctAnswer to client
         correctAnswer: '',
         hasExplanation: !!explanation,
@@ -243,7 +244,7 @@ export async function GET(request: Request) {
 
     // Transform to frontend-expected format
     const questions = mcqs.map((mcq) => {
-      const baseTransformed = transformMCQ(mcq)
+      const baseTransformed = transformMCQ(mcq as unknown as Parameters<typeof transformMCQ>[0])
       if (mcq.isPremium && !isAdmin) {
         const hasAccess = auth?.user ? !!accessMap.get(mcq.id)?.hasAccess : false
         if (!hasAccess) {
@@ -346,7 +347,7 @@ export async function POST(request: Request) {
         subjectId,
         board: board || null,
         year: year || null,
-        difficulty: difficulty || 'medium',
+        difficulty: difficulty || 'MEDIUM',
         isPremium: isPremium || false,
         price: price || 0,
         tags: tags || null,
@@ -354,7 +355,7 @@ export async function POST(request: Request) {
     })
 
     return NextResponse.json(
-      { message: 'MCQ সফলভাবে তৈরি হয়েছে', mcq: transformMCQ(mcq as Parameters<typeof transformMCQ>[0]) },
+      { message: 'MCQ সফলভাবে তৈরি হয়েছে', mcq: transformMCQ(mcq as unknown as Parameters<typeof transformMCQ>[0]) },
       { status: 201 }
     )
   } catch (error) {

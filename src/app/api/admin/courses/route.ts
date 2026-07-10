@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -194,10 +195,10 @@ export async function GET(request: Request) {
         let revenue = 0
         if (paymentIds.length > 0) {
           const payments = await           db.payment.findMany({
-            where: { id: { in: paymentIds }, status: 'approved' },
+            where: { id: { in: paymentIds }, status: 'APPROVED' },
             select: { amount: true },
           })
-          revenue = payments.reduce((sum, p) => sum + (p.amount || 0), 0)
+          revenue = payments.reduce((sum, p) => sum + toDecimal(p.amount || 0), 0)
         }
 
         const totalLessons = lessons.length
@@ -294,8 +295,8 @@ export async function GET(request: Request) {
         const [mcqSets, cqSets, completedMcqResults, completedCqSubmissions] = await Promise.all([
           mcqPackageIds.length ? db.mCQExamSet.findMany({ where: { packageId: { in: mcqPackageIds as string[] } }, select: { id: true } }) : [],
           cqPackageIds.length ? db.cQExamSet.findMany({ where: { packageId: { in: cqPackageIds as string[] } }, select: { id: true } }) : [],
-          mcqPackageIds.length ? db.mCQExamSetResult.count({ where: { userId, set: { packageId: { in: mcqPackageIds as string[] } }, status: 'completed' } }) : 0,
-          cqPackageIds.length ? db.cQExamSubmission.count({ where: { userId, set: { packageId: { in: cqPackageIds as string[] } }, status: { in: ['submitted', 'graded', 'published'] } } }) : 0,
+          mcqPackageIds.length ? db.mCQExamSetResult.count({ where: { userId, set: { packageId: { in: mcqPackageIds as string[] } }, status: 'COMPLETED' as const } }) : 0,
+          cqPackageIds.length ? db.cQExamSubmission.count({ where: { userId, set: { packageId: { in: cqPackageIds as string[] } }, status: { in: ['SUBMITTED', 'GRADED', 'PUBLISHED'] } } }) : 0,
         ])
 
         const totalMcqExams = mcqSets.length

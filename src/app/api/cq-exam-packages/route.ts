@@ -4,6 +4,7 @@ import { verifyAuth } from '@/lib/auth'
 import { getExamTimeMs, getDhakaNow } from '@/lib/date-utils'
 import { NextResponse } from 'next/server'
 import { resolveCourseLayerAccess } from '@/lib/course-access-resolver'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   try {
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
       const page = parseInt(searchParams.get('page') || '1')
       const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
 
-      const where: Record<string, unknown> = { status: 'published', isActive: true }
+      const where: Record<string, unknown> = { status: 'PUBLISHED', isActive: true }
       if (classSlug) {
         where.class = { slug: classSlug }
       }
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
         include: {
           class: { select: { id: true, name: true, slug: true } },
           examSets: {
-            where: { status: 'published' },
+            where: { status: 'PUBLISHED' },
             include: { _count: { select: { questions: true, submissions: true } } },
             orderBy: { order: 'asc' },
           },
@@ -92,7 +93,7 @@ export async function GET(request: Request) {
               userId,
               contentType: 'cq-exam-package',
               contentId: id,
-              status: 'pending',
+              status: 'PENDING',
             },
             select: { id: true },
           })
@@ -167,7 +168,7 @@ export async function GET(request: Request) {
             userId,
             contentType: 'cq-exam-package',
             contentId: packageId,
-            status: 'pending',
+            status: 'PENDING',
           },
           select: { id: true },
         })
@@ -278,7 +279,7 @@ export async function GET(request: Request) {
         },
       })
       if (!set) return apiError('Set not found', 404)
-      if (set.status !== 'published') return apiError('পরীক্ষা সেটটি প্রকাশিত হয়নি', 404)
+      if (set.status !== 'PUBLISHED') return apiError('পরীক্ষা সেটটি প্রকাশিত হয়নি', 404)
 
       if (set.package.isPremium) {
         const purchase = await db.cQExamPackagePurchase.findUnique({
@@ -330,7 +331,7 @@ export async function POST(request: Request) {
         },
       })
       if (!set) return apiError('Set not found', 404)
-      if (set.status !== 'published') return apiError('পরীক্ষা সেটটি প্রকাশিত হয়নি', 404)
+      if (set.status !== 'PUBLISHED') return apiError('পরীক্ষা সেটটি প্রকাশিত হয়নি', 404)
 
       // Check purchase for premium packages
       if (set.package.isPremium) {
@@ -358,7 +359,7 @@ export async function POST(request: Request) {
       // Helper to create answer slots per question based on type
       const createAnswersForQuestions = (questions: typeof set.questions) => questions.flatMap((q) => {
         const qType = q.type || 'cq'
-        if (qType === 'cq' || qType === 'typed') {
+        if (qType === 'CQ' || qType === 'typed') {
           let subMarks: number[] = []
           if (q.subMarks && Array.isArray(q.subMarks)) {
             subMarks = q.subMarks as number[]
@@ -366,7 +367,7 @@ export async function POST(request: Request) {
           const ans = Array.from({ length: 4 }, (_, si) => ({
             questionId: q.id,
             subIndex: si,
-            maxMarks: subMarks[si] ?? q.marks / 4,
+            maxMarks: subMarks[si] ?? toDecimal(q.marks) / 4,
             answerText: null,
             obtainedMarks: 0,
           }))
@@ -379,7 +380,7 @@ export async function POST(request: Request) {
           return blanks.map((blank, si) => ({
             questionId: q.id,
             subIndex: si,
-            maxMarks: blank.marks || q.marks / (blanks.length || 1),
+            maxMarks: blank.marks || toDecimal(q.marks) / (blanks.length || 1),
             answerText: null,
             obtainedMarks: 0,
           }))
@@ -411,7 +412,7 @@ export async function POST(request: Request) {
             setId,
             totalMarks: set.totalMarks,
             canRetake: hadCanRetake,
-            status: 'in-progress',
+            status: 'IN_PROGRESS',
             startedAt: new Date(),
             answers: { create: createAnswersForQuestions(set.questions) },
           },
@@ -426,7 +427,7 @@ export async function POST(request: Request) {
       }
 
       // Return existing in-progress submission (with answers and images for image upload to work)
-      if (existing && (existing.status === 'in-progress')) {
+      if (existing && (existing.status === 'IN_PROGRESS')) {
         const submission = await db.cQExamSubmission.findUnique({
           where: { id: existing.id },
           include: {
@@ -436,11 +437,11 @@ export async function POST(request: Request) {
             },
           },
         })
-        return NextResponse.json({ success: true, data: { submission, status: 'in-progress' } })
+        return NextResponse.json({ success: true, data: { submission, status: 'IN_PROGRESS' } })
       }
 
       // Return already-submitted submission — let client redirect
-      if (existing && existing.status === 'submitted') {
+      if (existing && existing.status === 'SUBMITTED') {
         const submission = await db.cQExamSubmission.findUnique({
           where: { id: existing.id },
           include: {
@@ -450,7 +451,7 @@ export async function POST(request: Request) {
             },
           },
         })
-        return NextResponse.json({ success: true, data: { submission, status: 'submitted' } })
+        return NextResponse.json({ success: true, data: { submission, status: 'SUBMITTED' } })
       }
 
       // Create submission with type-appropriate answer slots
@@ -459,7 +460,7 @@ export async function POST(request: Request) {
           userId,
           setId,
           totalMarks: set.totalMarks,
-          status: 'in-progress',
+          status: 'IN_PROGRESS',
           startedAt: new Date(),
           answers: { create: createAnswersForQuestions(set.questions) },
         },
@@ -533,18 +534,18 @@ export async function POST(request: Request) {
         where: { userId_setId: { userId, setId } },
       })
       if (existing) {
-        if (existing.status === 'pending') {
+        if (existing.status === 'PENDING') {
           return apiError('ইতিমধ্যে একটি অনুরোধ জমা দেওয়া হয়েছে', 400)
         }
-        if (existing.status === 'approved') {
+        if (existing.status === 'APPROVED') {
           return apiError('ইতিমধ্যে পুনরায় পরীক্ষার অনুমতি দেওয়া হয়েছে', 400)
         }
         // If rejected, allow re-request
         await db.cQExamRetakeRequest.update({
           where: { id: existing.id },
-          data: { status: 'pending', reason: reason || null, reviewedBy: null, reviewedAt: null },
+          data: { status: 'PENDING', reason: reason || null, reviewedBy: null, reviewedAt: null },
         })
-        return NextResponse.json({ success: true, data: { request: { ...existing, status: 'pending', reason: reason || null } } })
+        return NextResponse.json({ success: true, data: { request: { ...existing, status: 'PENDING', reason: reason || null } } })
       }
 
       const request = await db.cQExamRetakeRequest.create({
@@ -552,7 +553,7 @@ export async function POST(request: Request) {
           userId,
           setId,
           reason: reason || null,
-          status: 'pending',
+          status: 'PENDING',
         },
       })
 
@@ -567,7 +568,7 @@ export async function POST(request: Request) {
       const submission = await db.cQExamSubmission.update({
         where: { id: submissionId },
         data: {
-          status: 'submitted',
+          status: 'SUBMITTED',
           timeTaken: timeTaken || 0,
           submittedAt: new Date(),
         },

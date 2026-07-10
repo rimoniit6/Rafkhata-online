@@ -66,11 +66,11 @@ export async function POST(request: Request) {
       data: {
         userId: auth.user.id,
         subject: subject.trim(),
-        status: 'pending',
+        status: 'PENDING',
         messages: {
           create: {
             senderId: auth.user.id,
-            senderRole: 'user',
+            senderRole: 'USER',
             message: message.trim(),
           },
         },

@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import { ArrowRight,Crown,Sparkles,X } from 'lucide-react'
@@ -20,8 +20,8 @@ export function ConversionBanner({
   premiumQuestions,
 }: ConversionBannerProps) {
   const [dismissed, setDismissed] = useState(false)
-  const { user } = useAuthStore()
-  const { navigate } = useRouterStore()
+  const user = useAuthUser()
+  const navigate = useRouterStore((s) => s.navigate)
 
   if (dismissed || premiumQuestions === 0) return null
 

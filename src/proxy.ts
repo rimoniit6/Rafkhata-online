@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { updateSession } from '@/lib/supabase/middleware'
 import { csrfMiddleware } from '@/lib/csrf'
+import { db } from '@/lib/db'
 
 function getSupabaseUrl(): string {
   return process.env.NEXT_PUBLIC_SUPABASE_URL || ''
@@ -19,7 +20,7 @@ const PUBLIC_API_ROUTES = [
   '/api/auth/logout',
   '/api/auth/me',
   '/api/classes',
-  '/api/subjects',
+
   '/api/chapters',
   '/api/lectures',
   '/api/mcq',
@@ -84,7 +85,7 @@ function isPublicPageRoute(pathname: string): boolean {
 function addSecurityHeaders(response: NextResponse, nonce?: string): NextResponse {
   const cspNonce = nonce || generateNonce()
   const scriptSrc = `'self' 'nonce-${cspNonce}' https://cdn.jsdelivr.net ${getSupabaseUrl()}`
-  
+
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('X-Frame-Options', 'DENY')
   response.headers.set('X-XSS-Protection', '1; mode=block')
@@ -159,7 +160,16 @@ export async function proxy(request: NextRequest) {
       }
     }
 
-    const role = user.user_metadata?.role || 'STUDENT'
+    let role = user.user_metadata?.role || 'STUDENT'
+    try {
+      const dbUser = await db.user.findUnique({
+        where: { supabaseUserId: user.id },
+        select: { role: true },
+      })
+      if (dbUser?.role) role = dbUser.role
+    } catch {
+      // Fall back to user_metadata role if DB query fails
+    }
 
     request.headers.set('x-user-id', user.id)
     request.headers.set('x-user-role', role)
@@ -183,7 +193,16 @@ export async function proxy(request: NextRequest) {
   }
 
   if (pathname.startsWith('/admin/')) {
-    const role = user.user_metadata?.role || 'STUDENT'
+    let role = user.user_metadata?.role || 'STUDENT'
+    try {
+      const dbUser = await db.user.findUnique({
+        where: { supabaseUserId: user.id },
+        select: { role: true },
+      })
+      if (dbUser?.role) role = dbUser.role
+    } catch {
+      // Fall back to user_metadata role if DB query fails
+    }
     if (role !== 'ADMIN' && role !== 'SUPER_ADMIN') {
       return NextResponse.redirect(new URL('/', request.url))
     }

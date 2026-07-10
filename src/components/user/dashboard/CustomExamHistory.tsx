@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import EmptyState from '@/components/shared/EmptyState'
 import { useRouterStore } from '@/store/router'
-import { useAuthStore } from '@/store/auth'
+import { useIsAuthenticated } from '@/store/auth'
 import { toBengaliNumerals } from '@/lib/utils'
 import {
   BookOpen, Calendar, Clock, FileQuestion, Sparkles, Trophy,
@@ -26,8 +26,8 @@ interface ExamItem {
 }
 
 export default function CustomExamHistory() {
-  const { navigate } = useRouterStore()
-  const { isAuthenticated } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const isAuthenticated = useIsAuthenticated()
 
   const [exams, setExams] = useState<ExamItem[]>([])
   const [loading, setLoading] = useState(true)

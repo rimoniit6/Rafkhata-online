@@ -79,7 +79,7 @@ export async function POST(request: Request) {
           userId: user.id,
           title,
           message,
-          type: type || 'info',
+          type: (type || 'INFO').toUpperCase() as 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR',
           link: link || null,
         })),
       })
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         userId: userId || null,
         title,
         message,
-        type: type || 'info',
+        type: (type || 'INFO').toUpperCase() as 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR',
         link: link || null,
       },
     })

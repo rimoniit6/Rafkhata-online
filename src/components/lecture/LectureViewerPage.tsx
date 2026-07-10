@@ -17,8 +17,8 @@ import { Sheet,SheetContent,SheetHeader,SheetTitle,SheetTrigger } from '@/compon
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetchCsrfToken } from '@/lib/api-client'
 import { downloadPdf,getFilenameFromUrl } from '@/lib/pdf-download'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useAuthUser } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { motion } from 'framer-motion'
 import {
 ArrowLeft,ArrowRight,
@@ -65,8 +65,10 @@ interface LectureData {
 }
 
 export default function LectureViewerPage() {
-  const { params, navigate, goBack } = useRouterStore()
-  const { user } = useAuthStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const user = useAuthUser()
   const [lectureData, setLectureData] = useState<LectureData | null>(null)
   const [loading, setLoading] = useState(true)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -183,7 +185,9 @@ export default function LectureViewerPage() {
               title: lectureObj.title,
               _csrf: csrfToken,
             }),
-          }).catch(() => {})
+          }).catch((err) => {
+            console.error('[LectureViewer] Failed to record recently viewed:', err)
+          })
 
           // Auto-update progress to at least 5% when opening a lecture
           const currentProgress = lectureObj.progress || 0
@@ -196,8 +200,10 @@ export default function LectureViewerPage() {
                 contentType: 'lecture',
                 progress: 5,
                 _csrf: csrfToken,
-              }),
-            }).catch(() => {})
+            }),
+          }).catch((err) => {
+            console.error('[LectureViewer] Failed to save progress:', err)
+          })
           }
         }
       } catch {

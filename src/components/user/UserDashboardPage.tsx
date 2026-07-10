@@ -28,7 +28,7 @@ import CustomExamHistory from './dashboard/CustomExamHistory'
 import FeedbackSection from './dashboard/FeedbackSection'
 
 export default function UserDashboardPage() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const {
     user,
     loading,
@@ -68,7 +68,9 @@ export default function UserDashboardPage() {
   useEffect(() => {
     api.get<RecentLecture[]>('user/recent-lectures')
       .then(d => setRecentLectures(Array.isArray(d) ? d : []))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[Dashboard] Failed to fetch recent lectures:', err)
+      })
   }, [user?.id])
 
   if (loading) {

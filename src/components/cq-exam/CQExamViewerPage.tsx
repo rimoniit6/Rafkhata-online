@@ -17,12 +17,13 @@ import SafeImage from '@/components/ui/safe-image'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { fetchCsrfToken } from '@/lib/api-client'
 import { useToast } from '@/hooks/use-toast'
 import { bengaliLabels,formatTime,getTypeLabel } from '@/lib/cq-exam/utils'
 import { useUploadThing } from '@/lib/uploadthing/client'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useShallowAuth } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
 AlertCircle,
@@ -661,8 +662,10 @@ function CQBlock({
 }
 
 export default function CQExamViewerPage() {
-  const { params, goBack, navigate } = useRouterStore()
-  const { user, isAuthenticated } = useAuthStore()
+  const params = useRouteParams()
+  const goBack = useRouterStore((s) => s.goBack)
+  const navigate = useRouterStore((s) => s.navigate)
+  const { user, isAuthenticated } = useShallowAuth()
   const { toast } = useToast()
   const uploadResolveRef = useRef<((url: string | null) => void) | null>(null)
   const { startUpload } = useUploadThing('screenshotUploader', {
@@ -747,9 +750,10 @@ export default function CQExamViewerPage() {
     try {
       const controller = new AbortController()
       abortTimerRef.current = setTimeout(() => controller.abort(), 15000)
+      const csrfToken = await fetchCsrfToken()
       const res = await fetch('/api/cq-exam-packages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
         body: JSON.stringify({
           action: 'start-exam',
           setId,
@@ -806,9 +810,10 @@ export default function CQExamViewerPage() {
 
   const saveAnswerText = async (answerId: string, text: string) => {
     try {
+      const csrfToken = await fetchCsrfToken()
       await fetch('/api/cq-exam-packages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
         body: JSON.stringify({
           action: 'save-answer',
           answerId,
@@ -851,9 +856,10 @@ export default function CQExamViewerPage() {
         if (!imageUrl) throw new Error('Upload failed')
 
         // Save image record
+        const csrfToken = await fetchCsrfToken()
         const imgRes = await fetch('/api/cq-exam-packages', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
           body: JSON.stringify({
             action: 'add-image',
             answerId,
@@ -884,9 +890,10 @@ export default function CQExamViewerPage() {
 
   const removeAnswerImage = async (imageId: string, questionId: string, subIndex: number) => {
     try {
+      const csrfToken = await fetchCsrfToken()
       await fetch('/api/cq-exam-packages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
         body: JSON.stringify({
           action: 'remove-image',
           imageId,
@@ -931,9 +938,10 @@ export default function CQExamViewerPage() {
     setSubmitting(true)
     try {
       const timeUsed = (setData?.set.duration || 0) * 60 - timeRemaining
+      const csrfToken = await fetchCsrfToken()
       const res = await fetch('/api/cq-exam-packages', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
         body: JSON.stringify({
           action: 'submit-exam',
           submissionId,

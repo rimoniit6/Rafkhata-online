@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { useRouterStore } from '@/store/router'
-import { useAuthStore } from '@/store/auth'
+import { useShallowAuth } from '@/store/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,8 +42,9 @@ interface ExamItem {
 }
 
 export default function CreatorExamHistoryPage() {
-  const { navigate, goBack } = useRouterStore()
-  const { isAuthenticated, user } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const { user, isAuthenticated } = useShallowAuth()
   const { toast } = useToast()
 
   const [exams, setExams] = useState<ExamItem[]>([])

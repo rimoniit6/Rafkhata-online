@@ -15,7 +15,7 @@ import {
   AlignLeft,
 } from 'lucide-react'
 import { useRouterStore } from '@/store/router'
-import { useAuthStore } from '@/store/auth'
+import { useShallowAuth } from '@/store/auth'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -243,8 +243,9 @@ function PackageCard({ pkg, purchased, pending, onBuy, onView, buyingId }: Packa
 }
 
 export default function CQExamPackageListPage() {
-  const { navigate, goBack } = useRouterStore()
-  const { user, isAuthenticated } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const { user, isAuthenticated } = useShallowAuth()
   const { toast } = useToast()
 
   const [packages, setPackages] = useState<CQExamPackage[]>([])

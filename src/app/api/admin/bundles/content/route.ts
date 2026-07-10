@@ -59,7 +59,7 @@ export async function GET(request: Request) {
           title: mcq.question.length > 80
             ? mcq.question.substring(0, 80) + '...'
             : mcq.question,
-          price: mcq.price,
+          price: Number(mcq.price),
           isPremium: mcq.isPremium,
           classLevel: mcq.classLevel,
           chapterId: mcq.chapterId,
@@ -96,7 +96,7 @@ export async function GET(request: Request) {
           title: cq.uddeepok.length > 80
             ? cq.uddeepok.substring(0, 80) + '...'
             : cq.uddeepok,
-          price: cq.price,
+          price: Number(cq.price),
           isPremium: cq.isPremium,
           classLevel: cq.classLevel,
           chapterId: cq.chapterId,
@@ -124,7 +124,7 @@ export async function GET(request: Request) {
         results = lectures.map((lecture) => ({
           id: lecture.id,
           title: lecture.title,
-          price: lecture.price,
+          price: Number(lecture.price),
           isPremium: lecture.isPremium,
         }))
         break
@@ -151,7 +151,7 @@ export async function GET(request: Request) {
         results = exams.map((exam) => ({
           id: exam.id,
           title: exam.title,
-          price: exam.price,
+          price: Number(exam.price),
           isPremium: exam.isPremium,
           classLevel: exam.classLevel,
         }))

@@ -174,7 +174,7 @@ export async function GET(request: Request) {
         userId,
         contentType,
         contentId,
-        status: 'approved',
+        status: 'APPROVED',
         isActive: true,
       },
       select: {
@@ -198,7 +198,7 @@ export async function GET(request: Request) {
         const itemPayments = await db.payment.findMany({
           where: {
             userId,
-            status: 'approved',
+            status: 'APPROVED',
             isActive: true,
             OR: bundle.items.map(item => ({
               contentType: item.contentType,

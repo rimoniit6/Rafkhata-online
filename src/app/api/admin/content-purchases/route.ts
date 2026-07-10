@@ -20,7 +20,7 @@ export async function GET(request: Request) {
 
     // Build where clause — only approved payments (these are "purchases")
     const where: Record<string, unknown> = {
-      status: 'approved',
+      status: 'APPROVED',
       contentType: { not: null }, // Only payments that have a content type
     }
 
@@ -69,7 +69,7 @@ export async function GET(request: Request) {
     // Get per-type purchase counts for stats
     const allApprovedPayments = await db.payment.findMany({
       where: {
-        status: 'approved',
+        status: 'APPROVED',
         contentType: { not: null },
         ...(isActiveParam !== null && isActiveParam !== '' ? { isActive: isActiveParam === 'true' } : {}),
         ...(contentType ? { contentType } : {}),
@@ -134,7 +134,7 @@ export async function PATCH(request: Request) {
       return apiError('পেমেন্ট খুঁজে পাওয়া যায়নি', 404)
     }
 
-    if (existing.status !== 'approved') {
+    if (existing.status !== 'APPROVED') {
       return apiError('শুধুমাত্র অনুমোদিত পেমেন্টের অ্যাক্সেস পরিবর্তন করা যায়', 400)
     }
 
@@ -189,7 +189,7 @@ export async function PATCH(request: Request) {
           userId: existing.userId,
           title: `কন্টেন্ট অ্যাক্সেস ${actionLabel}`,
           message: `আপনার "${contentLabel}" কন্টেন্টের অ্যাক্সেস ${actionLabel} করা হয়েছে।${reason ? ` কারণ: ${reason}` : ''}`,
-          type: isActive ? 'success' : 'warning',
+          type: isActive ? 'SUCCESS' : 'WARNING',
         },
       })
 

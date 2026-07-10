@@ -6,7 +6,7 @@ BreadcrumbPage,BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import type { ChapterData } from '@/hooks/use-chapter-data'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { BookOpen } from 'lucide-react'
 
 interface ChapterHeaderProps {
@@ -14,7 +14,8 @@ interface ChapterHeaderProps {
 }
 
 export function ChapterHeader({ chapter }: ChapterHeaderProps) {
-  const { params, navigate } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
   const { getClassName } = useHierarchyMetadata()
 
   const className = chapter.className || getClassName(params.classSlug || '') || chapter.classSlug

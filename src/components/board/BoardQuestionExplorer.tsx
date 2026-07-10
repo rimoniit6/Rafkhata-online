@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useRouterStore } from '@/store/router'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { useBoardFilterStore } from '@/store/board-filters'
 import { useBoardQuestionsData } from '@/hooks/use-board-questions-data'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
@@ -34,8 +34,8 @@ import type { BoardQuestionItem } from '@/types/board-questions'
 type QuestionTab = 'mcq' | 'cq'
 
 export default function BoardQuestionExplorer() {
-  const { navigate } = useRouterStore()
-  const { user } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const user = useAuthUser()
   const metadata = useHierarchyMetadata()
   const isMobile = useIsMobile()
   const setLabelMap = useBoardFilterStore((s) => s.setLabelMap)

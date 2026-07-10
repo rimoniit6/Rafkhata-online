@@ -12,7 +12,7 @@ const createKnowledgeQuestionSchema = z.object({
   questionImage: z.string().nullable().optional(),
   answerImage: z.string().nullable().optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   order: z.number().min(0).optional(),
 })
 
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
     const data = await db.knowledgeQuestion.create({
       data: {
         chapterId,
-        type,
+        type: type.toUpperCase() as 'KNOWLEDGE' | 'COMPREHENSION',
         question,
         answer,
         questionImage: questionImage || null,

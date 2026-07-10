@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { api } from '@/lib/api-client'
 import { bookmarkService, type BookmarkItem } from '@/services/api/bookmark.service'
@@ -14,8 +14,8 @@ import {
 import { getPurchaseCategory } from '@/components/user/dashboard/DashboardConstants'
 
 export function useUserDashboard() {
-  const { user } = useAuthStore()
-  const { navigate } = useRouterStore()
+  const user = useAuthUser()
+  const navigate = useRouterStore((s) => s.navigate)
   
   const [loading, setLoading] = useState(true)
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null)
@@ -53,8 +53,8 @@ export function useUserDashboard() {
       ])
       setPayments(Array.isArray(paymentsData) ? paymentsData : paymentsData?.payments || [])
       setSubscriptions(subsData?.subscriptions || [])
-    } catch {
-      // Silently fail
+    } catch (err) {
+      console.error('[useUserDashboard] Failed to fetch payments:', err)
     } finally {
       setLoadingPayments(false)
     }
@@ -93,8 +93,8 @@ export function useUserDashboard() {
         createdAt: b.createdAt,
       })))
       setRealRecentlyViewed(recentJson.items || [])
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('[useUserDashboard] Failed to fetch bookmarks:', err)
     } finally {
       setLoadingBookmarks(false)
     }
@@ -161,8 +161,8 @@ export function useUserDashboard() {
     try {
       await api.patch('user/profile', { name: editName, phone: editMobile })
       window.location.reload()
-    } catch {
-      // ignore
+    } catch (err) {
+      console.error('[useUserDashboard] Failed to update profile:', err)
     } finally {
       setUpdatingProfile(false)
     }

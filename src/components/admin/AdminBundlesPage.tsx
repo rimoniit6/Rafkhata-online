@@ -35,6 +35,7 @@ import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { toDecimal } from '@/lib/decimal'
 import {
 AlertCircle,
 AlignLeft,
@@ -155,6 +156,7 @@ export default function AdminBundlesPage() {
   const [editId, setEditId] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(1)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -224,17 +226,29 @@ export default function AdminBundlesPage() {
   const selection = useTableSelection(bundles)
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/bundles?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchBundles() }
+    if (isProcessing) return
+    setIsProcessing(true)
+    try {
+      const res = await fetch(`/api/admin/bundles?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchBundles() }
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleBulkToggle = async (ids: string[], isActive: boolean) => {
-    const res = await fetch(`/api/admin/bundles`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, isActive }),
-    })
-    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchBundles() }
+    if (isProcessing) return
+    setIsProcessing(true)
+    try {
+      const res = await fetch(`/api/admin/bundles`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids, isActive }),
+      })
+      if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchBundles() }
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   // ─── Fetch Bundles ────────────────────────────────────────────
@@ -581,7 +595,7 @@ export default function AdminBundlesPage() {
   }
 
   const calculateOriginalPrice = () => {
-    return selectedItems.reduce((sum, item) => sum + (item.price || 0), 0)
+    return selectedItems.reduce((sum, item) => sum + toDecimal(item.price || 0), 0)
   }
 
   const calculateDiscount = () => {
@@ -1289,9 +1303,9 @@ export default function AdminBundlesPage() {
   ]
 
   const bulkActions: BulkAction[] = [
-    { label: 'সক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, true) },
-    { label: 'নিষ্ক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, false) },
-    { label: 'মুছে ফেলুন', variant: 'destructive', handler: handleBulkDelete },
+    { label: 'সক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, true), disabled: isProcessing },
+    { label: 'নিষ্ক্রিয় করুন', handler: (ids) => handleBulkToggle(ids, false), disabled: isProcessing },
+    { label: 'মুছে ফেলুন', variant: 'destructive', handler: handleBulkDelete, disabled: isProcessing },
   ]
 
   const filters = (

@@ -85,7 +85,7 @@ const FALLBACK_TYPE_CONFIG = {
 // ─── Component ──────────────────────────────────────────────────
 
 export default function AdminContentPage() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { contentTypesWithIcons } = useContentTypes()
   const { classLevelLabels, boardOptions, boardSlugToLabel } = useHierarchyMetadata()
 
@@ -127,7 +127,9 @@ export default function AdminContentPage() {
     fetch('/api/admin/classes')
       .then(r => r.json())
       .then(j => setClasses(Array.isArray(j.data) ? j.data : []))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[AdminContent] Failed to load classes:', err)
+      })
   }, [])
 
   // ─── Fetch all content ──────────────────────────────────────

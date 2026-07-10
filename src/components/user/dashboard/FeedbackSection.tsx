@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { fetchCsrfToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
 ArrowLeft,
@@ -61,7 +62,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 }
 
 export default function FeedbackSection() {
-  const { user: _user } = useAuthStore()
+  const _user = useAuthUser()
   const { toast } = useToast()
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -92,9 +93,10 @@ export default function FeedbackSection() {
     if (!subject.trim() || !message.trim()) return
     setSubmitting(true)
     try {
+      const csrfToken = await fetchCsrfToken()
       const res = await fetch('/api/user/feedback', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
         body: JSON.stringify({ subject: subject.trim(), message: message.trim() }),
       })
       if (res.ok) {
@@ -128,9 +130,10 @@ export default function FeedbackSection() {
     if (!replyText.trim() || !selectedId) return
     setSendingReply(true)
     try {
+      const csrfToken = await fetchCsrfToken()
       const res = await fetch(`/api/user/feedback/${selectedId}/messages`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
         body: JSON.stringify({ message: replyText.trim() }),
       })
       if (res.ok) {

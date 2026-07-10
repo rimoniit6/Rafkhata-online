@@ -1,9 +1,9 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useCurrentRoute } from '@/store/router'
 import type { RoutePath } from '@/store/router'
-import { useAuthStore } from '@/store/auth'
+import { useIsAuthenticated } from '@/store/auth'
 import { useNavigation } from '@/hooks/use-navigation'
 
 const BOTTOM_NAV_ROUTE_MAP: Record<string, string> = {
@@ -12,20 +12,44 @@ const BOTTOM_NAV_ROUTE_MAP: Record<string, string> = {
   'class-detail': 'class-list',
   'subject-detail': 'class-list',
   'chapter-detail': 'class-list',
+  'lecture-list': 'class-list',
   'lecture-viewer': 'class-list',
+  'cq-list': 'class-list',
+  'cq-viewer': 'class-list',
+  'board-questions': 'home',
+  'search': 'home',
+  'premium': 'home',
+  'payment': 'user-dashboard',
   'exam-session': 'exam-center',
   'exam-result': 'exam-center',
   'mcq-exam-package-list': 'exam-center',
   'mcq-exam-package-detail': 'exam-center',
   'mcq-exam-history': 'exam-center',
-  'cq-viewer': 'class-list',
-  'board-questions': 'home',
+  'cq-exam-package-list': 'exam-center',
+  'cq-exam-package-detail': 'exam-center',
+  'cq-exam-viewer': 'exam-center',
+  'cq-exam-result': 'exam-center',
+  'create-exam': 'exam-center',
+  'exam-creator-history': 'exam-center',
+  'exam-creator-result': 'exam-center',
+  'short-questions': 'home',
+  'course-list': 'home',
+  'course-detail': 'course-list',
+  'course-viewer': 'course-detail',
+  'notices': 'home',
+  'suggestions': 'home',
   'exam-center': 'exam-center',
+  'user-dashboard': 'user-dashboard',
+  'class-list': 'class-list',
+  'home': 'home',
+  'login': 'home',
+  'register': 'home',
 }
 
 export default function BottomNav() {
-  const { currentRoute, navigate } = useRouterStore()
-  const { isAuthenticated } = useAuthStore()
+  const currentRoute = useCurrentRoute()
+  const navigate = useRouterStore((s) => s.navigate)
+  const isAuthenticated = useIsAuthenticated()
   const { bottomNav, loading: navLoading } = useNavigation()
 
   const visibleItems = bottomNav.filter(item => {

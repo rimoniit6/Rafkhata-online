@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -18,8 +18,8 @@ interface PremiumBannerProps {
 
 export function PremiumBanner({ totalQuestions, accessibleQuestions, premiumQuestions, loading }: PremiumBannerProps) {
   const [dismissed, setDismissed] = useState(false)
-  const { user } = useAuthStore()
-  const { navigate } = useRouterStore()
+  const user = useAuthUser()
+  const navigate = useRouterStore((s) => s.navigate)
   const isMobile = useIsMobile()
 
   if (dismissed || premiumQuestions === 0 || loading) return null

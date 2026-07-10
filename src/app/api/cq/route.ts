@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { apiError, withCsrf, applyRateLimit } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { apiLimiter } from '@/lib/rate-limit'
+import { $Enums } from '@prisma/client'
 
 // Transform raw CQ Prisma object to frontend-expected format
 function transformCQ(cq: {
@@ -30,7 +31,7 @@ function transformCQ(cq: {
   price: number
   board: string | null
   year: string | null
-  difficulty: string
+  difficulty: $Enums.Difficulty
   chapterId: string
   chapter?: { id: string; name: string; slug: string; subject?: { id: string; name: string; slug: string; class?: { id: string; name: string; slug: string } } }
   [key: string]: unknown
@@ -81,7 +82,7 @@ function transformCQ(cq: {
     chapterId: cq.chapterId,
     isPremium: cq.isPremium,
     price: cq.price || 0,
-    difficulty: cq.difficulty || 'medium',
+    difficulty: cq.difficulty || 'MEDIUM',
     year: cq.year || undefined,
     board: cq.board || undefined,
   }
@@ -94,7 +95,7 @@ function transformCQList(cq: {
   uddeepokImage?: string | null
   isPremium: boolean
   price: number
-  difficulty: string
+  difficulty: $Enums.Difficulty
   board: string | null
   year: string | null
   chapterId: string
@@ -117,7 +118,7 @@ function transformCQList(cq: {
     questionCount,
     isPremium: cq.isPremium || false,
     price: cq.price || 0,
-    difficulty: cq.difficulty || 'medium',
+    difficulty: cq.difficulty || 'MEDIUM',
     board: cq.board || null,
     year: cq.year || null,
     chapterId: cq.chapterId,
@@ -210,7 +211,7 @@ export async function GET(request: Request) {
         db.cQ.count({ where: { ...where, isPremium: true } }),
       ])
 
-      const list = cqs.map(transformCQList)
+      const list = cqs.map((cq) => transformCQList(cq as unknown as Parameters<typeof transformCQList>[0]))
       const totalPages = Math.ceil(total / listLimit)
 
       return NextResponse.json({
@@ -281,7 +282,7 @@ export async function GET(request: Request) {
 
     // Transform to frontend-expected format and apply access restriction
     const transformedCqs = cqs.map((cq) => {
-      const baseTransformed = transformCQ(cq)
+      const baseTransformed = transformCQ(cq as unknown as Parameters<typeof transformCQ>[0])
       if (cq.isPremium && !isAdmin) {
         const hasAccess = auth?.user ? !!accessMap.get(cq.id)?.hasAccess : false
         if (!hasAccess) {
@@ -405,7 +406,7 @@ export async function POST(request: Request) {
         subjectId,
         board: board || null,
         year: year || null,
-        difficulty: difficulty || 'medium',
+        difficulty: difficulty || 'MEDIUM',
         isPremium: isPremium || false,
         price: price || 0,
         tags: tags || null,

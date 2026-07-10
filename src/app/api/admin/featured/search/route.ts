@@ -1,6 +1,7 @@
 import { db } from '@/lib/db'
 import { apiError, withAdmin } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   try {
@@ -117,9 +118,9 @@ export async function GET(request: Request) {
           items.push({
             id: b.id,
             title: b.title,
-            subtitle: b.type === 'mixed' ? 'মিক্সড বান্ডেল' : `${b.type.toUpperCase()} বান্ডেল`,
+            subtitle: b.type === 'MIXED' ? 'মিক্সড বান্ডেল' : `${b.type.toUpperCase()} বান্ডেল`,
             thumbnail: b.thumbnail,
-            isPremium: b.price > 0,
+            isPremium: toDecimal(b.price) > 0,
             extra: { price: b.price, originalPrice: b.originalPrice, type: b.type },
           })
         }
@@ -138,7 +139,7 @@ export async function GET(request: Request) {
             title: p.title,
             subtitle: p.durationLabel,
             thumbnail: p.thumbnail,
-            isPremium: p.price > 0,
+            isPremium: toDecimal(p.price) > 0,
             extra: { price: p.price, duration: p.duration, durationLabel: p.durationLabel },
           })
         }

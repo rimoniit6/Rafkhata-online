@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -61,7 +61,9 @@ interface ResultData {
 }
 
 export default function CreatorExamResultReviewPage() {
-  const { params, navigate, goBack } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
   const { toast } = useToast()
 
   const [data, setData] = useState<ResultData | null>(null)

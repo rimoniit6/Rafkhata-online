@@ -133,7 +133,7 @@ export async function POST(request: Request) {
           userId: userId,
           contentType: { in: contentTypesToCheck },
           contentId,
-          status: 'approved',
+          status: 'APPROVED',
         },
       })
       if (existingApproved) {
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
           userId: userId,
           contentType: { in: contentTypesToCheck },
           contentId,
-          status: 'pending',
+          status: 'PENDING',
         },
       })
       if (existingPending) {
@@ -177,7 +177,7 @@ export async function POST(request: Request) {
               userId,
               contentType: 'bundle',
               contentId: { in: bundleIds },
-              status: 'approved',
+              status: 'APPROVED',
             },
           })
 
@@ -190,7 +190,7 @@ export async function POST(request: Request) {
               userId,
               contentType: 'bundle',
               contentId: { in: bundleIds },
-              status: 'pending',
+              status: 'PENDING',
             },
           })
 
@@ -248,7 +248,7 @@ export async function POST(request: Request) {
         contentId: contentId || null,
         contentTitle: resolvedTitle || null,
         classLevel: classLevel || null,
-        status: 'pending',
+        status: 'PENDING',
         idempotencyKey: idempotencyKey || null,
       },
       include: {

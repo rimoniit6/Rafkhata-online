@@ -19,7 +19,7 @@ async function main() {
   const cqCount = await db.cQ.count({ where: { isActive: true } });
   const lectureCount = await db.lecture.count({ where: { isActive: true } });
   const suggestionCount = await db.suggestion.count({ where: { isActive: true } });
-  const examCount = await db.exam.count({ where: { isActive: true, status: 'published' } });
+  const examCount = await db.exam.count({ where: { isActive: true, status: 'PUBLISHED' } });
   console.log(`\n=== Content === MCQ:${mcqCount} CQ:${cqCount} Lecture:${lectureCount} Suggestion:${suggestionCount} Exam:${examCount}`);
   
   const freeMcqCount = await db.mCQ.count({ where: { isActive: true, isPremium: false } });

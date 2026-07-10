@@ -26,7 +26,7 @@ export default function Footer() {
 
   useEffect(() => { setCurrentYear(new Date().getFullYear()) }, [])
 
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { config } = useSiteConfig()
   const { classOptions } = useHierarchyMetadata()
   const { footerNav, loading: navLoading } = useNavigation()

@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(
   request: Request,
@@ -25,8 +26,8 @@ export async function GET(
     }
 
     // Enrich items with content details
-    const mcqIds = bundle.items.filter((i) => i.contentType === 'mcq').map((i) => i.contentId)
-    const cqIds = bundle.items.filter((i) => i.contentType === 'cq').map((i) => i.contentId)
+    const mcqIds = bundle.items.filter((i) => i.contentType === 'MCQ').map((i) => i.contentId)
+    const cqIds = bundle.items.filter((i) => i.contentType === 'CQ').map((i) => i.contentId)
     const lectureIds = bundle.items.filter((i) => i.contentType === 'lecture').map((i) => i.contentId)
     const suggestionIds = bundle.items.filter((i) => i.contentType === 'suggestion').map((i) => i.contentId)
     const examIds = bundle.items.filter((i) => i.contentType === 'exam').map((i) => i.contentId)
@@ -54,19 +55,19 @@ export async function GET(
       { title: string; price: number; thumbnail?: string | null; meta?: Record<string, unknown> }
     >()
     mcqs.forEach((m) =>
-      contentMap.set(m.id, { title: m.question.slice(0, 80), price: m.price, meta: { classLevel: m.classLevel, difficulty: m.difficulty } })
+      contentMap.set(m.id, { title: m.question.slice(0, 80), price: Number(m.price), meta: { classLevel: m.classLevel, difficulty: m.difficulty } })
     )
     cqs.forEach((c) =>
-      contentMap.set(c.id, { title: c.uddeepok.slice(0, 80), price: c.price, meta: { classLevel: c.classLevel, difficulty: c.difficulty } })
+      contentMap.set(c.id, { title: c.uddeepok.slice(0, 80), price: Number(c.price), meta: { classLevel: c.classLevel, difficulty: c.difficulty } })
     )
     lectures.forEach((l) =>
-      contentMap.set(l.id, { title: l.title, price: l.price, thumbnail: l.thumbnail, meta: { duration: l.duration, isPremium: l.isPremium } })
+      contentMap.set(l.id, { title: l.title, price: Number(l.price), thumbnail: l.thumbnail, meta: { duration: l.duration, isPremium: l.isPremium } })
     )
     suggestions.forEach((s) =>
-      contentMap.set(s.id, { title: s.title, price: s.price, thumbnail: s.thumbnail, meta: { isPremium: s.isPremium } })
+      contentMap.set(s.id, { title: s.title, price: Number(s.price), thumbnail: s.thumbnail, meta: { isPremium: s.isPremium } })
     )
     exams.forEach((e) =>
-      contentMap.set(e.id, { title: e.title, price: e.price, meta: { duration: e.duration, totalMarks: e.totalMarks, type: e.type } })
+      contentMap.set(e.id, { title: e.title, price: Number(e.price), meta: { duration: e.duration, totalMarks: e.totalMarks, type: e.type } })
     )
 
     const enrichedItems = bundle.items.map((item) => ({
@@ -78,8 +79,8 @@ export async function GET(
     }))
 
     const discount =
-      bundle.originalPrice > 0
-        ? Math.round(((bundle.originalPrice - bundle.price) / bundle.originalPrice) * 100)
+      toDecimal(bundle.originalPrice) > 0
+        ? Math.round(((toDecimal(bundle.originalPrice) - toDecimal(bundle.price)) / toDecimal(bundle.originalPrice)) * 100)
         : 0
 
     return NextResponse.json({
@@ -91,7 +92,7 @@ export async function GET(
         thumbnail: bundle.thumbnail,
         price: bundle.price,
         originalPrice: bundle.originalPrice,
-        isPremium: bundle.price > 0 || bundle.originalPrice > 0,
+        isPremium: toDecimal(bundle.price) > 0 || toDecimal(bundle.originalPrice) > 0,
         discount,
         classLevel: bundle.classLevel,
         board: bundle.board,

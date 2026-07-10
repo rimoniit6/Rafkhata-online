@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { cn } from '@/lib/utils'
 import {
   getNoticeFromCache,
@@ -58,7 +58,9 @@ const typeBadgeConfig: Record<
 // ─── Component ──────────────────────────────────────────────────
 
 export default function NoticeDetailPage() {
-  const { params, goBack, navigate } = useRouterStore()
+  const params = useRouteParams()
+  const goBack = useRouterStore((s) => s.goBack)
+  const navigate = useRouterStore((s) => s.navigate)
   const { classLevelLabels } = useHierarchyMetadata()
   const [notice, setNotice] = useState<NoticeRecord | null>(null)
   const [loading, setLoading] = useState(true)

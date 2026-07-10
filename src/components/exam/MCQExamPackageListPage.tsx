@@ -11,7 +11,7 @@ import { Tabs,TabsList,TabsTrigger } from '@/components/ui/tabs'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { useToast } from '@/hooks/use-toast'
 import { toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useShallowAuth } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
@@ -386,8 +386,9 @@ function PackageCard({ pkg, purchased, pending, onBuy, onTakeExam, buyingId }: P
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function MCQExamPackageListPage() {
-  const { navigate, goBack } = useRouterStore()
-  const { user, isAuthenticated } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const { user, isAuthenticated } = useShallowAuth()
   const { toast } = useToast()
   const { classOptions } = useHierarchyMetadata()
   const CLASS_TABS = [{ value: 'all', label: 'সকল' }, ...classOptions]

@@ -14,8 +14,8 @@ Select,SelectContent,SelectItem,SelectTrigger,SelectValue,
 } from '@/components/ui/select'
 import { setSuggestionsCache } from '@/lib/suggestion-cache'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useAuthUser } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
 ArrowLeft,
@@ -100,8 +100,10 @@ const contentTypeIcons: Record<string, { icon: typeof Sigma; label: string; colo
 }
 
 export default function SuggestionsPage() {
-  const { navigate, goBack, params: routeParams } = useRouterStore()
-  const { user } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const routeParams = useRouteParams()
+  const user = useAuthUser()
   const [suggestions, setSuggestions] = useState<SuggestionRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -230,8 +232,8 @@ export default function SuggestionsPage() {
           }
           setPurchaseMap(newMap)
         }
-      } catch {
-        // Silently fail
+      } catch (err) {
+        console.error('[Suggestions] Failed to check purchases:', err)
       }
     }
     checkPurchases()

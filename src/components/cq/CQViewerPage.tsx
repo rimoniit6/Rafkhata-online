@@ -12,8 +12,8 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetchCsrfToken } from '@/lib/api-client'
 import { getMessages } from '@/lib/messages'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useAuthUser } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import { ArrowLeft,BookOpen,CheckCircle2,Eye,EyeOff,FileDown,Printer } from 'lucide-react'
 import { useEffect,useState } from 'react'
@@ -47,11 +47,13 @@ interface CQData {
 }
 
 export default function CQViewerPage() {
-  const { params, navigate, goBack } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
   const source = params.source || ''
   const paramYear = params.year || ''
   const paramBoard = params.boardName || ''
-  const { user } = useAuthStore()
+  const user = useAuthUser()
   const msg = getMessages()
   const [cqData, setCqData] = useState<CQData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -113,7 +115,9 @@ export default function CQViewerPage() {
               title: `${data.data.chapterName} - সৃজনশীল প্রশ্ন`,
               _csrf: csrfToken,
             }),
-          }).catch(() => {})
+          }).catch((err) => {
+            console.error('[CQViewer] Failed to record recently viewed:', err)
+          })
 
           // Auto-update progress to at least 5% when opening
           fetch('/api/progress', {
@@ -125,7 +129,9 @@ export default function CQViewerPage() {
               progress: 5,
               _csrf: csrfToken,
             }),
-          }).catch(() => {})
+          }).catch((err) => {
+            console.error('[CQViewer] Failed to update progress:', err)
+          })
         }
       } catch {
         setCqData(null)

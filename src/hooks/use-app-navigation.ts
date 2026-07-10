@@ -17,15 +17,22 @@ export function useAppNavigation() {
     routerRef.current = router
   }, [router])
 
+  // Set _onNavigate synchronously so it is always available when navigate() fires.
+  // Using useEffect created a window where _onNavigate was null (between cleanup and
+  // re-setup), which silently swallowed sidebar clicks.
+  useRouterStore.setState({
+    _onNavigate: (route: RoutePath, params: RouteParams) => {
+      const url = routeToUrl(route, params)
+      routerRef.current.push(url)
+    },
+  })
+
+  // On unmount, replace with a no-op instead of null so the store never has to
+  // null-check _onNavigate.  If the bridge remounts the real callback overwrites
+  // this immediately.
   useEffect(() => {
-    useRouterStore.setState({
-      _onNavigate: (route: RoutePath, params: RouteParams) => {
-        const url = routeToUrl(route, params)
-        routerRef.current.push(url)
-      },
-    })
     return () => {
-      useRouterStore.setState({ _onNavigate: null })
+      useRouterStore.setState({ _onNavigate: () => {} })
     }
   }, [])
 

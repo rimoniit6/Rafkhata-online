@@ -9,7 +9,7 @@ import SafeImage from '@/components/ui/safe-image'
 import { useContentTypes } from '@/hooks/use-content-types'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { useSiteConfig } from '@/hooks/use-metadata'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import {
 ArrowLeft,
 BookOpen,
@@ -126,7 +126,8 @@ const _FALLBACK_TYPE_FILTERS = [
 // ─── Component ──────────────────────────────────────────────────
 
 export default function SearchResultsPage() {
-  const { navigate, params } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const params = useRouteParams()
   const { classLevelLabels: classLabelMap } = useHierarchyMetadata()
   const { config } = useSiteConfig()
   const { contentTypesWithIcons, getLabel: _getLabel, getIcon: _getIcon } = useContentTypes()

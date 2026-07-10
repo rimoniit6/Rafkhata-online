@@ -10,8 +10,8 @@ import SafeImage from '@/components/ui/safe-image'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
-import { useRouterStore } from '@/store/router'
+import { useShallowAuth } from '@/store/auth'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import {
 AlertCircle,
 ArrowLeft,
@@ -201,8 +201,10 @@ function getSetStatusBadge(
 }
 
 export default function CQExamPackageDetailPage() {
-  const { params, goBack, navigate } = useRouterStore()
-  const { user, isAuthenticated } = useAuthStore()
+  const params = useRouteParams()
+  const goBack = useRouterStore((s) => s.goBack)
+  const navigate = useRouterStore((s) => s.navigate)
+  const { user, isAuthenticated } = useShallowAuth()
   const { toast } = useToast()
 
   const packageId = params.packageId || ''

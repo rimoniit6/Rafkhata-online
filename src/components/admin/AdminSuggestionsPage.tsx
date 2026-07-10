@@ -149,7 +149,9 @@ export default function AdminSuggestionsPage() {
     fetch('/api/admin/classes')
       .then((r) => r.json())
       .then((d) => setClasses(Array.isArray(d.data) ? d.data : []))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[AdminSuggestions] Failed to load classes:', err)
+      })
   }, [])
 
   // ── Load subjects when form classId changes ──

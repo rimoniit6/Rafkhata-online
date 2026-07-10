@@ -96,61 +96,61 @@ async function _handleSubscriptionCreation(payment: { id: string; userId: string
   }
 }
 
-async function handleCoursePurchase(payment: { id: string; userId: string; contentId: string | null }) {
+async function handleCoursePurchase(payment: { id: string; userId: string; contentId: string | null }, tx: Parameters<Parameters<typeof safeTransaction>[0]>[0]) {
   if (!payment.contentId) return
   const [existingPurchase, existingEnrollment] = await Promise.all([
-    db.coursePurchase.findFirst({
+    tx.coursePurchase.findFirst({
       where: { userId: payment.userId, courseId: payment.contentId },
     }),
-    db.courseEnrollment.findUnique({
+    tx.courseEnrollment.findUnique({
       where: { userId_courseId: { userId: payment.userId, courseId: payment.contentId } },
     }),
   ])
   if (!existingPurchase) {
-    await db.coursePurchase.create({
+    await tx.coursePurchase.create({
       data: { userId: payment.userId, courseId: payment.contentId, paymentId: payment.id, isActive: true },
     })
   } else {
-    await db.coursePurchase.update({ where: { id: existingPurchase.id }, data: { isActive: true, paymentId: payment.id } })
+    await tx.coursePurchase.update({ where: { id: existingPurchase.id }, data: { isActive: true, paymentId: payment.id } })
   }
   // Auto-enroll after purchase approval
   if (!existingEnrollment) {
-    await db.courseEnrollment.create({
+    await tx.courseEnrollment.create({
       data: { userId: payment.userId, courseId: payment.contentId, status: 'ACTIVE', type: 'PAID' },
     })
   } else if (existingEnrollment.status !== 'ACTIVE') {
-    await db.courseEnrollment.update({
+    await tx.courseEnrollment.update({
       where: { userId_courseId: { userId: payment.userId, courseId: payment.contentId } },
       data: { status: 'ACTIVE', type: 'PAID' },
     })
   }
 }
 
-async function handleMCQExamPurchase(payment: { id: string; userId: string; contentId: string | null }) {
+async function handleMCQExamPurchase(payment: { id: string; userId: string; contentId: string | null }, tx: Parameters<Parameters<typeof safeTransaction>[0]>[0]) {
   if (!payment.contentId) return
-  const existingPurchase = await db.mCQExamPackagePurchase.findFirst({
+  const existingPurchase = await tx.mCQExamPackagePurchase.findFirst({
     where: { userId: payment.userId, packageId: payment.contentId },
   })
   if (!existingPurchase) {
-    await db.mCQExamPackagePurchase.create({
+    await tx.mCQExamPackagePurchase.create({
       data: { userId: payment.userId, packageId: payment.contentId, paymentId: payment.id, isActive: true },
     })
   } else {
-    await db.mCQExamPackagePurchase.update({ where: { id: existingPurchase.id }, data: { isActive: true, paymentId: payment.id } })
+    await tx.mCQExamPackagePurchase.update({ where: { id: existingPurchase.id }, data: { isActive: true, paymentId: payment.id } })
   }
 }
 
-async function handleCQExamPurchase(payment: { id: string; userId: string; contentId: string | null }) {
+async function handleCQExamPurchase(payment: { id: string; userId: string; contentId: string | null }, tx: Parameters<Parameters<typeof safeTransaction>[0]>[0]) {
   if (!payment.contentId) return
-  const existingPurchase = await db.cQExamPackagePurchase.findFirst({
+  const existingPurchase = await tx.cQExamPackagePurchase.findFirst({
     where: { userId: payment.userId, packageId: payment.contentId },
   })
   if (!existingPurchase) {
-    await db.cQExamPackagePurchase.create({
+    await tx.cQExamPackagePurchase.create({
       data: { userId: payment.userId, packageId: payment.contentId, paymentId: payment.id, isActive: true },
     })
   } else {
-    await db.cQExamPackagePurchase.update({ where: { id: existingPurchase.id }, data: { isActive: true, paymentId: payment.id } })
+    await tx.cQExamPackagePurchase.update({ where: { id: existingPurchase.id }, data: { isActive: true, paymentId: payment.id } })
   }
 }
 
@@ -169,7 +169,7 @@ export async function PATCH(request: Request) {
     if ('error' in validation) return validation.error
     const { id, status, adminNote } = validation.data
 
-    if (status === 'rejected' && !adminNote?.trim()) {
+    if (status === 'REJECTED' && !adminNote?.trim()) {
       return apiError('প্রত্যাখ্যানের কারণ লিখুন', 400)
     }
 
@@ -180,7 +180,7 @@ export async function PATCH(request: Request) {
       })
 
       if (!existing) throw Object.assign(new Error('NOT_FOUND'), { statusCode: 404 })
-      if (existing.status !== 'pending') throw Object.assign(new Error('ALREADY_REVIEWED'), { statusCode: 400 })
+      if (existing.status !== 'PENDING') throw Object.assign(new Error('ALREADY_REVIEWED'), { statusCode: 400 })
       // Prevent self-approval: admin cannot approve their own payment
       if (existing.userId === auth.user.id) {
         throw Object.assign(new Error('SELF_APPROVAL'), { statusCode: 403 })
@@ -203,32 +203,32 @@ export async function PATCH(request: Request) {
       await tx.notification.create({
         data: {
           userId: existing.userId,
-          title: status === 'approved' ? 'পেমেন্ট অনুমোদিত' : 'পেমেন্ট প্রত্যাখ্যাত',
-          message: status === 'approved'
+          title: status === 'APPROVED' ? 'পেমেন্ট অনুমোদিত' : 'পেমেন্ট প্রত্যাখ্যাত',
+          message: status === 'APPROVED'
             ? `আপনার "${existing.contentTitle || existing.contentType || 'কন্টেন্ট'}" ক্রয়ের ৳${existing.amount} পেমেন্ট অনুমোদিত হয়েছে।`
             : `আপনার ৳${existing.amount} পেমেন্ট প্রত্যাখ্যাত হয়েছে।${adminNote ? ` কারণ: ${adminNote}` : ''}`,
-          type: status === 'approved' ? 'success' : 'error',
+          type: status === 'APPROVED' ? 'SUCCESS' : 'ERROR',
         },
       })
+
+      // Post-transaction side effects (atomic with payment approval)
+      if (status === 'APPROVED') {
+        if (existing.contentType === 'course') {
+          await handleCoursePurchase({ id: existing.id, userId: existing.userId, contentId: existing.contentId }, tx)
+        } else if (existing.contentType === 'mcq-exam-package') {
+          await handleMCQExamPurchase({ id: existing.id, userId: existing.userId, contentId: existing.contentId }, tx)
+        } else if (existing.contentType === 'cq-exam-package') {
+          await handleCQExamPurchase({ id: existing.id, userId: existing.userId, contentId: existing.contentId }, tx)
+        }
+      }
 
       return { existing, updated }
     })
 
-    // Post-transaction side effects (non-critical — run outside transaction)
-    if (status === 'approved') {
-      if (result.existing.contentType === 'course') {
-        await handleCoursePurchase({ id: result.existing.id, userId: result.existing.userId, contentId: result.existing.contentId })
-      } else if (result.existing.contentType === 'mcq-exam-package') {
-        await handleMCQExamPurchase({ id: result.existing.id, userId: result.existing.userId, contentId: result.existing.contentId })
-      } else if (result.existing.contentType === 'cq-exam-package') {
-        await handleCQExamPurchase({ id: result.existing.id, userId: result.existing.userId, contentId: result.existing.contentId })
-      }
-    }
-
     // Audit log (non-critical — run outside transaction)
     await createAuditLog({
       adminId: auth.user.id,
-      action: status === 'approved' ? AuditActions.PAYMENT_APPROVE : AuditActions.PAYMENT_REJECT,
+      action: status === 'APPROVED' ? AuditActions.PAYMENT_APPROVE : AuditActions.PAYMENT_REJECT,
       entityType: EntityTypes.PAYMENT,
       entityId: id,
       oldData: { status: result.existing.status, adminNote: result.existing.adminNote },

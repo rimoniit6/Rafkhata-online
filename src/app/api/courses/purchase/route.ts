@@ -17,6 +17,18 @@ export async function POST(request: Request) {
     if (!course) return apiError('Course not found', 404)
     if (!course.isPremium) return apiError('This course is free', 400)
 
+    // For premium courses, require a valid payment ID
+    if (!paymentId) return apiError('Payment ID required for premium courses', 400)
+
+    // Verify the payment exists, belongs to this user, and is approved
+    const payment = await db.payment.findUnique({ where: { id: paymentId } })
+    if (!payment) return apiError('Payment not found', 404)
+    if (payment.userId !== auth.user.id) return apiError('Unauthorized', 403)
+    if (payment.status !== 'APPROVED') return apiError('Payment not approved', 400)
+    if (payment.contentType !== 'course' || payment.contentId !== courseId) {
+      return apiError('Payment does not match this course', 400)
+    }
+
     const existing = await db.coursePurchase.findUnique({
       where: { userId_courseId: { userId: auth.user.id, courseId } },
     })

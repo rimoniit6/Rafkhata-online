@@ -1,8 +1,60 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, validateBody } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { toBengaliNumerals } from '@/lib/utils'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
+import { z } from 'zod'
+
+const createMcqPackageSchema = z.object({
+  action: z.literal('create-package'),
+  title: z.string().min(1, 'শিরোনাম আবশ্যক'),
+  classId: z.string().min(1, 'শ্রেণি আবশ্যক'),
+  description: z.string().optional(),
+  subjectIds: z.array(z.string()).optional(),
+  price: z.coerce.number().min(0).default(0),
+  originalPrice: z.coerce.number().min(0).default(0),
+  isPremium: z.boolean().default(true),
+  thumbnail: z.string().nullable().optional(),
+  isActive: z.boolean().default(true),
+  order: z.coerce.number().min(0).default(0),
+})
+
+const createSetSchema = z.object({
+  action: z.literal('create-set'),
+  packageId: z.string().min(1, 'প্যাকেজ ID আবশ্যক'),
+  title: z.string().min(1, 'শিরোনাম আবশ্যক'),
+  description: z.string().optional(),
+  scheduledDate: z.string().min(1, 'তারিখ আবশ্যক'),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  duration: z.coerce.number().int().positive().default(30),
+  marksPerQ: z.coerce.number().min(0).default(1),
+  negativeMarks: z.coerce.number().min(0).default(0),
+  instructions: z.string().nullable().optional(),
+  allowRetake: z.boolean().default(false),
+  order: z.coerce.number().min(0).default(0),
+})
+
+const addQuestionsSchema = z.object({
+  action: z.literal('add-questions'),
+  setId: z.string().min(1, 'সেট ID আবশ্যক'),
+  mcqIds: z.array(z.string()).min(1, 'MCQ IDs আবশ্যক'),
+})
+
+const bulkCreateSetsSchema = z.object({
+  action: z.literal('bulk-create-sets'),
+  packageId: z.string().min(1, 'প্যাকেজ ID আবশ্যক'),
+  prefix: z.string().min(1, 'প্রিফিক্স আবশ্যক'),
+  startDate: z.string().min(1, 'শুরুর তারিখ আবশ্যক'),
+  intervalDays: z.coerce.number().int().positive().default(7),
+  count: z.coerce.number().int().positive().default(10),
+  duration: z.coerce.number().int().positive().default(30),
+  marksPerQ: z.coerce.number().min(0).default(1),
+  negativeMarks: z.coerce.number().min(0).default(0),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+})
 
 // Helper: recalculate totalQuestions and totalMarks for an exam set
 async function recalculateSetTotals(setId: string) {
@@ -11,7 +63,7 @@ async function recalculateSetTotals(setId: string) {
   })
 
   const totalQuestions = questions.length
-  const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0)
+  const totalMarks = questions.reduce((sum, q) => sum + toDecimal(q.marks), 0)
 
   await db.mCQExamSet.update({
     where: { id: setId },
@@ -254,7 +306,7 @@ export async function GET(request: Request) {
         if (!setExists) return apiError('Exam set not found', 404)
 
         const results = await db.mCQExamSetResult.findMany({
-          where: { setId, status: 'completed' },
+          where: { setId, status: 'COMPLETED' },
           include: {
             user: {
               select: {
@@ -294,6 +346,8 @@ export async function POST(request: Request) {
     switch (action) {
       // 6. Create a new package
       case 'create-package': {
+        const validation = validateBody(createMcqPackageSchema, body)
+        if ('error' in validation) return validation.error
         const {
           title,
           description,
@@ -305,9 +359,7 @@ export async function POST(request: Request) {
           thumbnail,
           isActive,
           order,
-        } = body
-
-        if (!title || !classId) return apiError('Title and classId are required', 400)
+        } = validation.data
 
         // Validate class exists
         const classExists = await db.classCategory.findUnique({ where: { id: classId } })
@@ -337,6 +389,8 @@ export async function POST(request: Request) {
 
       // 9. Create an exam set within a package
       case 'create-set': {
+        const validation = validateBody(createSetSchema, body)
+        if ('error' in validation) return validation.error
         const {
           packageId,
           title,
@@ -350,9 +404,7 @@ export async function POST(request: Request) {
           instructions,
           allowRetake,
           order,
-        } = body
-
-        if (!packageId || !title || !scheduledDate) return apiError('PackageId, title, and scheduledDate are required', 400)
+        } = validation.data
 
         // Validate package exists
         const pkgExists = await db.mCQExamPackage.findUnique({ where: { id: packageId } })
@@ -388,9 +440,9 @@ export async function POST(request: Request) {
 
       // 12. Add MCQs to an exam set
       case 'add-questions': {
-        const { setId, mcqIds } = body
-
-        if (!setId || !mcqIds || !Array.isArray(mcqIds) || mcqIds.length === 0) return apiError('SetId and mcqIds required', 400)
+        const validation = validateBody(addQuestionsSchema, body)
+        if ('error' in validation) return validation.error
+        const { setId, mcqIds } = validation.data
 
         const examSet = await db.mCQExamSet.findUnique({ where: { id: setId } })
         if (!examSet) return apiError('Exam set not found', 404)
@@ -456,6 +508,8 @@ export async function POST(request: Request) {
       }
 
       case 'bulk-create-sets': {
+        const validation = validateBody(bulkCreateSetsSchema, body)
+        if ('error' in validation) return validation.error
         const {
           packageId,
           prefix,
@@ -467,9 +521,7 @@ export async function POST(request: Request) {
           negativeMarks,
           startTime,
           endTime,
-        } = body
-
-        if (!packageId || !prefix || !startDate) return apiError('PackageId, prefix, and startDate required', 400)
+        } = validation.data
 
         const pkgExists = await db.mCQExamPackage.findUnique({ where: { id: packageId } })
         if (!pkgExists) return apiError('Package not found', 404)
@@ -674,7 +726,7 @@ export async function PUT(request: Request) {
         })
         if (!existing) return apiError('Request not found', 404)
 
-        const newStatus = approve ? 'approved' : 'rejected'
+        const newStatus = approve ? 'APPROVED' : 'REJECTED'
 
         await db.mCQExamRetakeRequest.update({
           where: { id: requestId },
@@ -707,7 +759,7 @@ export async function PUT(request: Request) {
               userId: existing.userId,
               title: 'পুনরায় পরীক্ষার অনুমতি',
               message: `"${setInfo?.title || ''}" পরীক্ষাটি পুনরায় দেওয়ার অনুমতি দেওয়া হয়েছে। আপনি এখন আবার পরীক্ষা দিতে পারবেন।`,
-              type: 'success',
+              type: 'SUCCESS',
               link: null,
             },
           })
@@ -721,7 +773,7 @@ export async function PUT(request: Request) {
               userId: existing.userId,
               title: 'পুনরায় পরীক্ষার অনুরোধ প্রত্যাখ্যান',
               message: `"${setInfo?.title || ''}" পরীক্ষাটি পুনরায় দেওয়ার অনুরোধ প্রত্যাখ্যান করা হয়েছে।`,
-              type: 'error',
+              type: 'ERROR',
               link: null,
             },
           })

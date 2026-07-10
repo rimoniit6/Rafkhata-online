@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(
   request: Request,
@@ -53,8 +54,8 @@ export async function GET(
     const totalContent = mcqCount + cqCount + lectureCount
 
     const discount =
-      pkg.originalPrice > 0
-        ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100)
+      toDecimal(pkg.originalPrice) > 0
+        ? Math.round(((toDecimal(pkg.originalPrice) - toDecimal(pkg.price)) / toDecimal(pkg.originalPrice)) * 100)
         : 0
 
     return NextResponse.json({

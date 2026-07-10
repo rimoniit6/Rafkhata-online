@@ -3,6 +3,7 @@ import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import type { PaymentAnalytics } from '@/types/analytics'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -34,16 +35,16 @@ export async function GET(request: Request) {
         orderBy: { createdAt: 'asc' },
       }),
       db.payment.count({
-        where: { status: 'pending', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'PENDING', createdAt: { gte: fromDate, lte: toDate } },
       }),
       db.payment.count({
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
       }),
       db.payment.count({
-        where: { status: 'rejected', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'REJECTED', createdAt: { gte: fromDate, lte: toDate } },
       }),
       db.payment.aggregate({
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
         _avg: { amount: true },
       }),
       db.payment.groupBy({
@@ -52,10 +53,10 @@ export async function GET(request: Request) {
         _count: true,
       }),
       db.payment.count({
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
       }),
       db.payment.count({
-        where: { status: 'rejected', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'REJECTED', createdAt: { gte: fromDate, lte: toDate } },
       }),
     ])
 
@@ -64,7 +65,7 @@ export async function GET(request: Request) {
       const day = new Date(p.createdAt).toISOString().split('T')[0]
       const existing = dailyMap.get(day) || { count: 0, revenue: 0 }
       existing.count += 1
-      existing.revenue += p.amount
+      existing.revenue += toDecimal(p.amount)
       dailyMap.set(day, existing)
     })
     const dailyPurchases = Array.from(dailyMap.entries())
@@ -90,7 +91,7 @@ export async function GET(request: Request) {
       pendingPayments: pendingCount,
       approvedPayments: approvedCount,
       rejectedPayments: rejectedCount,
-      averagePurchase: avgPurchase._avg.amount || 0,
+      averagePurchase: toDecimal(avgPurchase._avg.amount || 0),
       popularPaymentMethod,
       conversionRate,
     } satisfies PaymentAnalytics)

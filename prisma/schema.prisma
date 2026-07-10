@@ -15,6 +15,125 @@ enum Role {
   STUDENT
 }
 
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum PaymentMethod {
+  BKASH
+  NAGAD
+  ROCKET
+  OTHER
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ExamType {
+  MCQ
+  CQ
+  MIXED
+}
+
+enum ContentTypeEnum {
+  LECTURE
+  MCQ
+  CQ
+  BOARD
+  BUNDLE
+  MIXED
+}
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ERROR
+}
+
+enum FeedbackStatus {
+  PENDING
+  REPLIED
+  CLOSED
+}
+
+enum SenderRole {
+  USER
+  ADMIN
+}
+
+enum PackageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ExamSetStatus {
+  DRAFT
+  PUBLISHED
+  COMPLETED
+}
+
+enum SubmissionStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  COMPLETED
+  GRADED
+  PUBLISHED
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum EnrollmentType {
+  FREE
+  PAID
+  GRANTED
+}
+
+enum LessonType {
+  LIVE
+  RECORDED
+}
+
+enum NoticeType {
+  TEXT
+  PDF
+  LINK
+}
+
+enum KnowledgeType {
+  KNOWLEDGE
+  COMPREHENSION
+}
+
+enum MCQAnswer {
+  A
+  B
+  C
+  D
+}
+
 // ============ USER SYSTEM ============
 
 model User {
@@ -57,6 +176,9 @@ model User {
   courseEnrollments     CourseEnrollment[]
   assignmentSubmissions AssignmentSubmission[]
   createdExams          Exam[]
+
+  @@index([role])
+  @@index([classLevel, board])
 }
 
 // ============ CONTENT STRUCTURE ============
@@ -93,9 +215,9 @@ model Subject {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  class         ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
-  chapters      Chapter[]
-  Course        Course[]
+  class    ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
+  chapters Chapter[]
+  Course   Course[]
 
   @@unique([slug, classId])
   @@index([classId, isActive, order])
@@ -147,19 +269,19 @@ model Topic {
 // ============ KNOWLEDGE & COMPREHENSION SYSTEM ============
 
 model KnowledgeQuestion {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   chapterId     String
-  type          String // 'knowledge' or 'comprehension'
+  type          KnowledgeType // 'knowledge' or 'comprehension'
   question      String
   answer        String
   questionImage String?
   answerImage   String?
-  isPremium     Boolean  @default(false)
-  price         Float    @default(0)
-  order         Int      @default(0)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isPremium     Boolean       @default(false)
+  price         Decimal       @default(0) @db.Decimal(10, 2)
+  order         Int           @default(0)
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
@@ -182,7 +304,7 @@ model Lecture {
   duration  Int      @default(0) // minutes
   order     Int      @default(0)
   isPremium Boolean  @default(false)
-  price     Float    @default(0)
+  price     Decimal  @default(0) @db.Decimal(10, 2)
   viewCount Int      @default(0)
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -213,7 +335,7 @@ model Resource {
 // ============ MCQ SYSTEM ============
 
 model MCQ {
-  id               String   @id @default(cuid())
+  id               String     @id @default(cuid())
   question         String
   questionImage    String? // URL for question image
   optionA          String
@@ -224,7 +346,7 @@ model MCQ {
   optionCImage     String? // URL for option C image
   optionD          String
   optionDImage     String? // URL for option D image
-  correctAnswer    String // A, B, C, D
+  correctAnswer    MCQAnswer // A, B, C, D
   explanation      String?
   explanationImage String? // URL for explanation image
   chapterId        String
@@ -233,18 +355,17 @@ model MCQ {
   board            String? // dhaka, rajshahi, etc.
   year             String?
   topic            String? // specific topic/chapter section
-  difficulty       String   @default("medium") // easy, medium, hard
-  isPremium        Boolean  @default(false)
-  price            Float    @default(0)
+  difficulty       Difficulty @default(MEDIUM) // easy, medium, hard
+  isPremium        Boolean    @default(false)
+  price            Decimal    @default(0) @db.Decimal(10, 2)
   tags             String? // comma separated
-  isActive         Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  isActive         Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
   chapter          Chapter              @relation(fields: [chapterId], references: [id], onDelete: Cascade)
   examSetQuestions MCQExamSetQuestion[]
 
-  @@index([isActive, classLevel, subjectId, chapterId])
   @@index([classLevel, subjectId, chapterId, isActive])
   @@index([chapterId, isActive])
   @@index([board, year, isActive])
@@ -254,7 +375,7 @@ model MCQ {
 // ============ CQ SYSTEM ============
 
 model CQ {
-  id             String   @id @default(cuid())
+  id             String     @id @default(cuid())
   uddeepok       String // Passage/Stem
   uddeepokImage  String? // URL for uddeepok image
   question1      String
@@ -279,19 +400,18 @@ model CQ {
   board          String?
   year           String?
   topic          String? // specific topic/chapter section
-  difficulty     String   @default("medium")
-  isPremium      Boolean  @default(false)
-  price          Float    @default(0)
+  difficulty     Difficulty @default(MEDIUM)
+  isPremium      Boolean    @default(false)
+  price          Decimal    @default(0) @db.Decimal(10, 2)
   tags           String?
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  isActive       Boolean    @default(true)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
   chapter Chapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
 
   examSetQuestions CQExamSetQuestion[]
 
-  @@index([isActive, classLevel, subjectId, chapterId])
   @@index([classLevel, subjectId, chapterId, isActive])
   @@index([chapterId, isActive])
   @@index([board, year, isActive])
@@ -301,28 +421,28 @@ model CQ {
 // ============ EXAM SYSTEM ============
 
 model Exam {
-  id            String    @id @default(cuid())
+  id            String     @id @default(cuid())
   title         String
   description   String?
   classLevel    String
   subjectId     String?
   chapterIds    String? // comma separated
-  type          String // mcq, cq, mixed
+  type          ExamType // mcq, cq, mixed
   duration      Int // minutes
-  totalMarks    Int       @default(0)
-  marksPerMcq   Float     @default(1) // marks for each MCQ
-  negativeMarks Float     @default(0) // negative marks per wrong MCQ answer
-  isPremium     Boolean   @default(false)
-  price         Float     @default(0)
-  isActive      Boolean   @default(true)
-  status        String    @default("draft") // draft, published, archived
+  totalMarks    Int        @default(0)
+  marksPerMcq   Decimal    @default(1) @db.Decimal(8, 2)
+  negativeMarks Decimal    @default(0) @db.Decimal(8, 2)
+  isPremium     Boolean    @default(false)
+  price         Decimal    @default(0) @db.Decimal(10, 2)
+  isActive      Boolean    @default(true)
+  status        ExamStatus @default(DRAFT) // draft, published, archived
   instructions  String? // exam instructions for students
   startsAt      DateTime?
   endsAt        DateTime?
   creatorId     String? // user who created this exam (custom exam builder)
-  creator       User?     @relation(fields: [creatorId], references: [id], onDelete: SetNull)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  creator       User?      @relation(fields: [creatorId], references: [id], onDelete: SetNull)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
   questions ExamQuestion[]
   results   ExamResult[]
@@ -341,7 +461,7 @@ model ExamQuestion {
   questionType String // mcq, cq
   questionId   String // references MCQ.id or CQ.id
   order        Int      @default(0)
-  marks        Float    @default(0)
+  marks        Decimal  @default(0) @db.Decimal(8, 2)
   createdAt    DateTime @default(now())
 
   exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
@@ -350,16 +470,17 @@ model ExamQuestion {
 }
 
 model ExamResult {
-  id          String   @id @default(cuid())
-  userId      String
-  examId      String
-  score       Float    @default(0)
-  totalMarks  Float    @default(0)
-  timeTaken   Int      @default(0) // seconds
-  answers     Json // JSON object: {questionId: "A"}
-  idempotencyKey String? @unique // Client-generated UUID to prevent duplicate submission
-  createdAt   DateTime @default(now())
-  completedAt DateTime @default(now())
+  id             String   @id @default(cuid())
+  userId         String
+  examId         String
+  score          Decimal  @default(0) @db.Decimal(8, 2)
+  totalMarks     Decimal  @default(0) @db.Decimal(8, 2)
+  timeTaken      Int      @default(0) // seconds
+  answers        Json // JSON object: {questionId: "A"}
+  idempotencyKey String?  @unique // Client-generated UUID to prevent duplicate submission
+  createdAt      DateTime @default(now())
+  completedAt    DateTime @default(now())
+  deletedAt      DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
   exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
@@ -414,12 +535,12 @@ model Note {
 }
 
 model UserFeedback {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   userId    String
   subject   String
-  status    String   @default("pending") // pending, replied, closed
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    FeedbackStatus @default(PENDING) // pending, replied, closed
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
 
   user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   messages FeedbackMessage[]
@@ -429,12 +550,12 @@ model UserFeedback {
 }
 
 model FeedbackMessage {
-  id         String   @id @default(cuid())
+  id         String     @id @default(cuid())
   feedbackId String
   senderId   String
-  senderRole String // user, admin
+  senderRole SenderRole // user, admin
   message    String
-  createdAt  DateTime @default(now())
+  createdAt  DateTime   @default(now())
 
   feedback UserFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
   sender   User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
@@ -453,34 +574,35 @@ model RecentlyViewed {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId, viewedAt])
 }
 
 // ============ PAYMENT SYSTEM ============
 
 model Payment {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   userId         String
-  amount         Float
-  method         String // bkash, nagad, rocket
-  transactionId  String
+  amount         Decimal       @db.Decimal(10, 2)
+  method         PaymentMethod // bkash, nagad, rocket
+  transactionId  String  @unique
   paymentNumber  String
   screenshot     String?
   contentType    String? // lecture, mcq, cq, exam, board-mcq, board-cq, bundle, suggestion, package
   contentId      String?
   contentTitle   String? // stored at payment creation for quick display
   classLevel     String? // For package purchases: which class the user selected
-  status         String    @default("pending") // pending, approved, rejected
-  isActive       Boolean   @default(true) // false when admin deactivates purchase access
+  status         PaymentStatus @default(PENDING) // pending, approved, rejected
+  isActive       Boolean       @default(true) // false when admin deactivates purchase access
   adminNote      String?
   reviewedBy     String?
   reviewedAt     DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  idempotencyKey String?   @unique // Client-generated key for idempotent payment creation
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  idempotencyKey String?       @unique // Client-generated key for idempotent payment creation
+  deletedAt      DateTime?
 
-  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  coursePurchases      CoursePurchase[]
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coursePurchases CoursePurchase[]
 
   @@unique([userId, contentType, contentId, status])
   @@index([userId, contentType, contentId])
@@ -492,14 +614,14 @@ model Payment {
 // ============ NOTIFICATION ============
 
 model Notification {
-  id        String   @id @default(cuid())
+  id        String           @id @default(cuid())
   userId    String?
   title     String
   message   String
-  type      String   @default("info") // info, success, warning, error
-  isRead    Boolean  @default(false)
+  type      NotificationType @default(INFO) // info, success, warning, error
+  isRead    Boolean          @default(false)
   link      String?
-  createdAt DateTime @default(now())
+  createdAt DateTime         @default(now())
 
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -521,6 +643,7 @@ model AuditLog {
   ipAddress  String?
   userAgent  String?
   createdAt  DateTime @default(now())
+  deletedAt  DateTime?
 
   @@index([adminId])
   @@index([entityType, entityId])
@@ -543,6 +666,8 @@ model Banner {
   endDate    DateTime?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
+
+  @@index([isActive])
 }
 
 // ============ SUBSCRIPTION PLAN (REMOVED — per-content pricing only) ============
@@ -558,6 +683,8 @@ model FAQ {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([isActive, category])
 }
 
 // ============ TESTIMONIAL ============
@@ -578,20 +705,20 @@ model Testimonial {
 // ============ NOTICE SYSTEM ============
 
 model Notice {
-  id         String   @id @default(cuid())
+  id         String     @id @default(cuid())
   title      String
   content    String? // Text content
   pdfUrl     String? // PDF attachment URL
   linkUrl    String? // External link URL
   linkLabel  String? // Label for the external link
-  type       String   @default("text") // text, pdf, link
+  type       NoticeType @default(TEXT) // text, pdf, link
   thumbnail  String? // Optional thumbnail image
   classLevel String? // Optional: target class level
-  isPinned   Boolean  @default(false) // Pinned to top
-  isActive   Boolean  @default(true)
-  order      Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isPinned   Boolean    @default(false) // Pinned to top
+  isActive   Boolean    @default(true)
+  order      Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
 
   @@index([isActive, type, order, createdAt])
   @@index([classLevel, isActive])
@@ -602,7 +729,7 @@ model Notice {
 model Suggestion {
   id        String   @id @default(cuid())
   title     String
-  slug      String
+  slug      String   @unique
   content   String // JSON blocks (same as Lecture)
   classId   String? // Optional class association
   subjectId String? // Optional subject association
@@ -610,7 +737,7 @@ model Suggestion {
   thumbnail String?
   pdfUrl    String? // Optional PDF attachment
   isPremium Boolean  @default(false)
-  price     Float    @default(0)
+  price     Decimal  @default(0) @db.Decimal(10, 2)
   viewCount Int      @default(0)
   order     Int      @default(0)
   isActive  Boolean  @default(true)
@@ -727,21 +854,21 @@ model Navigation {
 // ============ BUNDLE SYSTEM ============
 
 model ContentBundle {
-  id            String   @id @default(cuid())
+  id            String          @id @default(cuid())
   title         String
-  slug          String   @unique
+  slug          String          @unique
   description   String?
   thumbnail     String?
-  price         Float    @default(0)
-  originalPrice Float    @default(0) // Total of individual prices
+  price         Decimal         @default(0) @db.Decimal(10, 2)
+  originalPrice Decimal         @default(0) @db.Decimal(10, 2)
   classLevel    String? // Optional: target class
   board         String? // Optional: target board
   year          String? // Optional: target year
-  type          String   @default("mixed") // mcq, cq, lecture, board, mixed
-  isActive      Boolean  @default(true)
-  order         Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  type          ContentTypeEnum @default(MIXED) // mcq, cq, lecture, board, mixed
+  isActive      Boolean         @default(true)
+  order         Int             @default(0)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   items BundleItem[]
 }
@@ -767,8 +894,8 @@ model ContentPackage {
   slug          String   @unique
   description   String?
   thumbnail     String?
-  price         Float    @default(0)
-  originalPrice Float    @default(0)
+  price         Decimal  @default(0) @db.Decimal(10, 2)
+  originalPrice Decimal  @default(0) @db.Decimal(10, 2)
   duration      Int      @default(30) // Duration in days (30, 180, 365, etc.)
   durationLabel String   @default("৩০ দিন") // Human-readable label ("৩০ দিন", "৬ মাস", "১ বছর")
   classLevel    String? // optional: package can target a specific class, or null for any class
@@ -797,6 +924,7 @@ model UserSubscription {
   package ContentPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
 
   @@unique([userId, packageId, classLevel]) // One subscription per user per package per class
+  @@index([userId, isActive])
   @@index([paymentId])
 }
 
@@ -809,12 +937,12 @@ model MCQExamPackage {
   classId       String // Links to ClassCategory
   class         ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
   subjectIds    Json          @default("[]") // JSON array of subject IDs — empty means "all subjects"
-  price         Float         @default(0)
-  originalPrice Float         @default(0)
+  price         Decimal       @default(0) @db.Decimal(10, 2)
+  originalPrice Decimal       @default(0) @db.Decimal(10, 2)
   isPremium     Boolean       @default(true)
   thumbnail     String?
   totalSets     Int           @default(0) // number of exam sets in this package
-  status        String        @default("draft") // draft, published, archived
+  status        PackageStatus @default(DRAFT) // draft, published, archived
   isActive      Boolean       @default(true)
   order         Int           @default(0)
   createdAt     DateTime      @default(now())
@@ -836,13 +964,13 @@ model MCQExamSet {
   startTime      String         @default("00:00") // Time window start (HH:mm)
   endTime        String         @default("23:59") // Time window end (HH:mm)
   duration       Int            @default(30) // Duration in minutes
-  marksPerQ      Float          @default(1)
-  negativeMarks  Float          @default(0)
-  totalMarks     Float          @default(0)
+  marksPerQ      Decimal        @default(1) @db.Decimal(8, 2)
+  negativeMarks  Decimal        @default(0) @db.Decimal(8, 2)
+  totalMarks     Decimal        @default(0) @db.Decimal(8, 2)
   totalQuestions Int            @default(0)
   instructions   String?
   allowRetake    Boolean        @default(false)
-  status         String         @default("draft") // draft, published, completed
+  status         ExamSetStatus  @default(DRAFT) // draft, published, completed
   order          Int            @default(0)
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -861,29 +989,31 @@ model MCQExamSetQuestion {
   set   MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
   mcqId String
   mcq   MCQ        @relation(fields: [mcqId], references: [id], onDelete: Cascade)
-  marks Float      @default(1)
+  marks Decimal    @default(1) @db.Decimal(8, 2)
   order Int        @default(0)
 
   @@unique([setId, mcqId])
+  @@index([mcqId])
 }
 
 model MCQExamSetResult {
-  id            String     @id @default(cuid())
+  id            String           @id @default(cuid())
   userId        String
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   setId         String
-  set           MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
-  answers       Json       @default("{}") // JSON: {mcqId: "A"} — selected answer per question
-  totalCorrect  Int        @default(0)
-  totalWrong    Int        @default(0)
-  totalSkipped  Int        @default(0)
-  marksObtained Float      @default(0)
-  totalMarks    Float      @default(0)
-  timeTaken     Int        @default(0) // seconds taken
+  set           MCQExamSet       @relation(fields: [setId], references: [id], onDelete: Cascade)
+  answers       Json             @default("{}") // JSON: {mcqId: "A"} — selected answer per question
+  totalCorrect  Int              @default(0)
+  totalWrong    Int              @default(0)
+  totalSkipped  Int              @default(0)
+  marksObtained Decimal          @default(0) @db.Decimal(8, 2)
+  totalMarks    Decimal          @default(0) @db.Decimal(8, 2)
+  timeTaken     Int              @default(0) // seconds taken
   startedAt     DateTime?
   submittedAt   DateTime?
-  status        String     @default("not-started") // not-started, in-progress, completed
-  canRetake     Boolean    @default(false) // Admin-granted individual retake permission
+  status        SubmissionStatus @default(NOT_STARTED) // not-started, in-progress, completed
+  canRetake     Boolean          @default(false) // Admin-granted individual retake permission
+  deletedAt     DateTime?
 
   @@unique([userId, setId])
   @@index([userId, status])
@@ -892,17 +1022,17 @@ model MCQExamSetResult {
 // ============ MCQ EXAM RETAKE REQUESTS ============
 
 model MCQExamRetakeRequest {
-  id         String     @id @default(cuid())
+  id         String        @id @default(cuid())
   userId     String
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   setId      String
-  set        MCQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  set        MCQExamSet    @relation(fields: [setId], references: [id], onDelete: Cascade)
   reason     String?
-  status     String     @default("pending") // pending, approved, rejected
+  status     PaymentStatus @default(PENDING) // pending, approved, rejected
   reviewedBy String?
   reviewedAt DateTime?
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   @@unique([userId, setId])
   @@index([reviewedBy])
@@ -919,6 +1049,7 @@ model MCQExamPackagePurchase {
   isActive    Boolean        @default(true)
 
   @@unique([userId, packageId])
+  @@index([userId])
   @@index([paymentId])
 }
 
@@ -931,12 +1062,12 @@ model CQExamPackage {
   classId       String // Links to ClassCategory
   class         ClassCategory @relation(fields: [classId], references: [id], onDelete: Cascade)
   subjectIds    Json          @default("[]") // JSON array of subject IDs
-  price         Float         @default(0)
-  originalPrice Float         @default(0)
+  price         Decimal       @default(0) @db.Decimal(10, 2)
+  originalPrice Decimal       @default(0) @db.Decimal(10, 2)
   isPremium     Boolean       @default(true)
   thumbnail     String?
   totalSets     Int           @default(0)
-  status        String        @default("draft") // draft, published, archived
+  status        PackageStatus @default(DRAFT) // draft, published, archived
   isActive      Boolean       @default(true)
   order         Int           @default(0)
   createdAt     DateTime      @default(now())
@@ -959,11 +1090,11 @@ model CQExamSet {
   startTime      String        @default("00:00")
   endTime        String        @default("23:59")
   duration       Int           @default(30) // minutes
-  marksPerQ      Float         @default(1)
-  totalMarks     Float         @default(0)
+  marksPerQ      Decimal       @default(1) @db.Decimal(8, 2)
+  totalMarks     Decimal       @default(0) @db.Decimal(8, 2)
   totalQuestions Int           @default(0)
   instructions   String?
-  status         String        @default("draft") // draft, published, completed
+  status         ExamSetStatus @default(DRAFT) // draft, published, completed
   allowRetake    Boolean       @default(false)
   order          Int           @default(0)
 
@@ -973,7 +1104,7 @@ model CQExamSet {
   autoPublishResults   Boolean   @default(false) // Auto-publish after all submissions are graded
   maxImagesPerAnswer   Int       @default(5) // Max images a student can upload per answer slot
   gradingDeadline      DateTime? // Optional deadline for grading
-  passMarks            Float     @default(0) // Minimum marks to pass (0 = not set)
+  passMarks            Decimal   @default(0) @db.Decimal(8, 2) // Minimum marks to pass (0 = not set)
   showCorrectAnswers   Boolean   @default(false) // Show model answers after grading
   enablePartialGrading Boolean   @default(true) // Allow partial marks for sub-questions
 
@@ -996,7 +1127,7 @@ model CQExamSetQuestion {
   set      CQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
   cqId     String?
   cq       CQ?       @relation(fields: [cqId], references: [id], onDelete: Cascade)
-  marks    Float     @default(1)
+  marks    Decimal   @default(1) @db.Decimal(8, 2)
   order    Int       @default(0)
   type     String    @default("cq") // cq, typed, mcq-single, mcq-multiple, fill-blanks, written
   subMarks Json? // JSON array [a,b,c,d] marks per sub-question
@@ -1035,32 +1166,33 @@ model CQExamPackagePurchase {
   isActive    Boolean       @default(true)
 
   @@unique([userId, packageId])
+  @@index([userId])
 }
 
 model CQExamSubmission {
-  id            String    @id @default(cuid())
+  id            String           @id @default(cuid())
   userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   setId         String
-  set           CQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
-  totalMarks    Float     @default(0)
-  obtainedMarks Float     @default(0)
-  timeTaken     Int       @default(0) // seconds
-  status        String    @default("not-started") // not-started, in-progress, submitted, graded, published
-  canRetake     Boolean   @default(false) // Admin-granted individual retake permission
+  set           CQExamSet        @relation(fields: [setId], references: [id], onDelete: Cascade)
+  totalMarks    Decimal          @default(0) @db.Decimal(8, 2)
+  obtainedMarks Decimal          @default(0) @db.Decimal(8, 2)
+  timeTaken     Int              @default(0) // seconds
+  status        SubmissionStatus @default(NOT_STARTED) // not-started, in-progress, submitted, graded, published
+  canRetake     Boolean          @default(false) // Admin-granted individual retake permission
   startedAt     DateTime?
   submittedAt   DateTime?
   gradedAt      DateTime?
   gradedBy      String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  deletedAt     DateTime?
 
   answers CQExamAnswer[]
 
   @@unique([userId, setId])
   @@index([setId, status])
   @@index([setId, status, submittedAt])
-  @@index([userId, setId])
   @@index([gradedBy])
 }
 
@@ -1072,8 +1204,8 @@ model CQExamAnswer {
   question      CQExamSetQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
   subIndex      Int               @default(0) // 0 = ক, 1 = খ, 2 = গ, 3 = ঘ
   answerText    String? // Text answer written by user
-  obtainedMarks Float             @default(0) // Marks awarded by admin
-  maxMarks      Float             @default(0)
+  obtainedMarks Decimal           @default(0) @db.Decimal(8, 2) // Marks awarded by admin
+  maxMarks      Decimal           @default(0) @db.Decimal(8, 2)
   feedback      String? // Admin feedback/comment
   gradedAt      DateTime?
   createdAt     DateTime          @default(now())
@@ -1103,17 +1235,17 @@ model CQExamAnswerImage {
 // ============ CQ EXAM RETAKE REQUESTS ============
 
 model CQExamRetakeRequest {
-  id         String    @id @default(cuid())
+  id         String        @id @default(cuid())
   userId     String
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   setId      String
-  set        CQExamSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  set        CQExamSet     @relation(fields: [setId], references: [id], onDelete: Cascade)
   reason     String? // Optional: reason for retake
-  status     String    @default("pending") // pending, approved, rejected
+  status     PaymentStatus @default(PENDING) // pending, approved, rejected
   reviewedBy String? // Admin ID who reviewed
   reviewedAt DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
 
   @@unique([userId, setId])
   @@index([reviewedBy])
@@ -1168,21 +1300,21 @@ model Course {
 
   // Pricing — sold separately, not tied to subscriptions
   isPremium     Boolean @default(false)
-  price         Float   @default(0)
-  originalPrice Float   @default(0) // Higher price for discount display (crossed out)
+  price         Decimal @default(0) @db.Decimal(10, 2)
+  originalPrice Decimal @default(0) @db.Decimal(10, 2) // Higher price for discount display (crossed out)
 
   // Status — draft or published only
-  status String @default("draft")
+  status CourseStatus @default(DRAFT)
 
   // Overview fields
-  teacherName     String?
-  features        String?  // HTML — course features
-  requirements    String?  // HTML — prerequisites
-  targetStudents  String?  // HTML — who this is for
-  hasCertificate  Boolean  @default(false)
-  duration        Int?     // Total course duration in days
-  language        String?  // "bangla", "english", etc.
-  difficulty      String?  // "beginner", "intermediate", "advanced"
+  teacherName    String?
+  features       String? // HTML — course features
+  requirements   String? // HTML — prerequisites
+  targetStudents String? // HTML — who this is for
+  hasCertificate Boolean @default(false)
+  duration       Int? // Total course duration in days
+  language       String? // "bangla", "english", etc.
+  difficulty     String? // "beginner", "intermediate", "advanced"
 
   // Relations
   classId       String?
@@ -1212,29 +1344,29 @@ model Course {
 // ============ COURSE LESSON SYSTEM ============
 
 model CourseLesson {
-  id            String   @id @default(cuid())
-  courseId      String
-  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  lessonType    String   // LIVE, RECORDED
+  id          String     @id @default(cuid())
+  courseId    String
+  course      Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  lessonType  LessonType // LIVE, RECORDED
 
   // LIVE-specific
-  meetingLink   String?
-  meetingId     String?
-  platform      String?
-  password      String?
+  meetingLink String?
+  meetingId   String?
+  platform    String?
+  password    String?
 
   // RECORDED-specific
-  videoUrl      String?
-  previewVideo  String?
-  duration      Int?     // minutes
+  videoUrl     String?
+  previewVideo String?
+  duration     Int? // minutes
 
   // Ordering
-  displayOrder  Int      @default(0)
+  displayOrder Int @default(0)
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   exams       LessonExam[]
@@ -1247,32 +1379,32 @@ model CourseLesson {
 }
 
 model LessonNote {
-  id          String       @id @default(cuid())
-  lessonId    String
-  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  title       String
-  type        String       // richtext, pdf, link
-  content     String?
-  fileUrl     String?
-  link        String?
-  displayOrder Int         @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  lessonId     String
+  lesson       CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title        String
+  type         String // richtext, pdf, link
+  content      String?
+  fileUrl      String?
+  link         String?
+  displayOrder Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@index([lessonId, displayOrder])
 }
 
 model LessonResource {
-  id          String       @id @default(cuid())
-  lessonId    String
-  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  title       String
-  type        String       // file, link
-  fileUrl     String?
-  link        String?
-  displayOrder Int         @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  lessonId     String
+  lesson       CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title        String
+  type         String // file, link
+  fileUrl      String?
+  link         String?
+  displayOrder Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@index([lessonId, displayOrder])
 }
@@ -1280,18 +1412,18 @@ model LessonResource {
 // ============ COURSE EXAM SCHEDULE (independent of lessons) ============
 
 model CourseExamSchedule {
-  id          String   @id @default(cuid())
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  examType    String   // MCQ, CQ
-  packageId   String   // references MCQExamPackage.id or CQExamPackage.id
-  examDate    DateTime
-  startTime   String   // HH:mm
-  endTime     String   // HH:mm
-  autoFilledFromPackage Boolean @default(false)
-  overrideAllowed       Boolean @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                    String   @id @default(cuid())
+  courseId              String
+  course                Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  examType              String // MCQ, CQ
+  packageId             String // references MCQExamPackage.id or CQExamPackage.id
+  examDate              DateTime
+  startTime             String // HH:mm
+  endTime               String // HH:mm
+  autoFilledFromPackage Boolean  @default(false)
+  overrideAllowed       Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   @@index([courseId])
   @@index([courseId, examDate])
@@ -1301,14 +1433,14 @@ model CourseExamSchedule {
 // ============ LESSON EXAM (deprecated — kept for backward compat) ============
 
 model LessonExam {
-  id          String   @id @default(cuid())
-  lessonId    String
-  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  examType    String   // MCQ, CQ
-  packageId   String   // references MCQExamPackage.id or CQExamPackage.id
-  displayOrder Int     @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String       @id @default(cuid())
+  lessonId     String
+  lesson       CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  examType     String // MCQ, CQ
+  packageId    String // references MCQExamPackage.id or CQExamPackage.id
+  displayOrder Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@index([lessonId])
   @@index([examType, packageId])
@@ -1317,16 +1449,16 @@ model LessonExam {
 // ============ LESSON ASSIGNMENT ============
 
 model LessonAssignment {
-  id          String       @id @default(cuid())
-  lessonId    String
-  lesson      CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  deadline    DateTime?
-  attachment  String?      // file URL
-  displayOrder Int         @default(0)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id           String       @id @default(cuid())
+  lessonId     String
+  lesson       CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  deadline     DateTime?
+  attachment   String? // file URL
+  displayOrder Int          @default(0)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   submissions AssignmentSubmission[]
 
@@ -1334,21 +1466,21 @@ model LessonAssignment {
 }
 
 model AssignmentSubmission {
-  id           String          @id @default(cuid())
+  id           String           @id @default(cuid())
   assignmentId String
   assignment   LessonAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   userId       String
-  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  content      String?         // text answer
-  fileUrls     String?         // comma-separated file URLs
-  status       String          @default("submitted") // submitted, graded
-  marks        Float?
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content      String? // text answer
+  fileUrls     String? // comma-separated file URLs
+  status       String           @default("submitted") // submitted, graded
+  marks        Decimal?         @db.Decimal(8, 2)
   feedback     String?
-  gradedBy     String?         // admin/staff user ID
+  gradedBy     String? // admin/staff user ID
   gradedAt     DateTime?
-  submittedAt  DateTime        @default(now())
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  submittedAt  DateTime         @default(now())
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@unique([assignmentId, userId])
   @@index([assignmentId])
@@ -1362,8 +1494,8 @@ model LessonSchedule {
   lessonId  String
   lesson    CourseLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
   date      DateTime?
-  startTime String?      // HH:mm
-  endTime   String?      // HH:mm
+  startTime String? // HH:mm
+  endTime   String? // HH:mm
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
@@ -1374,31 +1506,33 @@ model LessonSchedule {
 // ============ LESSON PROGRESS ============
 
 model LessonProgress {
-  id            String    @id @default(cuid())
-  userId        String
-  enrollmentId  String?
-  lessonId      String
-  courseId      String
-  completed     Boolean   @default(false)
-  completedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  userId       String
+  enrollmentId String?
+  lessonId     String
+  courseId     String
+  completed    Boolean   @default(false)
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   @@unique([userId, lessonId])
   @@index([userId, courseId])
+  @@index([userId, completed])
   @@index([enrollmentId])
 }
 
 model CourseEnrollment {
-  id          String    @id @default(cuid())
+  id          String           @id @default(cuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   courseId    String
-  course      Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  status      String    @default("ACTIVE") // ACTIVE, COMPLETED, CANCELLED
-  type        String    @default("FREE") // FREE, PAID, GRANTED
-  enrolledAt  DateTime  @default(now())
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status      EnrollmentStatus @default(ACTIVE) // ACTIVE, COMPLETED, CANCELLED
+  type        EnrollmentType   @default(FREE) // FREE, PAID, GRANTED
+  enrolledAt  DateTime         @default(now())
   completedAt DateTime?
+  deletedAt   DateTime?
 
   @@unique([userId, courseId])
   @@index([userId])
@@ -1416,6 +1550,7 @@ model CoursePurchase {
   payment     Payment? @relation(fields: [paymentId], references: [id])
   purchasedAt DateTime @default(now())
   isActive    Boolean  @default(true)
+  deletedAt   DateTime?
 
   @@unique([userId, courseId])
   @@index([userId])
@@ -1425,29 +1560,29 @@ model CoursePurchase {
 // ============ ANALYTICS SYSTEM ============
 
 model AnalyticsEvent {
-  id          String   @id @default(cuid())
-  userId      String?
-  eventType   String   // page_view, lecture_view, mcq_answer, exam_start, purchase, etc.
-  eventName   String
-  entityType  String?
-  entityId    String?
-  metadata    Json?
-  sessionId   String?
-  ipAddress   String?
-  userAgent   String?
-  referrer    String?
-  url         String?
-  deviceType  String?
-  browser     String?
-  os          String?
-  screenRes   String?
-  country     String?
-  division    String?
-  district    String?
-  timezone    String?
-  duration    Int?
-  value       Float?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  userId     String?
+  eventType  String // page_view, lecture_view, mcq_answer, exam_start, purchase, etc.
+  eventName  String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  sessionId  String?
+  ipAddress  String?
+  userAgent  String?
+  referrer   String?
+  url        String?
+  deviceType String?
+  browser    String?
+  os         String?
+  screenRes  String?
+  country    String?
+  division   String?
+  district   String?
+  timezone   String?
+  duration   Int?
+  value      Float?
+  createdAt  DateTime @default(now())
 
   @@index([eventType, createdAt])
   @@index([userId, createdAt])
@@ -1460,13 +1595,13 @@ model AnalyticsEvent {
 }
 
 model AnalyticsSession {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String?
-  startTime   DateTime @default(now())
+  startTime   DateTime  @default(now())
   endTime     DateTime?
   duration    Int?
-  pageViews   Int      @default(0)
-  events      Int      @default(0)
+  pageViews   Int       @default(0)
+  events      Int       @default(0)
   deviceType  String?
   browser     String?
   os          String?
@@ -1475,8 +1610,8 @@ model AnalyticsSession {
   ipAddress   String?
   referrer    String?
   landingPage String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
 
   @@index([userId, startTime])
   @@index([startTime])
@@ -1499,29 +1634,29 @@ model AnalyticsSearchQuery {
 }
 
 model AnalyticsAlert {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  metric      String
-  condition   String   // gt, lt, eq, gte, lte
-  threshold   Float
-  timeframe   String   // 1h, 24h, 7d, 30d
-  enabled     Boolean  @default(true)
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  metric        String
+  condition     String // gt, lt, eq, gte, lte
+  threshold     Float
+  timeframe     String // 1h, 24h, 7d, 30d
+  enabled       Boolean   @default(true)
   lastTriggered DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model AnalyticsReport {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String
   description   String?
-  type          String   // revenue, students, retention, conversion, etc.
+  type          String // revenue, students, retention, conversion, etc.
   config        Json?
-  format        String   // xlsx, csv, pdf
-  schedule      String?  // daily, weekly, monthly
+  format        String // xlsx, csv, pdf
+  schedule      String? // daily, weekly, monthly
   recipients    Json?
   lastGenerated DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }

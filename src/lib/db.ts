@@ -36,7 +36,9 @@ function sanitizeData(data: Record<string, unknown>, fields: string[]): void {
 const isProduction = process.env.NODE_ENV === 'production'
 
 function createPrismaClient() {
-  const adapter = new PrismaPg(process.env.DATABASE_URL!)
+  const adapter = new PrismaPg(process.env.DATABASE_URL!, {
+    max: 20,
+  })
   const client = new PrismaClient({
     adapter,
     log: isProduction ? ['error', 'warn'] : ['error', 'warn', 'query'],

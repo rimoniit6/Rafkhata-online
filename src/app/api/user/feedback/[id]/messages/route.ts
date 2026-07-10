@@ -72,7 +72,7 @@ export async function POST(
         data: {
           feedbackId: id,
           senderId: auth.user.id,
-          senderRole: 'user',
+          senderRole: 'USER',
           message: message.trim(),
         },
         include: {
@@ -81,7 +81,7 @@ export async function POST(
       }),
       db.userFeedback.update({
         where: { id },
-        data: { status: 'pending', updatedAt: new Date() },
+        data: { status: 'PENDING', updatedAt: new Date() },
       }),
     ])
 

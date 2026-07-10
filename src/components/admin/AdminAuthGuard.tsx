@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { Lock, Shield } from 'lucide-react'
-import { useAuthStore } from '@/store/auth'
+import { useShallowAuth } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { Button } from '@/components/ui/button'
 
@@ -11,8 +11,8 @@ interface AdminAuthGuardProps {
 }
 
 export default function AdminAuthGuard({ children }: AdminAuthGuardProps) {
-  const { user, isAuthenticated } = useAuthStore()
-  const { navigate } = useRouterStore()
+  const { user, isAuthenticated } = useShallowAuth()
+  const navigate = useRouterStore((s) => s.navigate)
 
   const isAdmin = user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN'
 

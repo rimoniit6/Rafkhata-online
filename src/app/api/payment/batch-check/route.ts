@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     const approvedPayments = await db.payment.findMany({
       where: {
         userId,
-        status: 'approved',
+        status: 'APPROVED',
         isActive: true, // FIX: was missing — deactivated purchases should not show as purchased
         OR: orConditions,
       },
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     const pendingPayments = await db.payment.findMany({
       where: {
         userId,
-        status: 'pending',
+        status: 'PENDING',
         OR: orConditions,
       },
       select: {
@@ -298,7 +298,7 @@ export async function POST(request: Request) {
             userId,
             contentType: 'bundle',
             contentId: { in: bundleIds },
-            status: 'approved',
+            status: 'APPROVED',
             isActive: true,
           },
           select: {
@@ -321,7 +321,7 @@ export async function POST(request: Request) {
             userId,
             contentType: 'bundle',
             contentId: { in: bundleIds },
-            status: 'pending',
+            status: 'PENDING',
           },
           select: {
             contentId: true,

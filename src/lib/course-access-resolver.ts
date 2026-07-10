@@ -52,7 +52,7 @@ export async function resolveCourseAccess(
     where: { id: courseId },
     select: { id: true, isPremium: true, status: true },
   })
-  if (!course || course.status !== 'published') {
+  if (!course || course.status !== 'PUBLISHED') {
     return { hasAccess: false, source: null }
   }
 
@@ -109,7 +109,7 @@ export async function getUserCourseAccessMap(
     where: { id: courseId },
     select: { id: true, isPremium: true, status: true },
   })
-  if (!course || course.status !== 'published') {
+  if (!course || course.status !== 'PUBLISHED') {
     return { courseAccess: false, source: null, enrollment: null, purchase: null, grantedContentIds: [] }
   }
 
@@ -204,7 +204,7 @@ export async function getCourseGrantedContentIds(
   let examTypes = types.length > 0 ? types : ['MCQ', 'CQ']
 
   const purchases = await db.coursePurchase.findMany({
-    where: { userId, isActive: true, course: { status: 'published' } },
+    where: { userId, isActive: true, course: { status: 'PUBLISHED' } },
     select: { courseId: true },
   })
 

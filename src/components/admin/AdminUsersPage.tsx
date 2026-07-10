@@ -69,6 +69,7 @@ export default function AdminUsersPage() {
   const [saving, setSaving] = useState(false)
   const [deleteUser, setDeleteUser] = useState<UserRecord | null>(null)
   const [perPage, setPerPage] = useState(10)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   const selection = useTableSelection(users)
 
@@ -123,14 +124,19 @@ export default function AdminUsersPage() {
 
   const handleDeleteUser = async () => {
     if (!deleteUser) return
+    if (isProcessing) return
+    setIsProcessing(true)
     try {
       const res = await fetch(`/api/admin/users?id=${deleteUser.id}`, { method: 'DELETE' })
       if (res.ok) { toast({ title: 'ব্যবহারকারী মুছে ফেলা হয়েছে' }); setDeleteUser(null); fetchUsers() }
       else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
     } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    finally { setIsProcessing(false) }
   }
 
   const handleBulkDelete = async (ids: string[]) => {
+    if (isProcessing) return
+    setIsProcessing(true)
     try {
       const res = await fetch(`/api/admin/users?ids=${ids.join(',')}`, { method: 'DELETE' })
       if (res.ok) {
@@ -142,9 +148,12 @@ export default function AdminUsersPage() {
         toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
       }
     } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    finally { setIsProcessing(false) }
   }
 
   const handleBulkRole = async (ids: string[], role: string) => {
+    if (isProcessing) return
+    setIsProcessing(true)
     try {
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
@@ -159,9 +168,12 @@ export default function AdminUsersPage() {
         toast({ title: 'ত্রুটি', variant: 'destructive' })
       }
     } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    finally { setIsProcessing(false) }
   }
 
   const handleBulkPremium = async (ids: string[], isPremium: boolean) => {
+    if (isProcessing) return
+    setIsProcessing(true)
     try {
       const res = await fetch('/api/admin/users', {
         method: 'PATCH',
@@ -176,6 +188,7 @@ export default function AdminUsersPage() {
         toast({ title: 'ত্রুটি', variant: 'destructive' })
       }
     } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    finally { setIsProcessing(false) }
   }
 
   const columns: ColumnDef<UserRecord>[] = [
@@ -261,22 +274,27 @@ export default function AdminUsersPage() {
       icon: <Trash2 className="size-4" />,
       variant: 'destructive',
       handler: handleBulkDelete,
+      disabled: isProcessing,
     },
     {
       label: 'অ্যাডমিন করুন',
       handler: (ids) => handleBulkRole(ids, 'ADMIN'),
+      disabled: isProcessing,
     },
     {
       label: 'শিক্ষার্থী করুন',
       handler: (ids) => handleBulkRole(ids, 'STUDENT'),
+      disabled: isProcessing,
     },
     {
       label: 'প্রিমিয়াম করুন',
       handler: (ids) => handleBulkPremium(ids, true),
+      disabled: isProcessing,
     },
     {
       label: 'ফ্রি করুন',
       handler: (ids) => handleBulkPremium(ids, false),
+      disabled: isProcessing,
     },
   ]
 
@@ -382,7 +400,7 @@ export default function AdminUsersPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteUser(null)}>বাতিল</Button>
-            <Button variant="destructive" onClick={handleDeleteUser}>মুছুন</Button>
+            <Button variant="destructive" onClick={handleDeleteUser} disabled={isProcessing}>{isProcessing ? 'মুছছে...' : 'মুছুন'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

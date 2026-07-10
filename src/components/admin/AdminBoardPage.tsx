@@ -274,6 +274,7 @@ export default function AdminBoardPage() {
   // Delete
   const [deleteInfo, setDeleteInfo] = useState<{ id: string; type: 'mcq' | 'cq' } | null>(null)
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
 
   // Cascade select data
   const [classes, setClasses] = useState<ClassItem[]>([])
@@ -290,7 +291,9 @@ export default function AdminBoardPage() {
     fetch('/api/admin/classes')
       .then((res) => res.json())
       .then((json) => setClasses(Array.isArray(json.data) ? json.data : []))
-      .catch(() => {})
+      .catch((err) => {
+        console.error('[AdminBoard] Failed to load classes:', err)
+      })
   }, [])
 
 
@@ -304,7 +307,9 @@ export default function AdminBoardPage() {
           setFilterSubjects(Array.isArray(json.data) ? json.data : [])
           setSubjectFilter('all')
         })
-        .catch(() => {})
+        .catch((err) => {
+          console.error('[AdminBoard] Failed to load subjects:', err)
+        })
     } else {
       setFilterSubjects([])
       setSubjectFilter('all')
@@ -380,8 +385,14 @@ export default function AdminBoardPage() {
   const selection = useTableSelection(questions)
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/board-questions?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchQuestions() }
+    if (isProcessing) return
+    setIsProcessing(true)
+    try {
+      const res = await fetch(`/api/admin/board-questions?ids=${ids.join(',')}`, { method: 'DELETE' })
+      if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchQuestions() }
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   // ─── Form cascade: when classId changes ──────────────────────────────────
@@ -1394,7 +1405,7 @@ export default function AdminBoardPage() {
   ]
 
   const bulkActions: BulkAction[] = [
-    { label: 'মুছে ফেলুন', variant: 'destructive', handler: handleBulkDelete },
+    { label: 'মুছে ফেলুন', variant: 'destructive', handler: handleBulkDelete, disabled: isProcessing },
   ]
 
   const filters = (

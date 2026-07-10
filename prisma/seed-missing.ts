@@ -39,12 +39,12 @@ async function seedExams() {
   const sscPhysics = sscClass ? await db.subject.findFirst({ where: { slug: 'physics', classId: sscClass.id } }) : null
 
   const exams = [
-    { title: 'এসএসসি পদার্থবিজ্ঞান মডেল টেস্ট ১', classLevel: 'ssc', type: 'mcq', duration: 30, totalMarks: 30, marksPerMcq: 1, negativeMarks: 0, status: 'published', instructions: 'প্রতিটি প্রশ্নের ৪টি উত্তরের মধ্যে একটি সঠিক। সময় ৩০ মিনিট।' },
-    { title: 'এসএসসি পদার্থবিজ্ঞান মডেল টেস্ট ২', classLevel: 'ssc', type: 'mcq', duration: 30, totalMarks: 30, marksPerMcq: 1, negativeMarks: 0.5, status: 'published', instructions: 'প্রতিটি প্রশ্নের ৪টি উত্তরের মধ্যে একটি সঠিক। ভুল উত্তরে ০.৫ নম্বর কাটা হবে।' },
-    { title: 'এসএসসি রসায়ন মডেল টেস্ট', classLevel: 'ssc', type: 'mcq', duration: 25, totalMarks: 25, marksPerMcq: 1, status: 'published' },
-    { title: 'এইচএসসি পদার্থবিজ্ঞান মডেল টেস্ট', classLevel: 'hsc', type: 'mcq', duration: 40, totalMarks: 40, marksPerMcq: 1, negativeMarks: 0.25, status: 'published' },
-    { title: '৮ম শ্রেণি বিজ্ঞান মডেল টেস্ট', classLevel: 'class-8', type: 'mcq', duration: 20, totalMarks: 20, marksPerMcq: 1, status: 'published' },
-    { title: 'ড্রাফট পরীক্ষা (টেস্ট)', classLevel: 'ssc', type: 'mcq', duration: 15, totalMarks: 15, status: 'draft' },
+    { title: 'এসএসসি পদার্থবিজ্ঞান মডেল টেস্ট ১', classLevel: 'ssc', type: 'MCQ', duration: 30, totalMarks: 30, marksPerMcq: 1, negativeMarks: 0, status: 'PUBLISHED', instructions: 'প্রতিটি প্রশ্নের ৪টি উত্তরের মধ্যে একটি সঠিক। সময় ৩০ মিনিট।' },
+    { title: 'এসএসসি পদার্থবিজ্ঞান মডেল টেস্ট ২', classLevel: 'ssc', type: 'MCQ', duration: 30, totalMarks: 30, marksPerMcq: 1, negativeMarks: 0.5, status: 'PUBLISHED', instructions: 'প্রতিটি প্রশ্নের ৪টি উত্তরের মধ্যে একটি সঠিক। ভুল উত্তরে ০.৫ নম্বর কাটা হবে।' },
+    { title: 'এসএসসি রসায়ন মডেল টেস্ট', classLevel: 'ssc', type: 'MCQ', duration: 25, totalMarks: 25, marksPerMcq: 1, status: 'PUBLISHED' },
+    { title: 'এইচএসসি পদার্থবিজ্ঞান মডেল টেস্ট', classLevel: 'hsc', type: 'MCQ', duration: 40, totalMarks: 40, marksPerMcq: 1, negativeMarks: 0.25, status: 'PUBLISHED' },
+    { title: '৮ম শ্রেণি বিজ্ঞান মডেল টেস্ট', classLevel: 'class-8', type: 'MCQ', duration: 20, totalMarks: 20, marksPerMcq: 1, status: 'PUBLISHED' },
+    { title: 'ড্রাফট পরীক্ষা (টেস্ট)', classLevel: 'ssc', type: 'MCQ', duration: 15, totalMarks: 15, status: 'DRAFT' },
   ]
 
   for (const examData of exams) {
@@ -54,6 +54,8 @@ async function seedExams() {
     const exam = await db.exam.create({
       data: {
         ...examData,
+        type: examData.type as 'MCQ' | 'CQ' | 'MIXED',
+        status: examData.status as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED',
         subjectId: sscPhysics?.id || null,
         creatorId: adminUser.id,
         isActive: true,
@@ -82,7 +84,7 @@ async function seedExams() {
 
   // ── Exam Results ──
   const students = await db.user.findMany({ where: { role: 'STUDENT' }, take: 3 })
-  const publishedExams = await db.exam.findMany({ where: { status: 'published' }, take: 3 })
+  const publishedExams = await db.exam.findMany({ where: { status: 'PUBLISHED' }, take: 3 })
 
   for (const student of students) {
     for (const exam of publishedExams) {
@@ -95,7 +97,7 @@ async function seedExams() {
       for (const q of questions) {
         const correct = pick(['A', 'B', 'C', 'D'])
         answers[q.questionId] = correct
-        score += q.marks
+        score += Number(q.marks)
       }
 
       await db.examResult.create({
@@ -275,7 +277,7 @@ async function seedFeedback() {
       data: {
         userId: student.id,
         subject: feedbackSubjects[i % feedbackSubjects.length],
-        status: i === 0 ? 'replied' : 'pending',
+        status: i === 0 ? 'REPLIED' : 'PENDING',
       },
     })
 
@@ -284,7 +286,7 @@ async function seedFeedback() {
       data: {
         feedbackId: feedback.id,
         senderId: student.id,
-        senderRole: 'user',
+        senderRole: 'USER',
         message: i === 0
           ? 'আমার পেমেন্ট অনুমোদিত হয়নি। ট্রানজেকশন আইডি: TXN123456'
           : 'আমি SSC পদার্থবিজ্ঞানের আরো MCQ চাই।',
@@ -297,7 +299,7 @@ async function seedFeedback() {
         data: {
           feedbackId: feedback.id,
           senderId: adminUser.id,
-          senderRole: 'admin',
+          senderRole: 'ADMIN',
           message: 'আপনার পেমেন্ট যাচাই করা হয়েছে। অনুমোদিত হয়েছে।',
         },
       })
@@ -368,7 +370,7 @@ async function seedMCQExamPackages() {
         originalPrice: 199,
         isPremium: true,
         totalSets: 3,
-        status: 'published',
+        status: 'PUBLISHED',
         isActive: true,
       },
     })
@@ -388,7 +390,7 @@ async function seedMCQExamPackages() {
           negativeMarks: 0,
           totalMarks: 10,
           totalQuestions: 10,
-          status: 'published',
+          status: 'PUBLISHED',
           allowRetake: i > 1,
         },
       })
@@ -418,7 +420,7 @@ async function seedMCQExamPackages() {
             timeTaken: 300 + Math.floor(Math.random() * 900),
             startedAt: randomDate(7),
             submittedAt: randomDate(5),
-            status: 'completed',
+            status: 'COMPLETED',
           },
         })
       }
@@ -437,7 +439,7 @@ async function seedMCQExamPackages() {
           originalPrice: 299,
           isPremium: true,
           totalSets: 2,
-          status: 'published',
+          status: 'PUBLISHED',
           isActive: true,
         },
       })
@@ -451,7 +453,7 @@ async function seedMCQExamPackages() {
             duration: 35,
             totalMarks: 15,
             totalQuestions: 15,
-            status: 'published',
+            status: 'PUBLISHED',
           },
         })
         const mcqs = await db.mCQ.findMany({ where: { classLevel: 'hsc', isActive: true }, take: 15 })
@@ -476,7 +478,7 @@ async function seedMCQExamPackages() {
   }
 
   // ── MCQ Retake Requests ──
-  const completedSets = await db.mCQExamSetResult.findMany({ where: { status: 'completed' }, take: 1 })
+  const completedSets = await db.mCQExamSetResult.findMany({ where: { status: 'COMPLETED' }, take: 1 })
   if (completedSets.length > 0 && students.length > 0) {
     const existing = await db.mCQExamRetakeRequest.findFirst({ where: { userId: students[0].id, setId: completedSets[0].setId } })
     if (!existing) {
@@ -485,7 +487,7 @@ async function seedMCQExamPackages() {
           userId: students[0].id,
           setId: completedSets[0].setId,
           reason: 'নেটওয়ার্ক সমস্যায় পরীক্ষা শেষ হয়নি',
-          status: 'pending',
+          status: 'PENDING',
         },
       })
     }
@@ -517,7 +519,7 @@ async function seedCQExamPackages() {
         originalPrice: 299,
         isPremium: true,
         totalSets: 2,
-        status: 'published',
+        status: 'PUBLISHED',
         isActive: true,
       },
     })
@@ -533,7 +535,7 @@ async function seedCQExamPackages() {
         duration: 60,
         totalMarks: 50,
         totalQuestions: cqs.length || 1,
-        status: 'published',
+        status: 'PUBLISHED',
         answerMode: 'flexible',
         passMarks: 20,
       },
@@ -554,7 +556,7 @@ async function seedCQExamPackages() {
           totalMarks: 45,
           obtainedMarks: Math.floor(Math.random() * 30) + 10,
           timeTaken: 1800 + Math.floor(Math.random() * 1800),
-          status: pick(['submitted', 'graded']),
+          status: pick(['SUBMITTED', 'GRADED']),
           startedAt: randomDate(7),
           submittedAt: randomDate(5),
         },
@@ -569,7 +571,7 @@ async function seedCQExamPackages() {
             questionId: q.id,
             subIndex: 0,
             answerText: `ছাত্রের উত্তর: ${q.marks} নম্বরের প্রশ্নের উত্তর`,
-            obtainedMarks: submission.status === 'graded' ? Math.floor(q.marks * 0.7) : 0,
+            obtainedMarks: submission.status === 'GRADED' ? Math.floor(Number(q.marks) * 0.7) : 0,
             maxMarks: q.marks,
           },
         })
@@ -585,7 +587,7 @@ async function seedCQExamPackages() {
         duration: 60,
         totalMarks: 50,
         totalQuestions: 2,
-        status: 'published',
+        status: 'PUBLISHED',
       },
     })
   }
@@ -626,7 +628,7 @@ async function seedCourses() {
         isPremium: true,
         price: 499,
         originalPrice: 999,
-        status: 'published',
+        status: 'PUBLISHED',
         teacherName: 'সাইফুর রহমান',
         hasCertificate: true,
         duration: 90,
@@ -648,7 +650,7 @@ async function seedCourses() {
     const createdLessons = []
     for (const lessonData of lessons) {
       const lesson = await db.courseLesson.create({
-        data: { ...lessonData, courseId: course.id },
+        data: { ...lessonData, courseId: course.id, lessonType: lessonData.lessonType as 'LIVE' | 'RECORDED' },
       })
       createdLessons.push(lesson)
 
@@ -728,7 +730,7 @@ async function seedCourses() {
                 assignmentId: assignment.id,
                 userId: student.id,
                 content: 'আমার উত্তর: F = ma সূত্র প্রয়োগ করে...',
-                status: pick(['submitted', 'graded']),
+          status: pick(['SUBMITTED', 'GRADED']),
                 marks: pick([null, 8, 9, 10]),
                 feedback: pick([null, 'ভালো উত্তর!', 'আরো বিস্তারিত লিখুন।']),
                 submittedAt: randomDate(5),

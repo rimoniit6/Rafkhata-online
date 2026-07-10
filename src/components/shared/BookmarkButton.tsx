@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Bookmark } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/store/auth'
+import { useShallowAuth } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
@@ -30,8 +30,8 @@ export default function BookmarkButton({
   initialBookmarked,
   onToggle,
 }: BookmarkButtonProps) {
-  const { user, isAuthenticated } = useAuthStore()
-  const { navigate } = useRouterStore()
+  const { user, isAuthenticated } = useShallowAuth()
+  const navigate = useRouterStore((s) => s.navigate)
   const { toast } = useToast()
   const [isBookmarked, setIsBookmarked] = useState(initialBookmarked || false)
   const [loading, setLoading] = useState(false)

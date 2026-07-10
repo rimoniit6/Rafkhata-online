@@ -71,7 +71,7 @@ export async function GET(request: Request) {
 
     // Fetch approved payments as purchases (replaces broken contentPurchase)
     const payments = await db.payment.findMany({
-      where: { userId, status: 'approved' },
+      where: { userId, status: 'APPROVED' },
       orderBy: { createdAt: 'desc' },
     })
 

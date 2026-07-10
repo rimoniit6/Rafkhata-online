@@ -3,6 +3,7 @@ import { AuditActions,createAuditLog,EntityTypes,getClientIP } from '@/lib/audit
 import { db } from '@/lib/db'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 async function checkGradingDeadline(setId: string): Promise<void> {
   const examSet = await db.cQExamSet.findUnique({
@@ -212,7 +213,7 @@ export async function GET(request: Request) {
         const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100)
         if (!bgSetId || !questionId) return apiError('Set ID and Question ID are required', 400)
 
-        const where = { setId: bgSetId, status: { in: ['submitted', 'graded', 'published'] } }
+        const where = { setId: bgSetId, status: { in: ['SUBMITTED', 'GRADED', 'PUBLISHED'] as ['SUBMITTED', 'GRADED', 'PUBLISHED'] } }
 
         const [bulkSubs, total] = await Promise.all([
           db.cQExamSubmission.findMany({
@@ -536,7 +537,7 @@ export async function PUT(request: Request) {
               gradedAt: new Date(),
             }
             await db.cQExamAnswer.update({ where: { id: ans.id }, data: updateData })
-            totalObtained += ans.obtainedMarks ?? 0
+            totalObtained += toDecimal(ans.obtainedMarks ?? 0)
           }
         }
 
@@ -546,19 +547,19 @@ export async function PUT(request: Request) {
           select: { autoPublishResults: true, id: true },
         })
 
-        let newStatus: string = 'graded'
+        let newStatus: 'GRADED' | 'PUBLISHED' = 'GRADED'
         if (examSet?.autoPublishResults) {
           // Check if ALL submissions for this set are now graded
           const pendingCount = await db.cQExamSubmission.count({
-            where: { setId: submission.setId, status: 'submitted' },
+            where: { setId: submission.setId, status: 'SUBMITTED' },
           })
           if (pendingCount === 0) {
             // All submissions are graded — auto-publish all graded submissions for this set
             await db.cQExamSubmission.updateMany({
-              where: { setId: submission.setId, status: 'graded' },
-              data: { status: 'published' },
+              where: { setId: submission.setId, status: 'GRADED' },
+              data: { status: 'PUBLISHED' },
             })
-            newStatus = 'published'
+            newStatus = 'PUBLISHED'
           }
         }
 
@@ -578,7 +579,7 @@ export async function PUT(request: Request) {
           action: AuditActions.GRADE_UPDATE,
           entityType: EntityTypes.SUBMISSION,
           entityId: submissionId,
-          oldData: { obtainedMarks: 0, status: 'submitted' },
+          oldData: { obtainedMarks: 0, status: 'SUBMITTED' },
           newData: { obtainedMarks: totalObtained, status: newStatus },
           ipAddress: getClientIP(request),
           userAgent: request.headers.get('user-agent') || undefined,
@@ -601,7 +602,7 @@ export async function PUT(request: Request) {
 
         // Find all pending (submitted) submissions for this set with their answers
         const pendingSubmissions = await db.cQExamSubmission.findMany({
-          where: { setId, status: 'submitted' },
+          where: { setId, status: 'SUBMITTED' },
           include: { answers: true },
         })
 
@@ -616,7 +617,7 @@ export async function PUT(request: Request) {
         for (const sub of pendingSubmissions) {
           let totalObtained = 0
           for (const ans of sub.answers) {
-            const answerMarks = Math.min(marks, ans.maxMarks || 0)
+            const answerMarks = Math.min(marks, toDecimal(ans.maxMarks || 0))
             answerUpdates.push({ id: ans.id, obtainedMarks: answerMarks })
             totalObtained += answerMarks
           }
@@ -640,7 +641,7 @@ export async function PUT(request: Request) {
               where: { id },
               data: {
                 obtainedMarks,
-                status: 'graded',
+                status: 'GRADED',
                 gradedAt: new Date(),
                 gradedBy: auth?.user?.id || null,
               },
@@ -656,13 +657,13 @@ export async function PUT(request: Request) {
         if (bulkExamSet?.autoPublishResults) {
           // Check if ALL submissions for this set are now graded (no more 'submitted' left)
           const remainingPending = await db.cQExamSubmission.count({
-            where: { setId, status: 'submitted' },
+            where: { setId, status: 'SUBMITTED' },
           })
           if (remainingPending === 0) {
             // All submissions are graded — auto-publish all graded submissions for this set
             await db.cQExamSubmission.updateMany({
-              where: { setId, status: 'graded' },
-              data: { status: 'published' },
+              where: { setId, status: 'GRADED' },
+              data: { status: 'PUBLISHED' },
             })
           }
         }
@@ -728,7 +729,7 @@ export async function PUT(request: Request) {
                 where: { id: submissionId },
                 data: {
                   obtainedMarks,
-                  status: 'graded',
+                  status: 'GRADED',
                   gradedAt: new Date(),
                   gradedBy: auth?.user?.id || null,
                 },
@@ -754,12 +755,12 @@ export async function PUT(request: Request) {
             })
             if (bulkQExamSet?.autoPublishResults) {
               const remainingPending = await db.cQExamSubmission.count({
-                where: { setId: firstSub.setId, status: 'submitted' },
+                where: { setId: firstSub.setId, status: 'SUBMITTED' },
               })
               if (remainingPending === 0) {
                 await db.cQExamSubmission.updateMany({
-                  where: { setId: firstSub.setId, status: 'graded' },
-                  data: { status: 'published' },
+                  where: { setId: firstSub.setId, status: 'GRADED' },
+                  data: { status: 'PUBLISHED' },
                 })
               }
             }
@@ -794,13 +795,13 @@ export async function PUT(request: Request) {
 
         // Update all graded submissions to published
         await db.cQExamSubmission.updateMany({
-          where: { setId, status: 'graded' },
-          data: { status: 'published' },
+          where: { setId, status: 'GRADED' },
+          data: { status: 'PUBLISHED' },
         })
 
         // Find all affected users to notify them
         const publishedSubmissions = await db.cQExamSubmission.findMany({
-          where: { setId, status: 'published' },
+          where: { setId, status: 'PUBLISHED' },
           select: { userId: true },
         })
 
@@ -812,7 +813,7 @@ export async function PUT(request: Request) {
               userId: uid,
               title: 'ফলাফল প্রকাশিত',
               message: `"${cqSet?.title || ''}" পরীক্ষার ফলাফল প্রকাশিত হয়েছে। এখন আপনার প্রাপ্ত নম্বর ও উত্তর দেখতে পারেন।`,
-              type: 'success',
+              type: 'SUCCESS',
               link: null,
             })),
           })
@@ -824,8 +825,8 @@ export async function PUT(request: Request) {
           action: 'publish_results',
           entityType: EntityTypes.SUBMISSION,
           entityId: setId,
-          oldData: { status: 'graded' },
-          newData: { status: 'published', notifiedCount: userIds.length },
+          oldData: { status: 'GRADED' },
+          newData: { status: 'PUBLISHED', notifiedCount: userIds.length },
           ipAddress: getClientIP(request),
           userAgent: request.headers.get('user-agent') || undefined,
         })
@@ -894,7 +895,7 @@ export async function PUT(request: Request) {
         })
         if (!existing) return apiError('Request not found', 404)
 
-        const newStatus = approve ? 'approved' : 'rejected'
+        const newStatus = approve ? 'APPROVED' : 'REJECTED'
 
         await db.cQExamRetakeRequest.update({
           where: { id: requestId },
@@ -927,7 +928,7 @@ export async function PUT(request: Request) {
               userId: existing.userId,
               title: 'পুনরায় পরীক্ষার অনুমতি',
               message: `"${setInfo?.title || ''}" পরীক্ষাটি পুনরায় দেওয়ার অনুমতি দেওয়া হয়েছে। আপনি এখন আবার পরীক্ষা দিতে পারবেন।`,
-              type: 'success',
+              type: 'SUCCESS',
               link: null,
             },
           })
@@ -942,7 +943,7 @@ export async function PUT(request: Request) {
               userId: existing.userId,
               title: 'পুনরায় পরীক্ষার অনুরোধ প্রত্যাখ্যান',
               message: `"${setInfo?.title || ''}" পরীক্ষাটি পুনরায় দেওয়ার অনুরোধ প্রত্যাখ্যান করা হয়েছে।`,
-              type: 'error',
+              type: 'ERROR',
               link: null,
             },
           })
@@ -1043,7 +1044,7 @@ export async function PUT(request: Request) {
 
         await db.cQExamSubmission.update({
           where: { id: submissionId },
-          data: { status: 'submitted', gradedAt: null, gradedBy: null },
+          data: { status: 'SUBMITTED', gradedAt: null, gradedBy: null },
         })
 
         // Also clear obtainedMarks and feedback on answers so they can be re-graded

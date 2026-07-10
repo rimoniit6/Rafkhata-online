@@ -1,4 +1,9 @@
-import * as XLSX from 'xlsx'
+let xlsxModule: typeof import('xlsx') | null = null
+
+async function getXLSX() {
+  if (!xlsxModule) xlsxModule = await import('xlsx')
+  return xlsxModule
+}
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const MAX_ROWS = 10000
@@ -37,7 +42,8 @@ function checkRowLimit(rows: unknown[]): void {
   }
 }
 
-export function safeParseExcel(data: ArrayBuffer): ParseResult {
+export async function safeParseExcel(data: ArrayBuffer): Promise<ParseResult> {
+  const XLSX = await getXLSX()
   const workbook = XLSX.read(data, { type: 'array', cellDates: false, cellHTML: false, cellText: false })
   const sheetName = workbook.SheetNames[0]
   if (!sheetName) {
@@ -49,17 +55,14 @@ export function safeParseExcel(data: ArrayBuffer): ParseResult {
   return { rows, sheetName }
 }
 
-/** Server-side: parse from a File object with full validation */
 export async function safeParseExcelFromFile(file: File): Promise<ParseResult> {
   validateFile(file)
   const buffer = await file.arrayBuffer()
   return safeParseExcel(buffer)
 }
 
-/** Client-side: parse from a File object in the browser */
 export async function safeParseExcelClient(file: File): Promise<ParseResult> {
   validateFile(file)
   const buffer = await file.arrayBuffer()
-  const result = safeParseExcel(buffer)
-  return result
+  return safeParseExcel(buffer)
 }

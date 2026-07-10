@@ -2,12 +2,13 @@
 
 import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
-import { useRouterStore, RoutePath, isAdminRoute } from '@/store/router'
+import { useRouterStore, useRouteParams, useCurrentRoute, RoutePath, isAdminRoute } from '@/store/router'
 import { usePageMeta } from '@/hooks/use-page-meta'
 import AppShell from '@/components/layout/AppShell'
 
 const HomePage = dynamic(() => import('@/components/home/HomePage'))
 const SocialLoginPage = dynamic(() => import('@/components/auth/SocialLoginPage'))
+const ClassCategories = dynamic(() => import('@/components/home/ClassCategories'))
 const ClassHubPage = dynamic(() => import('@/components/class-hub/ClassHubPage'))
 const SubjectHubPage = dynamic(() => import('@/components/subject-hub/SubjectHubPage'))
 const ChapterHubPage = dynamic(() => import('@/components/chapter-hub/ChapterHubPage'))
@@ -25,6 +26,10 @@ const SearchResultsPage = dynamic(() => import('@/components/search/SearchResult
 const PaymentPage = dynamic(() => import('@/components/payment/PaymentPage'))
 const UserDashboardPage = dynamic(() => import('@/components/user/UserDashboardPage'))
 const UserExamListPage = dynamic(() => import('@/components/exam/UserExamListPage'))
+const ExamSessionPage = dynamic(() => import('@/components/exam/ExamSessionPage'))
+const CreateExamPage = dynamic(() => import('@/components/create-exam/CreateExamPage'))
+const CreatorExamHistoryPage = dynamic(() => import('@/components/exam/CreatorExamHistoryPage'))
+const CreatorExamResultReviewPage = dynamic(() => import('@/components/exam/CreatorExamResultReviewPage'))
 const MCQExamPackageListPage = dynamic(() => import('@/components/exam/MCQExamPackageListPage'))
 const MCQExamPackageDetailPage = dynamic(() => import('@/components/exam/MCQExamPackageDetailPage'))
 const MCQExamHistoryPage = dynamic(() => import('@/components/exam/MCQExamHistoryPage'))
@@ -35,16 +40,17 @@ const CQExamResultPage = dynamic(() => import('@/components/cq-exam/CQExamResult
 const KnowledgeQuestionsPage = dynamic(() => import('@/components/knowledge/KnowledgeQuestionsPage'))
 const CourseListPage = dynamic(() => import('@/components/course/CourseListPage'))
 const StudentCourseDetailPage = dynamic(() => import('@/features/course/student/components/StudentCourseDetailPage'))
+const ExamResultPage = dynamic(() => import('@/components/exam/ExamResultPage'))
 const AdminLayout = dynamic(() => import('@/components/admin/AdminLayout'), { ssr: false })
 
 function StudentCourseDetailWrapper() {
-  const { params } = useRouterStore()
+  const params = useRouteParams()
   return <StudentCourseDetailPage slug={params.courseSlug || ''} />
 }
 
 function RouteRenderer() {
   usePageMeta()
-  const { currentRoute } = useRouterStore()
+  const currentRoute = useCurrentRoute()
 
   if (isAdminRoute(currentRoute)) {
     return <AdminLayout />
@@ -54,7 +60,7 @@ function RouteRenderer() {
     'home': <HomePage />,
     'login': <SocialLoginPage />,
     'register': <SocialLoginPage />,
-    'class-list': <HomePage />,
+    'class-list': <ClassCategories />,
     'class-detail': <ClassHubPage />,
     'subject-detail': <SubjectHubPage />,
     'chapter-detail': <ChapterHubPage />,
@@ -83,6 +89,11 @@ function RouteRenderer() {
     'course-list': <CourseListPage />,
     'course-detail': <StudentCourseDetailWrapper />,
     'course-viewer': <StudentCourseDetailWrapper />,
+    'exam-session': <ExamSessionPage />,
+    'create-exam': <CreateExamPage />,
+    'exam-creator-history': <CreatorExamHistoryPage />,
+    'exam-creator-result': <CreatorExamResultReviewPage />,
+    'exam-result': <ExamResultPage />,
   }
 
   return routeMap[currentRoute] || <HomePage />

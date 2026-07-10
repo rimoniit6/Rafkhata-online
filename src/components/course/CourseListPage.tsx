@@ -3,16 +3,19 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowLeft, BookOpen, Crown, Loader2, Calendar, Layers } from 'lucide-react'
+import SafeImage from '@/components/ui/safe-image'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { courseService, type CourseRecord } from '@/services/api/course.service'
 
 export default function CourseListPage() {
-  const { params, navigate, goBack } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
   const { metadata } = useHierarchyMetadata()
   const classList = (metadata?.classes || []) as { id: string; name: string; slug: string }[]
   const [courses, setCourses] = useState<CourseRecord[]>([])
@@ -69,7 +72,7 @@ export default function CourseListPage() {
                 <Card className="cursor-pointer transition-all hover:shadow-lg overflow-hidden" onClick={() => navigate('course-detail', { courseSlug: course.slug })}>
                   {course.thumbnail && (
                     <div className="h-40 overflow-hidden">
-                      <img src={course.thumbnail} alt={course.title} className="h-full w-full object-cover" />
+                      <SafeImage src={course.thumbnail} alt={course.title} width={640} height={360} className="h-full w-full object-cover" />
                     </div>
                   )}
                   <CardContent className="p-5">

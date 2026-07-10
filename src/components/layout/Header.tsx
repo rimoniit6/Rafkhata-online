@@ -9,9 +9,9 @@ import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from '@/components/ui/sheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useCurrentRoute } from '@/store/router'
 import type { RoutePath } from '@/store/router'
-import { useAuthStore } from '@/store/auth'
+import { useAuthStore, useShallowAuth } from '@/store/auth'
 import { useSiteConfig } from '@/hooks/use-metadata'
 import { useNavigation } from '@/hooks/use-navigation'
 import Image from 'next/image'
@@ -25,8 +25,10 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const { theme, setTheme } = useTheme()
-  const { currentRoute, navigate } = useRouterStore()
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const currentRoute = useCurrentRoute()
+  const navigate = useRouterStore((s) => s.navigate)
+  const { user, isAuthenticated } = useShallowAuth()
+  const logout = useAuthStore((s) => s.logout)
   const { config } = useSiteConfig()
   const { headerNav, loading: navLoading } = useNavigation()
 

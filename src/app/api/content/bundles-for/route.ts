@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { NextRequest, NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 /**
  * GET /api/content/bundles-for?contentType=mcq&contentId=xxx&classLevel=class-10
@@ -62,9 +63,9 @@ export async function GET(request: NextRequest) {
       .map((bi) => {
         const bundle = bi.bundle
         const discount =
-          bundle.originalPrice > bundle.price
+          toDecimal(bundle.originalPrice) > toDecimal(bundle.price)
             ? Math.round(
-                ((bundle.originalPrice - bundle.price) / bundle.originalPrice) *
+                ((toDecimal(bundle.originalPrice) - toDecimal(bundle.price)) / toDecimal(bundle.originalPrice)) *
                   100
               )
             : 0
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
           thumbnail: bundle.thumbnail,
           price: bundle.price,
           originalPrice: bundle.originalPrice,
-          isPremium: bundle.price > 0 || bundle.originalPrice > 0,
+          isPremium: toDecimal(bundle.price) > 0 || toDecimal(bundle.originalPrice) > 0,
           discount,
           classLevel: bundle.classLevel,
           board: bundle.board,
@@ -150,15 +151,15 @@ export async function GET(request: NextRequest) {
         }
 
         const discount =
-          pkg.originalPrice > pkg.price
+          toDecimal(pkg.originalPrice) > toDecimal(pkg.price)
             ? Math.round(
-                ((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100
+                ((toDecimal(pkg.originalPrice) - toDecimal(pkg.price)) / toDecimal(pkg.originalPrice)) * 100
               )
             : 0
 
         return {
           ...pkg,
-          isPremium: pkg.price > 0 || pkg.originalPrice > 0,
+          isPremium: toDecimal(pkg.price) > 0 || toDecimal(pkg.originalPrice) > 0,
           mcqCount,
           cqCount,
           lectureCount,

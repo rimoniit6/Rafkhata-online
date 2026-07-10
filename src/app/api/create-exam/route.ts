@@ -89,7 +89,7 @@ export async function POST(request: Request) {
     const result = await db.exam.create({
       data: {
         title: examTitle,
-        type: 'mcq',
+        type: 'MCQ',
         classLevel: classSlug,
         duration: examDuration,
         marksPerMcq: examMarksPerMcq,
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
         isPremium: false,
         price: 0,
         isActive: true,
-        status: 'published',
+        status: 'PUBLISHED',
         creatorId: auth.user.id,
         questions: {
           create: shuffled.map((mcq, index) => ({

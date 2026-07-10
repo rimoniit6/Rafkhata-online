@@ -2,7 +2,7 @@
 
 import PurchaseOptionsModal from '@/components/shared/PurchaseOptionsModal'
 import { useChapterExams,type ExamItem } from '@/hooks/use-chapter-content'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import { ExamCard } from '../cards/ExamCard'
@@ -15,7 +15,8 @@ interface ExamsTabProps {
 export function ExamsTab({ chapterId }: ExamsTabProps) {
   const [page, _setPage] = useState(1)
   const { data: exams, isLoading, error } = useChapterExams(chapterId, page, 10)
-  const { navigate, params } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const params = useRouteParams()
   const [unlockTarget, setUnlockTarget] = useState<{
     contentType: string
     contentId: string

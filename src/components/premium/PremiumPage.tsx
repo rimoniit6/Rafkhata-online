@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card,CardContent } from '@/components/ui/card'
+import { toDecimal } from '@/lib/decimal'
 import {
 Dialog,
 DialogClose,
@@ -19,7 +20,7 @@ import { Tabs,TabsList,TabsTrigger } from '@/components/ui/tabs'
 import { useContentTypes } from '@/hooks/use-content-types'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { cn } from '@/lib/utils'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
@@ -131,8 +132,8 @@ const FALLBACK_CONTENT_TYPE_LABELS: Record<string, { label: string; icon: typeof
 // ============ COMPONENT ============
 
 export default function PremiumPage() {
-  const { navigate } = useRouterStore()
-  const { user } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const user = useAuthUser()
   const metadata = useHierarchyMetadata()
   const { contentTypesWithIcons, getLabel: _getLabel, getIcon: _getIcon } = useContentTypes()
 
@@ -694,8 +695,8 @@ export default function PremiumPage() {
               <AnimatePresence>
                 {packages.map((pkg) => {
                   const durStyle = getDurationStyle(pkg.duration)
-                  const discount = pkg.originalPrice > pkg.price
-                    ? Math.round(((pkg.originalPrice - pkg.price) / pkg.originalPrice) * 100)
+                  const discount = toDecimal(pkg.originalPrice) > toDecimal(pkg.price)
+                    ? Math.round(((toDecimal(pkg.originalPrice) - toDecimal(pkg.price)) / toDecimal(pkg.originalPrice)) * 100)
                     : 0
                   const selectedClass = selectedClassForPkg[pkg.id] || ''
                   const isPurchased = purchasedPackageIds.has(pkg.id)
@@ -951,7 +952,7 @@ export default function PremiumPage() {
                     {selectedBundle.discount > 0 && (
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">ছাড়</span>
-                        <span className="text-red-500 font-medium">- ৳{Math.round(selectedBundle.originalPrice - selectedBundle.price)}</span>
+                        <span className="text-red-500 font-medium">- ৳{Math.round(toDecimal(selectedBundle.originalPrice) - toDecimal(selectedBundle.price))}</span>
                       </div>
                     )}
                     <Separator />

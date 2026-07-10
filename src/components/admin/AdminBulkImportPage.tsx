@@ -49,7 +49,6 @@ Upload,
 XCircle
 } from 'lucide-react'
 import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react'
-import * as XLSX from 'xlsx'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -123,7 +122,7 @@ function StepIndicator({ step, currentStep, label, icon: Icon }: {
 // ─── Component ──────────────────────────────────────────────────
 
 export default function AdminBulkImportPage() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { toast } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -301,7 +300,8 @@ export default function AdminBulkImportPage() {
   }
 
   // ─── Generate demo file ─────────────────────────────────────
-  const downloadDemoFile = () => {
+  const downloadDemoFile = async () => {
+    const XLSX = await import('xlsx')
     let data: Record<string, string | number | boolean>[]
     let filename: string
 

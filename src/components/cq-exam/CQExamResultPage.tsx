@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { bengaliLabels,formatDuration,getAnswerModeLabel,getStatusBadge } from '@/lib/cq-exam/utils'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import {
 AlertCircle,
 ArrowLeft,
@@ -237,7 +237,9 @@ function AnswerBlock({
 }
 
 export default function CQExamResultPage() {
-  const { params, goBack, navigate } = useRouterStore()
+  const params = useRouteParams()
+  const goBack = useRouterStore((s) => s.goBack)
+  const navigate = useRouterStore((s) => s.navigate)
   const { toast } = useToast()
 
   const submissionId = params.resultId || ''

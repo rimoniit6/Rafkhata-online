@@ -95,7 +95,7 @@ export function useStudentCourseDetail(slug: string | null) {
   const [breakdown, setBreakdown] = useState<CourseProgressResponse['breakdown'] | null>(null)
   const [progressLoading, setProgressLoading] = useState(false)
 
-  const router = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
 
   const fetchProgress = useCallback(async (courseId: string) => {
     setProgressLoading(true)
@@ -219,12 +219,12 @@ export function useStudentCourseDetail(slug: string | null) {
 
   const purchase = useCallback(async () => {
     if (!course) return false
-    router.navigate('payment', {
+    navigate('payment', {
       contentType: 'course', contentId: course.id,
       contentTitle: course.title, contentPrice: String(course.price ?? 0),
     })
     return true
-  }, [course, router])
+  }, [course, navigate])
 
   // Derive simple totals for backward-compat display
   const totalContents = course?.contents.length || 0

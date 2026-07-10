@@ -77,7 +77,7 @@ export async function PUT(request: Request) {
 
     const updated = await db.userFeedback.update({
       where: { id },
-      data: { status },
+      data: { status: status.toUpperCase() as 'PENDING' | 'REPLIED' | 'CLOSED' },
     })
 
     return NextResponse.json({ success: true, data: updated })

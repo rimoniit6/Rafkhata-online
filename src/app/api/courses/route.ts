@@ -16,7 +16,7 @@ export async function GET(request: Request) {
         const classId = searchParams.get('classId') || ''
         const subjectId = searchParams.get('subjectId') || ''
 
-        const where: Record<string, unknown> = { status: 'published' }
+        const where: Record<string, unknown> = { status: 'PUBLISHED' }
         if (classId) where.classId = classId
         if (subjectId) where.subjectId = subjectId
 
@@ -134,10 +134,10 @@ export async function GET(request: Request) {
 
         // Fetch package names + exam sets (to match schedules to specific sets)
         const [mcqPackages, cqPackages, mcqSets, cqSets] = await Promise.all([
-          mcqPackageIds.length ? db.mCQExamPackage.findMany({ where: { id: { in: mcqPackageIds }, status: 'published', isActive: true }, select: { id: true, title: true } }) : [],
-          cqPackageIds.length ? db.cQExamPackage.findMany({ where: { id: { in: cqPackageIds }, status: 'published', isActive: true }, select: { id: true, title: true } }) : [],
-          mcqPackageIds.length ? db.mCQExamSet.findMany({ where: { packageId: { in: mcqPackageIds }, status: 'published' }, select: { id: true, title: true, packageId: true, scheduledDate: true, startTime: true, endTime: true } }) : [],
-          cqPackageIds.length ? db.cQExamSet.findMany({ where: { packageId: { in: cqPackageIds }, status: 'published' }, select: { id: true, title: true, packageId: true, scheduledDate: true, startTime: true, endTime: true } }) : [],
+          mcqPackageIds.length ? db.mCQExamPackage.findMany({ where: { id: { in: mcqPackageIds }, status: 'PUBLISHED', isActive: true }, select: { id: true, title: true } }) : [],
+          cqPackageIds.length ? db.cQExamPackage.findMany({ where: { id: { in: cqPackageIds }, status: 'PUBLISHED', isActive: true }, select: { id: true, title: true } }) : [],
+          mcqPackageIds.length ? db.mCQExamSet.findMany({ where: { packageId: { in: mcqPackageIds }, status: 'PUBLISHED' }, select: { id: true, title: true, packageId: true, scheduledDate: true, startTime: true, endTime: true } }) : [],
+          cqPackageIds.length ? db.cQExamSet.findMany({ where: { packageId: { in: cqPackageIds }, status: 'PUBLISHED' }, select: { id: true, title: true, packageId: true, scheduledDate: true, startTime: true, endTime: true } }) : [],
         ])
         const mcqPackageMap = new Map(mcqPackages.map(p => [p.id, p.title]))
         const cqPackageMap = new Map(cqPackages.map(p => [p.id, p.title]))

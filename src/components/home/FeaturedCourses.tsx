@@ -27,7 +27,7 @@ const GRADIENT_MAP: Record<string, string> = {
 }
 
 export default function FeaturedCourses() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { contentTypesWithIcons, getLabel, getIcon } = useContentTypes()
   const { config } = useSiteConfig()
   const { data: items = [], isLoading: loading } = useFeaturedCourses()

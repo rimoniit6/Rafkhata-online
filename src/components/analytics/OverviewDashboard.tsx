@@ -10,7 +10,7 @@ export default function OverviewDashboard() {
   const { data: revenue } = useRevenueAnalytics()
   const { data: students } = useStudentAnalytics()
   const { data: alerts } = useAlerts()
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
 
   const cards = [
     {

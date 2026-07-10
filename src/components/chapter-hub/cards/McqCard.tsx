@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import SafeImage from '@/components/ui/safe-image'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -79,7 +80,7 @@ export function McqCard({ item, isPurchased, onUnlock }: McqCardProps) {
           </div>
 
           {item.questionImage && (
-            <img src={item.questionImage} alt=""
+            <SafeImage src={item.questionImage} alt="" width={640} height={360}
               className={cn('mb-3 max-w-full h-auto rounded-lg max-h-48', isLocked && 'blur-sm')} />
           )}
 
@@ -116,7 +117,7 @@ export function McqCard({ item, isPurchased, onUnlock }: McqCardProps) {
                   </span>
                   <span className="flex-1 leading-relaxed text-sm">{opt.text}</span>
                   {item.questionImage && opt.image && (
-                    <img src={opt.image} alt="" className="h-8 w-8 object-cover rounded" />
+                    <SafeImage src={opt.image} alt="" width={32} height={32} className="h-8 w-8 object-cover rounded" />
                   )}
                 </button>
               )

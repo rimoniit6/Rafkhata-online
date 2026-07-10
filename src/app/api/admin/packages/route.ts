@@ -9,13 +9,28 @@ const createPackageSchema = z.object({
   title: z.string().min(1, 'শিরোনাম প্রদান করুন'),
   description: z.string().nullable().optional(),
   thumbnail: z.string().nullable().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   originalPrice: z.number().min(0).optional(),
   duration: z.number().int().positive('সময়কাল আবশ্যক').optional(),
   durationLabel: z.string().optional(),
   classLevel: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
   order: z.number().min(0).optional(),
+})
+
+const updatePackageSchema = z.object({
+  id: z.string().min(1, 'প্যাকেজ ID আবশ্যক'),
+  ids: z.array(z.string()).optional(),
+  title: z.string().min(1).optional(),
+  description: z.string().nullable().optional(),
+  thumbnail: z.string().nullable().optional(),
+  price: z.coerce.number().min(0).optional(),
+  originalPrice: z.coerce.number().min(0).optional(),
+  duration: z.coerce.number().int().positive().optional(),
+  durationLabel: z.string().optional(),
+  classLevel: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+  order: z.coerce.number().min(0).optional(),
 })
 
 export async function GET(request: Request) {
@@ -141,7 +156,9 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json()
-    const { id, ids, title, description, thumbnail, price, originalPrice, duration, durationLabel, classLevel, isActive, order } = body
+    const validation = validateBody(updatePackageSchema, body)
+    if ('error' in validation) return validation.error
+    const { id, ids, title, description, thumbnail, price, originalPrice, duration, durationLabel, classLevel, isActive, order } = validation.data
 
     if (Array.isArray(ids) && ids.length > 0) {
       const updateData: Record<string, unknown> = {}

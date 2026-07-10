@@ -1,7 +1,7 @@
 'use client'
 
 import { fetchJSON } from '@/lib/fetch-json'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { useBoardFilterStore } from '@/store/board-filters'
 import type { AnalyticsData,BoardQuestionItem,BoardQuestionsResponse,PurchaseStatus } from '@/types/board-questions'
 import { useQuery } from '@tanstack/react-query'
@@ -21,7 +21,7 @@ interface BoardQuestionsDataResult {
 
 export function useBoardQuestionsData(page: number = 1, limitOverride?: number, typeOverride?: 'mcq' | 'cq'): BoardQuestionsDataResult {
   const filters = useBoardFilterStore()
-  const { user } = useAuthStore()
+  const user = useAuthUser()
   const debouncedSearch = useDebounce(filters.searchQuery, 400)
 
   const queryParams = useMemo(() => {

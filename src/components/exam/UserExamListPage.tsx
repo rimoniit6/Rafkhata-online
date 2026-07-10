@@ -33,7 +33,7 @@ SelectValue,
 import { Skeleton } from '@/components/ui/skeleton'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { cn } from '@/lib/utils'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
 AlignLeft,
@@ -277,7 +277,9 @@ function ExamCard({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function UserExamListPage() {
-  const { navigate, goBack, params: routeParams } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
+  const routeParams = useRouteParams()
   const { classLevelLabels: CLASS_LEVEL_LABELS, classLevelColors: CLASS_COLORS, classOptions } = useHierarchyMetadata()
 
   // Chapter-level context from route params (when navigating from chapter detail)

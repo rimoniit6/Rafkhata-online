@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { ExcelParseError,safeParseExcelFromFile } from '@/lib/excel-parse'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 import * as XLSX from 'xlsx'
 
 // Excel column mapping (Bengali + English headers → DB fields)
@@ -48,7 +49,7 @@ async function recalculateSetTotals(setId: string) {
     where: { setId },
   })
   const totalQuestions = questions.length
-  const totalMarks = questions.reduce((sum, q) => sum + q.marks, 0)
+  const totalMarks = questions.reduce((sum, q) => sum + toDecimal(q.marks), 0)
 
   await db.mCQExamSet.update({
     where: { id: setId },
@@ -214,7 +215,7 @@ export async function POST(request: Request) {
             optionB: mapped.optionB,
             optionC: mapped.optionC,
             optionD: mapped.optionD,
-            correctAnswer,
+            correctAnswer: correctAnswer as 'A' | 'B' | 'C' | 'D',
             explanation: mapped.explanation || null,
             chapterId,
             classLevel: mapped.classLevel || defaultClassLevel || examSet.package?.class?.slug || '',
@@ -222,7 +223,7 @@ export async function POST(request: Request) {
             board: mapped.board || null,
             year: mapped.year || null,
             topic: mapped.topic || null,
-            difficulty: mapped.difficulty || 'medium',
+            difficulty: (mapped.difficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD',
             isPremium: mapped.isPremium === 'true' || mapped.isPremium === '1' || mapped.isPremium === 'হ্যাঁ',
             price: 0,
             tags: mapped.tags || null,

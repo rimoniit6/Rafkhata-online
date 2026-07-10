@@ -3,6 +3,7 @@ import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import type { McqAnalytics } from '@/types/analytics'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -84,9 +85,9 @@ export async function GET(request: Request) {
       : 0
 
     // averageScore: avg marksObtained percentage per exam
-    const scoredExams = examResults.filter(r => r.totalMarks > 0)
+    const scoredExams = examResults.filter(r => toDecimal(r.totalMarks) > 0)
     const averageScore = scoredExams.length > 0
-      ? Math.round(scoredExams.reduce((s, r) => s + (r.marksObtained / r.totalMarks) * 100, 0) / scoredExams.length * 100) / 100
+      ? Math.round(scoredExams.reduce((s, r) => s + (toDecimal(r.marksObtained) / toDecimal(r.totalMarks)) * 100, 0) / scoredExams.length * 100) / 100
       : 0
 
     // mostDifficult / mostEasy

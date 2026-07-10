@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -24,7 +25,7 @@ export async function GET(request: Request) {
     const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate())
 
     const pendingPayments = await db.payment.count({
-      where: { status: 'pending' },
+      where: { status: 'PENDING' },
     })
     if (pendingPayments > 20) {
       alerts.push({
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
     }
 
     const failedPayments = await db.payment.count({
-      where: { status: 'rejected', createdAt: { gte: todayStart } },
+      where: { status: 'REJECTED', createdAt: { gte: todayStart } },
     })
     if (failedPayments > 5) {
       alerts.push({
@@ -75,17 +76,17 @@ export async function GET(request: Request) {
     }
 
     const lastWeekRevenue = await db.payment.aggregate({
-      where: { status: 'approved', createdAt: { gte: new Date(Date.now() - 7 * 86400000) } },
+      where: { status: 'APPROVED', createdAt: { gte: new Date(Date.now() - 7 * 86400000) } },
       _sum: { amount: true },
     })
-    if ((lastWeekRevenue._sum.amount || 0) < 1000) {
+    if (toDecimal(lastWeekRevenue._sum.amount || 0) < 1000) {
       alerts.push({
         id: 'low-revenue',
         name: 'Revenue Drop',
         metric: 'revenue',
         severity: 'warning',
-        message: `Last week revenue was ৳${(lastWeekRevenue._sum.amount || 0).toLocaleString('bn-BD')}.`,
-        value: lastWeekRevenue._sum.amount || 0,
+        message: `Last week revenue was ৳${toDecimal(lastWeekRevenue._sum.amount || 0).toLocaleString('bn-BD')}.`,
+        value: toDecimal(lastWeekRevenue._sum.amount || 0),
         threshold: 1000,
         triggeredAt: today.toISOString(),
         enabled: true,

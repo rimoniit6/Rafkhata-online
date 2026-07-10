@@ -5,6 +5,7 @@ import {
   Plus, Search, Edit3, Trash2, Crown, Loader2, BookOpen, Layers,
   ArrowLeft, ArrowRight,
 } from 'lucide-react'
+import SafeImage from '@/components/ui/safe-image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -74,7 +75,7 @@ export default function CourseList({
               <Card className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onEdit(c)}>
                 <CardContent className="flex items-center gap-4 p-4">
                   <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted">
-                    {c.thumbnail ? <img src={c.thumbnail} alt="" className="h-full w-full object-cover" /> : <BookOpen className="h-6 w-6 text-muted-foreground/50" />}
+                    {c.thumbnail ? <SafeImage src={c.thumbnail} alt="" width={80} height={56} className="h-full w-full object-cover" /> : <BookOpen className="h-6 w-6 text-muted-foreground/50" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">

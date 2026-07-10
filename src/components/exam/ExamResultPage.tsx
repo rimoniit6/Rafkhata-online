@@ -11,7 +11,7 @@ import SafeImage from '@/components/ui/safe-image'
 import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 import { useExamStore } from '@/store/exam'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { BarChart3,CheckCircle2,ChevronDown,ChevronUp,Clock,Home,MinusCircle,RotateCcw,Target,Trophy,XCircle } from 'lucide-react'
 
 interface QuestionResult {
@@ -76,7 +76,9 @@ function getGrade(percentage: number): { grade: string; label: string; color: st
 }
 
 export default function ExamResultPage() {
-  const { params, navigate, goBack } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
   const { answers, resetExam, timeRemaining, questionIds, examDuration: storeExamDuration } = useExamStore()
   const [questions, setQuestions] = useState<QuestionResult[]>([])
   const [expandedQuestion, setExpandedQuestion] = useState<string | null>(null)

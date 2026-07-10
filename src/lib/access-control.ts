@@ -174,7 +174,7 @@ export async function checkContentAccess(params: AccessCheckParams): Promise<Acc
       userId,
       contentType: { in: contentTypesToCheck },
       contentId,
-      status: 'approved',
+      status: 'APPROVED',
       isActive: true,
     },
     select: { id: true, createdAt: true },
@@ -185,7 +185,7 @@ export async function checkContentAccess(params: AccessCheckParams): Promise<Acc
       userId,
       contentType: { in: contentTypesToCheck },
       contentId,
-      status: 'pending',
+      status: 'PENDING',
     },
     select: { id: true, createdAt: true },
   })
@@ -287,7 +287,7 @@ async function checkBundleAccess(
       userId,
       contentType: 'bundle',
       contentId: { in: bundleIds },
-      status: 'approved',
+      status: 'APPROVED',
       isActive: true,
     },
     select: { id: true, contentId: true, contentTitle: true },
@@ -305,7 +305,7 @@ async function checkBundleAccess(
       userId,
       contentType: 'bundle',
       contentId: { in: bundleIds },
-      status: 'pending',
+      status: 'PENDING',
     },
     select: { id: true },
   })
@@ -341,7 +341,7 @@ async function checkBundleItemsAccess(
       userId,
       contentType: { in: contentTypes },
       contentId: { in: contentIds },
-      status: 'approved',
+      status: 'APPROVED',
       isActive: true,
     },
     select: { contentType: true, contentId: true },
@@ -383,7 +383,7 @@ export async function batchCheckContentAccess(
     where: {
       userId,
       contentId: { in: contentIds },
-      status: { in: ['approved', 'pending'] },
+      status: { in: ['APPROVED', 'PENDING'] },
     },
     select: { contentType: true, contentId: true, status: true, isActive: true },
   })
@@ -392,8 +392,8 @@ export async function batchCheckContentAccess(
   const pendingSet = new Set<string>()
   for (const p of allPayments) {
     const key = `${p.contentType}:${p.contentId}`
-    if (p.status === 'approved' && p.isActive) approvedSet.add(key)
-    else if (p.status === 'pending') pendingSet.add(key)
+    if (p.status === 'APPROVED' && p.isActive) approvedSet.add(key)
+    else if (p.status === 'PENDING') pendingSet.add(key)
   }
 
   const classLevels = await db.userSubscription.findMany({
@@ -422,7 +422,7 @@ export async function batchCheckContentAccess(
         userId,
         contentType: 'bundle',
         contentId: { in: [...bundleIdsSet] },
-        status: 'approved',
+        status: 'APPROVED',
         isActive: true,
       },
       select: { contentId: true, contentTitle: true },

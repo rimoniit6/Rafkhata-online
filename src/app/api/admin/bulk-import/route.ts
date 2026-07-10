@@ -64,9 +64,9 @@ export async function POST(request: Request) {
       }
     }
 
-    const defaultDifficulty = difficulty || 'medium'
+    const defaultDifficulty = difficulty || 'MEDIUM'
 
-    if (actualType === 'mcq') {
+    if (actualType === 'MCQ') {
       const classObj = await db.classCategory.findUnique({ where: { id: classId! } })
       if (!classObj) {
         return apiError('ক্লাস খুঁজে পাওয়া যায়নি', 400)
@@ -119,7 +119,7 @@ export async function POST(request: Request) {
               optionB,
               optionC,
               optionD,
-              correctAnswer,
+              correctAnswer: correctAnswer as 'A' | 'B' | 'C' | 'D',
               explanation: explanation || null,
               chapterId: chapterId!,
               classLevel,
@@ -127,7 +127,7 @@ export async function POST(request: Request) {
               board: isBoard ? board : (board || null),
               year: isBoard ? year : (year || null),
               topic: topic || null,
-              difficulty: defaultDifficulty,
+              difficulty: defaultDifficulty as 'EASY' | 'MEDIUM' | 'HARD',
               isPremium,
               price: isPremium ? priceVal : 0,
               isActive: true,
@@ -138,7 +138,7 @@ export async function POST(request: Request) {
           errors.push({ row: rowNum, message: `সংরক্ষণ ত্রুটি: ${(err as Error).message}` })
         }
       }
-    } else if (actualType === 'cq') {
+    } else if (actualType === 'CQ') {
       const classObj = await db.classCategory.findUnique({ where: { id: classId! } })
       if (!classObj) {
         return apiError('ক্লাস খুঁজে পাওয়া যায়নি', 400)
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
               board: isBoard ? board : (board || null),
               year: isBoard ? year : (year || null),
               topic: topic || null,
-              difficulty: defaultDifficulty,
+              difficulty: defaultDifficulty as 'EASY' | 'MEDIUM' | 'HARD',
               isPremium,
               price: isPremium ? priceVal : 0,
               isActive: true,
@@ -202,7 +202,7 @@ export async function POST(request: Request) {
           errors.push({ row: rowNum, message: `সংরক্ষণ ত্রুটি: ${(err as Error).message}` })
         }
       }
-    } else if (actualType === 'knowledge') {
+    } else if (actualType === 'KNOWLEDGE') {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
         const rowNum = i + 2
@@ -229,7 +229,7 @@ export async function POST(request: Request) {
           await db.knowledgeQuestion.create({
             data: {
               chapterId,
-              type: 'knowledge',
+              type: 'KNOWLEDGE',
               question,
               answer,
               questionImage: questionImage || null,

@@ -34,7 +34,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { fetchCsrfToken } from '@/lib/api-client'
 import { useExamStore } from '@/store/exam'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useRouteParams } from '@/store/router'
 import { AnimatePresence,motion } from 'framer-motion'
 import { useToast } from '@/hooks/use-toast'
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react'
@@ -157,7 +157,9 @@ function QuestionPalette({
 }
 
 export default function ExamSessionPage() {
-  const { params, navigate, goBack } = useRouterStore()
+  const params = useRouteParams()
+  const navigate = useRouterStore((s) => s.navigate)
+  const goBack = useRouterStore((s) => s.goBack)
   const { startExam, setAnswer, setTimeRemaining, endExam, answers, timeRemaining, isExamActive, currentExamId, setQuestionIds } = useExamStore()
   const [questions, setQuestions] = useState<MCQQuestion[]>([])
   const [loading, setLoading] = useState(true)

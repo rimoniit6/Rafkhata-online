@@ -19,7 +19,7 @@ function formatStatValue(count: number): string {
 }
 
 export default function HeroSection() {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const { stats, loading } = usePublicStats()
   const { config } = useSiteConfig()
 

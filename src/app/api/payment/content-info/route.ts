@@ -40,7 +40,7 @@ export async function GET(request: Request) {
         }
         title = mcq.question.length > 80 ? mcq.question.substring(0, 80) + '...' : mcq.question
         description = mcq.question.length > 80 ? mcq.question : undefined
-        price = mcq.price
+        price = Number(mcq.price)
         isPremium = mcq.isPremium
         break
       }
@@ -57,7 +57,7 @@ export async function GET(request: Request) {
         const yearLabel = mcq.year ? `${mcq.year} ` : ''
         title = `${boardLabel}${yearLabel}- ${mcq.question.length > 60 ? mcq.question.substring(0, 60) + '...' : mcq.question}`
         description = `${boardLabel}${yearLabel}সালের বোর্ড পরীক্ষার বহুনির্বাচনি প্রশ্ন`
-        price = mcq.price
+        price = Number(mcq.price)
         isPremium = mcq.isPremium
         break
       }
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
         }
         title = cq.uddeepok.length > 80 ? cq.uddeepok.substring(0, 80) + '...' : cq.uddeepok
         description = cq.uddeepok.length > 80 ? cq.uddeepok : undefined
-        price = cq.price
+        price = Number(cq.price)
         isPremium = cq.isPremium
         break
       }
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
         const yearLabel = cq.year ? `${cq.year} ` : ''
         title = `${boardLabel}${yearLabel}- ${cq.uddeepok.length > 60 ? cq.uddeepok.substring(0, 60) + '...' : cq.uddeepok}`
         description = `${boardLabel}${yearLabel}সালের বোর্ড পরীক্ষার সৃজনশীল প্রশ্ন`
-        price = cq.price
+        price = Number(cq.price)
         isPremium = cq.isPremium
         break
       }
@@ -104,7 +104,7 @@ export async function GET(request: Request) {
         }
         title = lecture.title
         description = lecture.duration > 0 ? `${lecture.duration} মিনিটের প্রিমিয়াম লেকচার` : 'প্রিমিয়াম লেকচার'
-        price = lecture.price
+        price = Number(lecture.price)
         isPremium = lecture.isPremium
         break
       }
@@ -119,7 +119,7 @@ export async function GET(request: Request) {
         }
         title = suggestion.title
         description = `${suggestion.title} - প্রিমিয়াম সাজেশন`
-        price = suggestion.price
+        price = Number(suggestion.price)
         isPremium = suggestion.isPremium
         break
       }
@@ -134,7 +134,7 @@ export async function GET(request: Request) {
         }
         title = exam.title
         description = exam.description || undefined
-        price = exam.price
+        price = Number(exam.price)
         isPremium = exam.isPremium
         break
       }
@@ -160,7 +160,7 @@ export async function GET(request: Request) {
         const targetClass = classLevel || pkg.classLevel || ''
         title = pkg.title
         description = pkg.description || `${pkg.durationLabel} মেয়াদের সাবস্ক্রিপশন`
-        price = pkg.price
+        price = Number(pkg.price)
         isPremium = true
 
         // Count premium content for the target class
@@ -225,7 +225,7 @@ export async function GET(request: Request) {
         }
         title = bundle.title
         description = bundle.description || `এই বান্ডেলে ${bundle.items.length}টি প্রিমিয়াম কন্টেন্ট অন্তর্ভুক্ত`
-        price = bundle.price
+        price = Number(bundle.price)
         isPremium = true
         return NextResponse.json({
           success: true,
@@ -259,7 +259,7 @@ export async function GET(request: Request) {
         }
         title = pkg.title
         description = `${pkg.totalSets}টি পরীক্ষা সেট সহ MCQ এক্সাম প্যাকেজ`
-        price = pkg.price
+        price = Number(pkg.price)
         isPremium = true
         return NextResponse.json({
           success: true,
@@ -283,7 +283,7 @@ export async function GET(request: Request) {
         })
         if (!course) return apiError('কোর্স খুঁজে পাওয়া যায়নি', 404)
         title = course.title
-        price = course.price ?? 0
+        price = Number(course.price) ?? 0
         isPremium = course.isPremium
         description = course.description || undefined
         return NextResponse.json({
@@ -306,7 +306,7 @@ export async function GET(request: Request) {
         }
         title = pkg.title
         description = `${pkg.totalSets}টি সৃজনশীল পরীক্ষা সেট সহ CQ এক্সাম প্যাকেজ (আলাদা ক্রয়)`
-        price = pkg.price
+        price = Number(pkg.price)
         isPremium = true
         return NextResponse.json({
           success: true,

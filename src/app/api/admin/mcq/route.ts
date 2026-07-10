@@ -28,7 +28,7 @@ const createMcqSchema = z.object({
   topic: z.string().nullable().optional(),
   difficulty: z.enum(['easy', 'medium', 'hard']).optional(),
   isPremium: z.boolean().optional(),
-  price: z.number().min(0).optional(),
+  price: z.coerce.number().min(0).optional(),
   tags: z.string().nullable().optional(),
   isActive: z.boolean().optional(),
 })
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
         board: fields.board ?? null,
         year: fields.year ?? null,
         topic: fields.topic ?? null,
-        difficulty: fields.difficulty ?? 'medium',
+        difficulty: (fields.difficulty || 'MEDIUM').toUpperCase() as 'EASY' | 'MEDIUM' | 'HARD',
         isPremium: fields.isPremium ?? false,
         price: fields.price ?? 0,
         tags: fields.tags ?? null,

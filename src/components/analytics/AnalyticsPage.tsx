@@ -21,7 +21,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useRouterStore } from '@/store/router'
+import { useRouterStore, useCurrentRoute } from '@/store/router'
 import type { RoutePath } from '@/store/router'
 import AnalyticsFilters from './AnalyticsFilters'
 import OverviewDashboard from './OverviewDashboard'
@@ -65,6 +65,7 @@ const tabs: TabItem[] = [
   { id: 'search', label: 'Search', icon: Search, group: 'analytics' },
   { id: 'devices', label: 'Devices', icon: Monitor, group: 'analytics' },
   { id: 'geo', label: 'Geo', icon: Globe, group: 'analytics' },
+  { id: 'dropoff', label: 'Drop-off', icon: TrendingUp, group: 'analytics' },
   { id: 'reports', label: 'Reports', icon: FileText, group: 'analytics' },
 ]
 
@@ -84,11 +85,13 @@ const TAB_ROUTES: Record<string, RoutePath> = {
   search: 'admin-analytics-search',
   devices: 'admin-analytics-devices',
   geo: 'admin-analytics-geo',
+  dropoff: 'admin-analytics-dropoff',
   reports: 'admin-analytics-reports',
 }
 
 export default function AnalyticsPage() {
-  const { currentRoute, navigate } = useRouterStore()
+  const currentRoute = useCurrentRoute()
+  const navigate = useRouterStore((s) => s.navigate)
   const [showAll, setShowAll] = useState(false)
 
   const activeTab = currentRoute === 'admin-analytics'

@@ -14,7 +14,7 @@ interface SuggestionsTabProps {
 
 export function SuggestionsTab({ chapterId }: SuggestionsTabProps) {
   const { data: suggestions, isLoading, error } = useChapterSuggestions(chapterId)
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const [unlockTarget, setUnlockTarget] = useState<{
     contentType: string
     contentId: string

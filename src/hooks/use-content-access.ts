@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { api } from '@/lib/api-client'
 
 interface ContentAccessResult {
@@ -68,7 +68,7 @@ class LRUMap<V> {
 const accessCache = new LRUMap<ContentAccessResult>(100)
 
 export function useContentAccess(contentType: string, contentId: string): ContentAccessResult {
-  const { user } = useAuthStore()
+  const user = useAuthUser()
   const [result, setResult] = useState<ContentAccessResult>({
     hasAccess: false,
     isLoading: true,

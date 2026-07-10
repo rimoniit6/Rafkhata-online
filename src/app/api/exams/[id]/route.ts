@@ -4,6 +4,7 @@ import { apiLimiter } from '@/lib/rate-limit'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
 import { checkContentAccess } from '@/lib/access-control'
+import { $Enums } from '@prisma/client'
 
 function transformMCQ(mcq: {
   id: string
@@ -12,7 +13,7 @@ function transformMCQ(mcq: {
   optionB: string
   optionC: string
   optionD: string
-  correctAnswer: string
+  correctAnswer: $Enums.MCQAnswer
   explanation: string | null
   [key: string]: unknown
 }, includeAnswers: boolean) {
@@ -41,12 +42,10 @@ export async function GET(
     const { id } = await props.params
 
     // Check if answers should be included
-    // Admins always get answers
-    // Regular users get answers if showAnswers=true (for result review after submission)
+    // Only admins get answers — regular users must submit the exam first
     const { searchParams } = new URL(request.url)
-    const showAnswers = searchParams.get('showAnswers') === 'true'
     const auth = await verifyAuth(request)
-    const includeAnswers = auth?.isAdmin || showAnswers
+    const includeAnswers = !!auth?.isAdmin
 
     const exam = await db.exam.findUnique({
       where: { id, isActive: true },
@@ -111,7 +110,7 @@ export async function GET(
     }
 
     // Batch-fetch all MCQs (fixes N+1)
-    const mcqIds = exam.questions.filter(eq => eq.questionType === 'mcq').map(eq => eq.questionId)
+    const mcqIds = exam.questions.filter(eq => eq.questionType === 'MCQ').map(eq => eq.questionId)
     const mcqs = mcqIds.length > 0
       ? await db.mCQ.findMany({ where: { id: { in: mcqIds } } })
       : []
@@ -146,7 +145,7 @@ export async function GET(
       order: number
     }> = []
     for (const eq of exam.questions) {
-      if (eq.questionType === 'mcq') {
+      if (eq.questionType === 'MCQ') {
         const mcq = mcqMap.get(eq.questionId)
         if (mcq) {
           // Skip premium MCQs inside a free exam when the user lacks access.
@@ -154,8 +153,8 @@ export async function GET(
             continue
           }
           mcqQuestions.push({
-            ...transformMCQ(mcq, includeAnswers),
-            marks: eq.marks,
+            ...transformMCQ(mcq as unknown as Parameters<typeof transformMCQ>[0], includeAnswers),
+            marks: Number(eq.marks),
             order: eq.order,
           })
         }

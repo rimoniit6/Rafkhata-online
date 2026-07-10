@@ -3,6 +3,7 @@ import { apiResponse, apiError, withAdmin, validateBody } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { toDecimal } from '@/lib/decimal'
 
 const createFeaturedSchema = z.object({
   contentType: z.string().min(1, 'কন্টেন্ট টাইপ আবশ্যক'),
@@ -319,6 +320,6 @@ function getSubtitle(type: string, entry: Record<string, unknown>): string | nul
 
 function getPremium(type: string, entry: Record<string, unknown>): boolean {
   const e = entry as any
-  if (type === 'bundle' || type === 'package') return e.price > 0
+  if (type === 'bundle' || type === 'package') return toDecimal(e.price) > 0
   return e.isPremium || false
 }

@@ -589,23 +589,23 @@ async function seed() {
 
     const mcqByChapter: Record<string, Array<{ question: string; optionA: string; optionB: string; optionC: string; optionD: string; correctAnswer: string; explanation: string; difficulty: string; isPremium: boolean; price?: number }>> = {
       'physical-world-measurement': [
-        { question: 'পদার্থবিজ্ঞানে দৈর্ঘ্যের SI একক কোনটি?', optionA: 'সেন্টিমিটার', optionB: 'মিটার', optionC: 'কিলোমিটার', optionD: 'মিলিমিটার', correctAnswer: 'B', explanation: 'পদার্থবিজ্ঞানে দৈর্ঘ্যের SI একক হলো মিটার (m)।', difficulty: 'easy', isPremium: false },
-        { question: '1 আলোকবর্ষ সমান কত মিটার?', optionA: '9.46 × 10¹⁵ m', optionB: '3 × 10⁸ m', optionC: '1.5 × 10¹¹ m', optionD: '3.08 × 10¹⁶ m', correctAnswer: 'A', explanation: '1 আলোকবর্ষ = আলোর বেগ × 1 বছর ≈ 9.46 × 10¹⁵ মিটার', difficulty: 'medium', isPremium: false },
-        { question: 'নিচের কোনটি ভেক্টর রাশি?', optionA: 'ভর', optionB: 'তাপমাত্রা', optionC: 'বেগ', optionD: 'সময়', correctAnswer: 'C', explanation: 'বেগ হলো ভেক্টর রাশি কারণ এর মান ও দিক উভয়ই আছে।', difficulty: 'easy', isPremium: false },
-        { question: 'পরিমাপে সংকট কোনটি?', optionA: 'নির্ভুলতা', optionB: 'যথার্থতা', optionC: 'শুদ্ধতা', optionD: 'তাৎপর্যপূর্ণ অঙ্ক', correctAnswer: 'D', explanation: 'পরিমাপে সংকট বলতে তাৎপর্যপূর্ণ অঙ্ককে বোঝায়।', difficulty: 'hard', isPremium: true, price: 10 },
-        { question: 'মাত্রাহীন রাশি কোনটি?', optionA: 'বল', optionB: 'কোণ', optionC: 'দৈর্ঘ্য', optionD: 'সময়', correctAnswer: 'B', explanation: 'কোণ একটি মাত্রাহীন রাশি।', difficulty: 'medium', isPremium: true, price: 10 },
+        { question: 'পদার্থবিজ্ঞানে দৈর্ঘ্যের SI একক কোনটি?', optionA: 'সেন্টিমিটার', optionB: 'মিটার', optionC: 'কিলোমিটার', optionD: 'মিলিমিটার', correctAnswer: 'B', explanation: 'পদার্থবিজ্ঞানে দৈর্ঘ্যের SI একক হলো মিটার (m)।', difficulty: 'EASY', isPremium: false },
+        { question: '1 আলোকবর্ষ সমান কত মিটার?', optionA: '9.46 × 10¹⁵ m', optionB: '3 × 10⁸ m', optionC: '1.5 × 10¹¹ m', optionD: '3.08 × 10¹⁶ m', correctAnswer: 'A', explanation: '1 আলোকবর্ষ = আলোর বেগ × 1 বছর ≈ 9.46 × 10¹⁵ মিটার', difficulty: 'MEDIUM', isPremium: false },
+        { question: 'নিচের কোনটি ভেক্টর রাশি?', optionA: 'ভর', optionB: 'তাপমাত্রা', optionC: 'বেগ', optionD: 'সময়', correctAnswer: 'C', explanation: 'বেগ হলো ভেক্টর রাশি কারণ এর মান ও দিক উভয়ই আছে।', difficulty: 'EASY', isPremium: false },
+        { question: 'পরিমাপে সংকট কোনটি?', optionA: 'নির্ভুলতা', optionB: 'যথার্থতা', optionC: 'শুদ্ধতা', optionD: 'তাৎপর্যপূর্ণ অঙ্ক', correctAnswer: 'D', explanation: 'পরিমাপে সংকট বলতে তাৎপর্যপূর্ণ অঙ্ককে বোঝায়।', difficulty: 'HARD', isPremium: true, price: 10 },
+        { question: 'মাত্রাহীন রাশি কোনটি?', optionA: 'বল', optionB: 'কোণ', optionC: 'দৈর্ঘ্য', optionD: 'সময়', correctAnswer: 'B', explanation: 'কোণ একটি মাত্রাহীন রাশি।', difficulty: 'MEDIUM', isPremium: true, price: 10 },
       ],
       'motion': [
-        { question: 'স্থির অবস্থা থেকে অবাধে পতনশীল বস্তুর প্রাথমিক ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '10.8 m/s²', optionC: '8.9 m/s²', optionD: '11.2 m/s²', correctAnswer: 'A', explanation: 'মুক্তভাবে পতনশীল বস্তুর ত্বরণ g = 9.8 m/s²', difficulty: 'easy', isPremium: false },
-        { question: 'সমবেগে চলমান বস্তুর ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '0', optionC: 'অসীম', optionD: 'ঋণাত্মক', correctAnswer: 'B', explanation: 'সমবেগে বেগ পরিবর্তন না হওয়ায় ত্বরণ = 0', difficulty: 'easy', isPremium: false },
-        { question: 'বেগ-সময় লেখচিত্রের ঢাল কী নির্দেশ করে?', optionA: 'বেগ', optionB: 'সরণ', optionC: 'ত্বরণ', optionD: 'বল', correctAnswer: 'C', explanation: 'v-t লেখচিত্রের ঢাল = ত্বরণ', difficulty: 'medium', isPremium: false },
-        { question: 'একটি গাড়ি 36 km/h বেগে যাচ্ছে। এটি m/s এ কত?', optionA: '5 m/s', optionB: '10 m/s', optionC: '15 m/s', optionD: '20 m/s', correctAnswer: 'B', explanation: '36 km/h = 36 × 1000/3600 = 10 m/s', difficulty: 'easy', isPremium: false },
-        { question: 'প্রক্ষিপ্ত বস্তুর সর্বোচ্চ উচ্চতায় বেগ কত?', optionA: 'সর্বোচ্চ', optionB: 'নূন্যতম', optionC: 'শূন্য', optionD: 'প্রাথমিক বেগের অর্ধেক', correctAnswer: 'C', explanation: 'সর্বোচ্চ উচ্চতায় বস্তুর উল্লম্ব বেগ = 0', difficulty: 'medium', isPremium: true, price: 10 },
+        { question: 'স্থির অবস্থা থেকে অবাধে পতনশীল বস্তুর প্রাথমিক ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '10.8 m/s²', optionC: '8.9 m/s²', optionD: '11.2 m/s²', correctAnswer: 'A', explanation: 'মুক্তভাবে পতনশীল বস্তুর ত্বরণ g = 9.8 m/s²', difficulty: 'EASY', isPremium: false },
+        { question: 'সমবেগে চলমান বস্তুর ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '0', optionC: 'অসীম', optionD: 'ঋণাত্মক', correctAnswer: 'B', explanation: 'সমবেগে বেগ পরিবর্তন না হওয়ায় ত্বরণ = 0', difficulty: 'EASY', isPremium: false },
+        { question: 'বেগ-সময় লেখচিত্রের ঢাল কী নির্দেশ করে?', optionA: 'বেগ', optionB: 'সরণ', optionC: 'ত্বরণ', optionD: 'বল', correctAnswer: 'C', explanation: 'v-t লেখচিত্রের ঢাল = ত্বরণ', difficulty: 'MEDIUM', isPremium: false },
+        { question: 'একটি গাড়ি 36 km/h বেগে যাচ্ছে। এটি m/s এ কত?', optionA: '5 m/s', optionB: '10 m/s', optionC: '15 m/s', optionD: '20 m/s', correctAnswer: 'B', explanation: '36 km/h = 36 × 1000/3600 = 10 m/s', difficulty: 'EASY', isPremium: false },
+        { question: 'প্রক্ষিপ্ত বস্তুর সর্বোচ্চ উচ্চতায় বেগ কত?', optionA: 'সর্বোচ্চ', optionB: 'নূন্যতম', optionC: 'শূন্য', optionD: 'প্রাথমিক বেগের অর্ধেক', correctAnswer: 'C', explanation: 'সর্বোচ্চ উচ্চতায় বস্তুর উল্লম্ব বেগ = 0', difficulty: 'MEDIUM', isPremium: true, price: 10 },
       ],
       'force': [
-        { question: 'নিউটনের তৃতীয় সূত্র কোনটি?', optionA: 'জড়তার সূত্র', optionB: 'F = ma', optionC: 'ক্রিয়া-প্রতিক্রিয়া সূত্র', optionD: 'মহাকর্ষ সূত্র', correctAnswer: 'C', explanation: 'প্রতিটি ক্রিয়ার একটি সমান ও বিপরীত প্রতিক্রিয়া আছে।', difficulty: 'easy', isPremium: false },
-        { question: 'ঘর্ষণ বল সর্বদা কোন দিকে ক্রিয়া করে?', optionA: 'গতির দিকে', optionB: 'গতির বিপরীত দিকে', optionC: 'উল্লম্ব দিকে', optionD: 'যেকোনো দিকে', correctAnswer: 'B', explanation: 'ঘর্ষণ বল সর্বদা গতির বিপরীত দিকে ক্রিয়া করে।', difficulty: 'easy', isPremium: false },
-        { question: '1 নিউটন বল = কত ডাইন?', optionA: '10³ ডাইন', optionB: '10⁴ ডাইন', optionC: '10⁵ ডাইন', optionD: '10² ডাইন', correctAnswer: 'C', explanation: '1 N = 10⁵ ডাইন', difficulty: 'medium', isPremium: false },
+        { question: 'নিউটনের তৃতীয় সূত্র কোনটি?', optionA: 'জড়তার সূত্র', optionB: 'F = ma', optionC: 'ক্রিয়া-প্রতিক্রিয়া সূত্র', optionD: 'মহাকর্ষ সূত্র', correctAnswer: 'C', explanation: 'প্রতিটি ক্রিয়ার একটি সমান ও বিপরীত প্রতিক্রিয়া আছে।', difficulty: 'EASY', isPremium: false },
+        { question: 'ঘর্ষণ বল সর্বদা কোন দিকে ক্রিয়া করে?', optionA: 'গতির দিকে', optionB: 'গতির বিপরীত দিকে', optionC: 'উল্লম্ব দিকে', optionD: 'যেকোনো দিকে', correctAnswer: 'B', explanation: 'ঘর্ষণ বল সর্বদা গতির বিপরীত দিকে ক্রিয়া করে।', difficulty: 'EASY', isPremium: false },
+        { question: '1 নিউটন বল = কত ডাইন?', optionA: '10³ ডাইন', optionB: '10⁴ ডাইন', optionC: '10⁵ ডাইন', optionD: '10² ডাইন', correctAnswer: 'C', explanation: '1 N = 10⁵ ডাইন', difficulty: 'MEDIUM', isPremium: false },
       ],
     }
 
@@ -625,6 +625,8 @@ async function seed() {
               subjectId: physicsSubject.id,
               board: isBoardMcq ? 'dhaka' : null,
               year: isBoardMcq ? '2024' : null,
+              correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D',
+              difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD',
             },
           })
         }
@@ -636,14 +638,14 @@ async function seed() {
       const existingCount = await db.mCQ.count({ where: { chapterId: chapter.id } })
       if (existingCount === 0) {
         const genericMcqs = [
-          { question: `${chapter.name} - নিচের কোনটি সঠিক?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'A', explanation: 'এটি একটি উদাহরণ প্রশ্ন।', difficulty: 'medium', isPremium: false, board: 'dhaka' as string | null, year: '2024' as string | null },
-          { question: `${chapter.name} সম্পর্কে কোনটি ভুল?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'B', explanation: 'এটি একটি উদাহরণ প্রশ্ন।', difficulty: 'easy', isPremium: false, board: 'rajshahi' as string | null, year: '2023' as string | null },
+          { question: `${chapter.name} - নিচের কোনটি সঠিক?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'A', explanation: 'এটি একটি উদাহরণ প্রশ্ন।', difficulty: 'MEDIUM', isPremium: false, board: 'dhaka' as string | null, year: '2024' as string | null },
+          { question: `${chapter.name} সম্পর্কে কোনটি ভুল?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'B', explanation: 'এটি একটি উদাহরণ প্রশ্ন।', difficulty: 'EASY', isPremium: false, board: 'rajshahi' as string | null, year: '2023' as string | null },
         ]
         for (const mcq of genericMcqs) {
           const existing = await db.mCQ.findFirst({ where: { question: mcq.question } })
           if (!existing) {
             await db.mCQ.create({
-              data: { ...mcq, chapterId: chapter.id, classLevel: 'ssc', subjectId: physicsSubject.id },
+              data: { ...mcq, chapterId: chapter.id, classLevel: 'ssc', subjectId: physicsSubject.id, correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D', difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD' },
             })
           }
         }
@@ -662,15 +664,15 @@ async function seed() {
       const existingCount = await db.mCQ.count({ where: { chapterId: chapter.id } })
       if (existingCount === 0) {
         const mcqs = [
-          { question: `${chapter.name} - নিচের কোনটি সঠিক?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'A', explanation: 'উদাহরণ প্রশ্ন', difficulty: 'medium', isPremium: false, board: 'dhaka' as string | null, year: '2024' as string | null },
-          { question: `${chapter.name} - কোনটি ভুল?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'C', explanation: 'উদাহরণ প্রশ্ন', difficulty: 'easy', isPremium: false, board: 'rajshahi' as string | null, year: '2023' as string | null },
-          { question: `${chapter.name} সম্পর্কে মূল ধারণা কোনটি?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'B', explanation: 'উদাহরণ প্রশ্ন', difficulty: 'hard', isPremium: true, price: 10 },
+          { question: `${chapter.name} - নিচের কোনটি সঠিক?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'A', explanation: 'উদাহরণ প্রশ্ন', difficulty: 'MEDIUM', isPremium: false, board: 'dhaka' as string | null, year: '2024' as string | null },
+          { question: `${chapter.name} - কোনটি ভুল?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'C', explanation: 'উদাহরণ প্রশ্ন', difficulty: 'EASY', isPremium: false, board: 'rajshahi' as string | null, year: '2023' as string | null },
+          { question: `${chapter.name} সম্পর্কে মূল ধারণা কোনটি?`, optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪', correctAnswer: 'B', explanation: 'উদাহরণ প্রশ্ন', difficulty: 'HARD', isPremium: true, price: 10 },
         ]
         for (const mcq of mcqs) {
           const existing = await db.mCQ.findFirst({ where: { question: mcq.question } })
           if (!existing) {
             await db.mCQ.create({
-              data: { ...mcq, chapterId: chapter.id, classLevel: 'ssc', subjectId: chemistrySubject.id },
+              data: { ...mcq, chapterId: chapter.id, classLevel: 'ssc', subjectId: chemistrySubject.id, correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D', difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD' },
             })
           }
         }
@@ -689,14 +691,14 @@ async function seed() {
       const existingCount = await db.mCQ.count({ where: { chapterId: chapter.id } })
       if (existingCount === 0) {
         const mcqs = [
-          { question: `${chapter.name} - সঠিক উত্তর নির্বাচন করুন।`, optionA: '১', optionB: '২', optionC: '৩', optionD: '৪', correctAnswer: 'A', difficulty: 'medium', isPremium: false, explanation: 'উদাহরণ', board: 'dhaka' as string | null, year: '2024' as string | null },
-          { question: `${chapter.name} - কোন সূত্রটি সঠিক?`, optionA: 'সূত্র ১', optionB: 'সূত্র ২', optionC: 'সূত্র ৩', optionD: 'সূত্র ৪', correctAnswer: 'B', difficulty: 'hard', isPremium: true, price: 10, explanation: 'উদাহরণ' },
+          { question: `${chapter.name} - সঠিক উত্তর নির্বাচন করুন।`, optionA: '১', optionB: '২', optionC: '৩', optionD: '৪', correctAnswer: 'A', difficulty: 'MEDIUM', isPremium: false, explanation: 'উদাহরণ', board: 'dhaka' as string | null, year: '2024' as string | null },
+          { question: `${chapter.name} - কোন সূত্রটি সঠিক?`, optionA: 'সূত্র ১', optionB: 'সূত্র ২', optionC: 'সূত্র ৩', optionD: 'সূত্র ৪', correctAnswer: 'B', difficulty: 'HARD', isPremium: true, price: 10, explanation: 'উদাহরণ' },
         ]
         for (const mcq of mcqs) {
           const existing = await db.mCQ.findFirst({ where: { question: mcq.question } })
           if (!existing) {
             await db.mCQ.create({
-              data: { ...mcq, chapterId: chapter.id, classLevel: 'ssc', subjectId: mathSubject.id },
+              data: { ...mcq, chapterId: chapter.id, classLevel: 'ssc', subjectId: mathSubject.id, correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D', difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD' },
             })
           }
         }
@@ -716,13 +718,13 @@ async function seed() {
           const mcq = {
             question: `${chapter.name} (${subject.name}) - সঠিক উত্তর নির্বাচন করুন।`,
             optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪',
-            correctAnswer: 'A', difficulty: 'medium', isPremium: false, explanation: 'উদাহরণ প্রশ্ন',
+            correctAnswer: 'A', difficulty: 'MEDIUM', isPremium: false, explanation: 'উদাহরণ প্রশ্ন',
             board: 'dhaka' as string | null, year: '2024' as string | null,
           }
           const existing = await db.mCQ.findFirst({ where: { question: mcq.question } })
           if (!existing) {
             await db.mCQ.create({
-              data: { ...mcq, chapterId: chapter.id, classLevel: 'hsc', subjectId: subject.id },
+              data: { ...mcq, chapterId: chapter.id, classLevel: 'hsc', subjectId: subject.id, correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D', difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD' },
             })
           }
         }
@@ -746,20 +748,20 @@ async function seed() {
             {
               question: `${chapter.name} (${subject.name}) - সঠিক উত্তর নির্বাচন করুন।`,
               optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪',
-              correctAnswer: 'A', difficulty: 'easy', isPremium: false, explanation: `${classCategory.name} এর ${subject.name} বিষয়ের উদাহরণ প্রশ্ন`,
+              correctAnswer: 'A', difficulty: 'EASY', isPremium: false, explanation: `${classCategory.name} এর ${subject.name} বিষয়ের উদাহরণ প্রশ্ন`,
               board: 'dhaka' as string | null, year: '2024' as string | null,
             },
             {
               question: `${chapter.name} - কোনটি ভুল?`,
               optionA: 'বিকল্প ১', optionB: 'বিকল্প ২', optionC: 'বিকল্প ৩', optionD: 'বিকল্প ৪',
-              correctAnswer: 'C', difficulty: 'medium', isPremium: false, explanation: `${classCategory.name} এর ${subject.name} বিষয়ের উদাহরণ প্রশ্ন`,
+              correctAnswer: 'C', difficulty: 'MEDIUM', isPremium: false, explanation: `${classCategory.name} এর ${subject.name} বিষয়ের উদাহরণ প্রশ্ন`,
             },
           ]
           for (const mcq of mcqs) {
             const existing = await db.mCQ.findFirst({ where: { question: mcq.question } })
             if (!existing) {
               await db.mCQ.create({
-                data: { ...mcq, chapterId: chapter.id, classLevel: classSlug, subjectId: subject.id },
+                data: { ...mcq, chapterId: chapter.id, classLevel: classSlug, subjectId: subject.id, correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D', difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD' },
               })
             }
           }
@@ -792,7 +794,7 @@ async function seed() {
       chapterId: chapter1.id,
       classLevel: 'ssc',
       subjectId: physicsSubject.id,
-      difficulty: 'medium',
+      difficulty: 'MEDIUM',
       isPremium: false,
       board: 'dhaka',
       year: '2024',
@@ -800,7 +802,7 @@ async function seed() {
 
     const existing = await db.cQ.findFirst({ where: { uddeepok: sampleCQ.uddeepok } })
     if (!existing) {
-      await db.cQ.create({ data: sampleCQ })
+      await db.cQ.create({ data: { ...sampleCQ, difficulty: sampleCQ.difficulty as 'EASY' | 'MEDIUM' | 'HARD' } })
     }
   }
 
@@ -823,7 +825,7 @@ async function seed() {
       chapterId: chapter2.id,
       classLevel: 'ssc',
       subjectId: physicsSubject.id,
-      difficulty: 'medium',
+      difficulty: 'MEDIUM',
       isPremium: true,
       price: 15,
       board: 'rajshahi',
@@ -831,7 +833,7 @@ async function seed() {
     }
     const existing = await db.cQ.findFirst({ where: { uddeepok: cq.uddeepok } })
     if (!existing) {
-      await db.cQ.create({ data: cq })
+      await db.cQ.create({ data: { ...cq, difficulty: cq.difficulty as 'EASY' | 'MEDIUM' | 'HARD' } })
     }
   }
 
@@ -843,7 +845,7 @@ async function seed() {
     uddeepok: string
     question1: string; question2: string; question3: string; question4: string
     answer1: string; answer2: string; answer3: string; answer4: string
-    difficulty: string
+    difficulty: 'EASY' | 'MEDIUM' | 'HARD'
     isPremium: boolean
     price?: number
   }> = [
@@ -859,7 +861,7 @@ async function seed() {
       answer2: '6, 7, 8, 9, 10, 11',
       answer3: 'গসাগু(5, 12) = 1',
       answer4: 'লসাগু(5, 12) = 60',
-      difficulty: 'easy', isPremium: false,
+      difficulty: 'EASY', isPremium: false,
     },
     // Class 6 - Science
     {
@@ -873,7 +875,7 @@ async function seed() {
       answer2: 'লোহার টুকরো পানিতে ডুবে যাবে।',
       answer3: 'ভরের SI একক কিলোগ্রাম (kg)।',
       answer4: 'ঘনত্ব = ভর/আয়তন',
-      difficulty: 'easy', isPremium: false,
+      difficulty: 'EASY', isPremium: false,
     },
     // Class 7 - Math
     {
@@ -887,7 +889,7 @@ async function seed() {
       answer2: 'রাতে তাপমাত্রা = 17 - 8 = 9°C',
       answer3: 'পার্থক্য = 17 - 5 = 12°C',
       answer4: 'একই চিহ্নের পূর্ণসংখ্যা যোগে পরম মান যোগ হয় ও চিহ্ন অপরিবর্তিত থাকে।',
-      difficulty: 'easy', isPremium: false,
+      difficulty: 'EASY', isPremium: false,
     },
     // Class 7 - Science
     {
@@ -901,7 +903,7 @@ async function seed() {
       answer2: '0°C',
       answer3: 'বাষ্পীভবন।',
       answer4: 'উদ্বাষ্পীকরণ যেকোনো তাপমাত্রায় ঘটে, বাষ্পীভবন নির্দিষ্ট তাপমাত্রায় ঘটে।',
-      difficulty: 'medium', isPremium: false,
+      difficulty: 'MEDIUM', isPremium: false,
     },
     // Class 8 - Math
     {
@@ -915,7 +917,7 @@ async function seed() {
       answer2: 'মেয়ে = (2/5) × 40 = 16 জন',
       answer3: 'নতুন অনুপাত = 19:16',
       answer4: 'অনুপাত দুটি রাশির তুলনা, সমানুপাত দুটি সমান অনুপাতের সমতা।',
-      difficulty: 'medium', isPremium: false,
+      difficulty: 'MEDIUM', isPremium: false,
     },
     // Class 8 - Science
     {
@@ -929,7 +931,7 @@ async function seed() {
       answer2: 'নিউট্রন = 12 - 6 = 6 টি',
       answer3: 'ইলেকট্রন = 6 টি',
       answer4: 'একই পারমাণবিক সংখ্যা কিন্তু ভিন্ন ভর সংখ্যার পরমাণুকে আইসোটোপ বলে। যেমন: C-12, C-14।',
-      difficulty: 'medium', isPremium: false,
+      difficulty: 'MEDIUM', isPremium: false,
     },
     // HSC - Physics
     {
@@ -943,7 +945,7 @@ async function seed() {
       answer2: 'একটি বস্তুর সাপেক্ষে অপর বস্তুর অবস্থান পরিবর্তনের হারকে আপেক্ষিক বেগ বলে।',
       answer3: 'm/s',
       answer4: 'V_AB = V_A - V_B',
-      difficulty: 'medium', isPremium: false,
+      difficulty: 'MEDIUM', isPremium: false,
     },
   ]
 
@@ -1201,14 +1203,14 @@ async function seed() {
   console.log('🌱 Seeding notices...')
 
   const noticeData = [
-    { title: 'এসএসসি ২০২৫ মডেল টেস্ট', content: 'আগামী ১৫ তারিখে এসএসসি ২০২৫ মডেল টেস্ট অনুষ্ঠিত হবে।', type: 'text', isPinned: true, order: 1 },
-    { title: 'নতুন অধ্যায় যোগ হয়েছে', content: 'এইচএসসি পদার্থবিজ্ঞানের নতুন অধ্যায় যোগ করা হয়েছে।', type: 'text', isPinned: false, order: 2 },
+    { title: 'এসএসসি ২০২৫ মডেল টেস্ট', content: 'আগামী ১৫ তারিখে এসএসসি ২০২৫ মডেল টেস্ট অনুষ্ঠিত হবে।', type: 'TEXT', isPinned: true, order: 1 },
+    { title: 'নতুন অধ্যায় যোগ হয়েছে', content: 'এইচএসসি পদার্থবিজ্ঞানের নতুন অধ্যায় যোগ করা হয়েছে।', type: 'TEXT', isPinned: false, order: 2 },
   ]
 
   for (const n of noticeData) {
     const existing = await db.notice.findFirst({ where: { title: n.title } })
     if (!existing) {
-      await db.notice.create({ data: { ...n, isActive: true } })
+      await db.notice.create({ data: { ...n, isActive: true, type: n.type as 'TEXT' | 'PDF' | 'LINK' } })
     }
   }
   console.log('✅ Notices seeded')
@@ -1334,7 +1336,7 @@ async function seed() {
         price: 199,
         originalPrice: 350,
         classLevel: 'ssc',
-        type: 'mixed',
+        type: 'MIXED',
         isActive: true,
         order: 1,
       },
@@ -1413,7 +1415,7 @@ async function seed() {
           price: 49,
           originalPrice: 99,
           totalSets: 2,
-          status: 'published',
+          status: 'PUBLISHED',
           isActive: true,
           order: 1,
         },
@@ -1449,7 +1451,7 @@ async function seed() {
               marksPerQ: 1,
               totalMarks: 5,
               totalQuestions: 5,
-              status: 'published',
+              status: 'PUBLISHED',
               order: setNum,
             },
           })
@@ -1482,24 +1484,24 @@ async function seed() {
 
   if (physicsSubject) {
     const boardMcqs = [
-      { question: 'ঢাকা বোর্ড ২০২৪: দৈর্ঘ্যের SI একক কোনটি?', optionA: 'ফুট', optionB: 'মিটার', optionC: 'সেন্টিমিটার', optionD: 'ইঞ্চি', correctAnswer: 'B', explanation: 'SI একক অনুযায়ী দৈর্ঘ্যের একক মিটার।', difficulty: 'easy', isPremium: false },
-      { question: 'ঢাকা বোর্ড ২০২৪: নিচের কোনটি স্কেলার রাশি?', optionA: 'বেগ', optionB: 'বল', optionC: 'ভর', optionD: 'ত্বরণ', correctAnswer: 'C', explanation: 'ভরের কেবল মান আছে, দিক নেই।', difficulty: 'easy', isPremium: false },
-      { question: 'ঢাকা বোর্ড ২০২৪: সমবেগে চলমান বস্তুর ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '0', optionC: 'অসীম', optionD: 'ঋণাত্মক', correctAnswer: 'B', explanation: 'সমবেগে বেগ পরিবর্তন না হওয়ায় ত্বরণ = 0', difficulty: 'medium', isPremium: false },
-      { question: 'ঢাকা বোর্ড ২০২৪: কাজের মাত্রিক সংকেত কোনটি?', optionA: 'MLT⁻²', optionB: 'ML²T⁻²', optionC: 'MLT⁻¹', optionD: 'ML²T⁻³', correctAnswer: 'B', explanation: 'কাজ = বল × সরণ, মাত্রিক সংকেত = ML²T⁻²', difficulty: 'hard', isPremium: false },
-      { question: 'ঢাকা বোর্ড ২০২৪: নিউটনের দ্বিতীয় সূত্র কোনটি?', optionA: 'F = ma', optionB: 'E = mc²', optionC: 'F = mv', optionD: 'W = Fd', correctAnswer: 'A', explanation: 'নিউটনের দ্বিতীয় সূত্রানুসারে বল = ভর × ত্বরণ', difficulty: 'easy', isPremium: false },
+      { question: 'ঢাকা বোর্ড ২০২৪: দৈর্ঘ্যের SI একক কোনটি?', optionA: 'ফুট', optionB: 'মিটার', optionC: 'সেন্টিমিটার', optionD: 'ইঞ্চি', correctAnswer: 'B', explanation: 'SI একক অনুযায়ী দৈর্ঘ্যের একক মিটার।', difficulty: 'EASY', isPremium: false },
+      { question: 'ঢাকা বোর্ড ২০২৪: নিচের কোনটি স্কেলার রাশি?', optionA: 'বেগ', optionB: 'বল', optionC: 'ভর', optionD: 'ত্বরণ', correctAnswer: 'C', explanation: 'ভরের কেবল মান আছে, দিক নেই।', difficulty: 'EASY', isPremium: false },
+      { question: 'ঢাকা বোর্ড ২০২৪: সমবেগে চলমান বস্তুর ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '0', optionC: 'অসীম', optionD: 'ঋণাত্মক', correctAnswer: 'B', explanation: 'সমবেগে বেগ পরিবর্তন না হওয়ায় ত্বরণ = 0', difficulty: 'MEDIUM', isPremium: false },
+      { question: 'ঢাকা বোর্ড ২০২৪: কাজের মাত্রিক সংকেত কোনটি?', optionA: 'MLT⁻²', optionB: 'ML²T⁻²', optionC: 'MLT⁻¹', optionD: 'ML²T⁻³', correctAnswer: 'B', explanation: 'কাজ = বল × সরণ, মাত্রিক সংকেত = ML²T⁻²', difficulty: 'HARD', isPremium: false },
+      { question: 'ঢাকা বোর্ড ২০২৪: নিউটনের দ্বিতীয় সূত্র কোনটি?', optionA: 'F = ma', optionB: 'E = mc²', optionC: 'F = mv', optionD: 'W = Fd', correctAnswer: 'A', explanation: 'নিউটনের দ্বিতীয় সূত্রানুসারে বল = ভর × ত্বরণ', difficulty: 'EASY', isPremium: false },
     ]
 
     // Add board MCQs for Rajshahi board 2023
     const rajshahiBoardMcqs = [
-      { question: 'রাজশাহী বোর্ড ২০২৩: ভেক্টর রাশি কোনটি?', optionA: 'ভর', optionB: 'তাপমাত্রা', optionC: 'বেগ', optionD: 'সময়', correctAnswer: 'C', explanation: 'বেগের মান ও দিক উভয়ই আছে।', difficulty: 'easy', isPremium: false },
-      { question: 'রাজশাহী বোর্ড ২০২৩: 1 আলোকবর্ষ কত মিটার?', optionA: '9.46 × 10¹⁵ m', optionB: '3 × 10⁸ m', optionC: '1.5 × 10¹¹ m', optionD: '3.08 × 10¹⁶ m', correctAnswer: 'A', explanation: '1 আলোকবর্ষ = আলোর বেগ × 1 বছর', difficulty: 'medium', isPremium: false },
-      { question: 'রাজশাহী বোর্ড ২০২৩: ঘর্ষণ বল কোন দিকে ক্রিয়া করে?', optionA: 'গতির দিকে', optionB: 'গতির বিপরীত দিকে', optionC: 'উল্লম্ব দিকে', optionD: 'যেকোনো দিকে', correctAnswer: 'B', explanation: 'ঘর্ষণ বল সর্বদা গতির বিপরীত দিকে ক্রিয়া করে।', difficulty: 'easy', isPremium: false },
+      { question: 'রাজশাহী বোর্ড ২০২৩: ভেক্টর রাশি কোনটি?', optionA: 'ভর', optionB: 'তাপমাত্রা', optionC: 'বেগ', optionD: 'সময়', correctAnswer: 'C', explanation: 'বেগের মান ও দিক উভয়ই আছে।', difficulty: 'EASY', isPremium: false },
+      { question: 'রাজশাহী বোর্ড ২০২৩: 1 আলোকবর্ষ কত মিটার?', optionA: '9.46 × 10¹⁵ m', optionB: '3 × 10⁸ m', optionC: '1.5 × 10¹¹ m', optionD: '3.08 × 10¹⁶ m', correctAnswer: 'A', explanation: '1 আলোকবর্ষ = আলোর বেগ × 1 বছর', difficulty: 'MEDIUM', isPremium: false },
+      { question: 'রাজশাহী বোর্ড ২০২৩: ঘর্ষণ বল কোন দিকে ক্রিয়া করে?', optionA: 'গতির দিকে', optionB: 'গতির বিপরীত দিকে', optionC: 'উল্লম্ব দিকে', optionD: 'যেকোনো দিকে', correctAnswer: 'B', explanation: 'ঘর্ষণ বল সর্বদা গতির বিপরীত দিকে ক্রিয়া করে।', difficulty: 'EASY', isPremium: false },
     ]
 
     // Add board MCQs for Chittagong board 2022
     const chittagongBoardMcqs = [
-      { question: 'চট্টগ্রাম বোর্ড ২০২২: মুক্তভাবে পতনশীল বস্তুর ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '10.8 m/s²', optionC: '8.9 m/s²', optionD: '11.2 m/s²', correctAnswer: 'A', explanation: 'মুক্তভাবে পতনশীল বস্তুর ত্বরণ g = 9.8 m/s²', difficulty: 'easy', isPremium: false },
-      { question: 'চট্টগ্রাম বোর্ড ২০২২: বলের SI একক কোনটি?', optionA: 'ডাইন', optionB: 'কিলোগ্রাম-বল', optionC: 'পাউন্ড-বল', optionD: 'নিউটন', correctAnswer: 'D', explanation: 'বলের SI একক নিউটন (N)।', difficulty: 'easy', isPremium: false },
+      { question: 'চট্টগ্রাম বোর্ড ২০২২: মুক্তভাবে পতনশীল বস্তুর ত্বরণ কত?', optionA: '9.8 m/s²', optionB: '10.8 m/s²', optionC: '8.9 m/s²', optionD: '11.2 m/s²', correctAnswer: 'A', explanation: 'মুক্তভাবে পতনশীল বস্তুর ত্বরণ g = 9.8 m/s²', difficulty: 'EASY', isPremium: false },
+      { question: 'চট্টগ্রাম বোর্ড ২০২২: বলের SI একক কোনটি?', optionA: 'ডাইন', optionB: 'কিলোগ্রাম-বল', optionC: 'পাউন্ড-বল', optionD: 'নিউটন', correctAnswer: 'D', explanation: 'বলের SI একক নিউটন (N)।', difficulty: 'EASY', isPremium: false },
     ]
 
     const sscPhysicsCh1 = await db.chapter.findFirst({
@@ -1517,6 +1519,8 @@ async function seed() {
               subjectId: physicsSubject.id,
               board: 'dhaka',
               year: '2024',
+              correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D',
+              difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD',
             },
           })
         }
@@ -1532,6 +1536,8 @@ async function seed() {
               subjectId: physicsSubject.id,
               board: 'rajshahi',
               year: '2023',
+              correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D',
+              difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD',
             },
           })
         }
@@ -1547,6 +1553,8 @@ async function seed() {
               subjectId: physicsSubject.id,
               board: 'chittagong',
               year: '2022',
+              correctAnswer: mcq.correctAnswer as 'A' | 'B' | 'C' | 'D',
+              difficulty: mcq.difficulty as 'EASY' | 'MEDIUM' | 'HARD',
             },
           })
         }
@@ -1569,11 +1577,11 @@ async function seed() {
           title: 'এসএসসি পদার্থবিজ্ঞান মডেল টেস্ট ১',
           classLevel: 'ssc',
           subjectId: sscPhysicsSubject.id,
-          type: 'mcq',
+          type: 'MCQ',
           duration: 30,
           totalMarks: 25,
           marksPerMcq: 1,
-          status: 'published',
+          status: 'PUBLISHED',
           isActive: true,
         },
       })

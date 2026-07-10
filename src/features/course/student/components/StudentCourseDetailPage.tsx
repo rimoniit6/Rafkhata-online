@@ -9,6 +9,7 @@ import {
   MessageSquare, Star, PenSquare, CheckCircle, AlertCircle, FileUp, X, Paperclip,
   Layers, Menu, RefreshCw, FileImage,
 } from 'lucide-react'
+import SafeImage from '@/components/ui/safe-image'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -278,7 +279,7 @@ export default function StudentCourseDetailPage({ slug }: Props) {
             {c.thumbnail && (
               <div className="shrink-0 lg:w-80">
                 <div className="relative overflow-hidden rounded-2xl shadow-2xl">
-                  <img src={c.thumbnail} alt={c.title} className="w-full aspect-video object-cover" />
+                  <SafeImage src={c.thumbnail} alt={c.title} width={640} height={360} className="w-full aspect-video object-cover" />
                 </div>
               </div>
             )}

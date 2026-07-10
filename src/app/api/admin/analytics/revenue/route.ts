@@ -4,6 +4,7 @@ import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import { parseAnalyticsDateRange } from '@/lib/analytics-date-range'
 import { analyticsCache, cacheControlHeader } from '@/lib/analytics-cache'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   const auth = await withAdmin(request)
@@ -32,20 +33,20 @@ export async function GET(request: Request) {
       Promise.all([
       // Current period approved revenue
       db.payment.aggregate({
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
         _sum: { amount: true },
         _count: true,
       }),
       // Previous period approved revenue (for growth)
       db.payment.aggregate({
-        where: { status: 'approved', createdAt: { gte: prevFromDate, lte: prevToDate } },
+        where: { status: 'APPROVED', createdAt: { gte: prevFromDate, lte: prevToDate } },
         _sum: { amount: true },
         _count: true,
       }),
       // Revenue by payment method
       db.payment.groupBy({
         by: ['method'],
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
         _sum: { amount: true },
         _count: true,
       }),
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
       db.payment.groupBy({
         by: ['contentType'],
         where: {
-          status: 'approved',
+          status: 'APPROVED',
           createdAt: { gte: fromDate, lte: toDate },
           contentType: { not: null },
         },
@@ -62,31 +63,31 @@ export async function GET(request: Request) {
       }),
       // All current period approved payments
       db.payment.findMany({
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
         select: { amount: true, contentType: true, contentId: true, contentTitle: true, method: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
       // Daily revenue
       db.payment.findMany({
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
         select: { amount: true, createdAt: true },
         orderBy: { createdAt: 'asc' },
       }),
       // Pending revenue
       db.payment.aggregate({
-        where: { status: 'pending', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'PENDING', createdAt: { gte: fromDate, lte: toDate } },
         _sum: { amount: true },
         _count: true,
       }),
       // Rejected payments
       db.payment.aggregate({
-        where: { status: 'rejected', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'REJECTED', createdAt: { gte: fromDate, lte: toDate } },
         _sum: { amount: true },
         _count: true,
       }),
       // Approved count
       db.payment.count({
-        where: { status: 'approved', createdAt: { gte: fromDate, lte: toDate } },
+        where: { status: 'APPROVED', createdAt: { gte: fromDate, lte: toDate } },
       }),
       // Active students in period
       db.user.count({
@@ -94,12 +95,12 @@ export async function GET(request: Request) {
       }),
       // Total purchase count
       db.payment.count({
-        where: { createdAt: { gte: fromDate, lte: toDate }, status: { not: 'rejected' } },
+        where: { createdAt: { gte: fromDate, lte: toDate }, status: { not: 'REJECTED' } },
       }),
       // All content payments for breakdown
       db.payment.findMany({
         where: {
-          status: 'approved',
+          status: 'APPROVED',
           createdAt: { gte: fromDate, lte: toDate },
           contentType: { in: ['lecture', 'bundle', 'exam', 'suggestion', 'course', 'package'] },
           contentId: { not: null },
@@ -109,28 +110,28 @@ export async function GET(request: Request) {
     ])
     )
 
-    const totalRevenue = currentRevenue._sum.amount || 0
-    const prevRevenue = previousRevenue._sum.amount || 0
+    const totalRevenue = toDecimal(currentRevenue._sum.amount || 0)
+    const prevRevenue = toDecimal(previousRevenue._sum.amount || 0)
     const revenueGrowth = prevRevenue > 0 ? Math.round(((totalRevenue - prevRevenue) / prevRevenue) * 100 * 100) / 100 : 0
 
     // Revenue today
     const todayStr = new Date().toISOString().split('T')[0]
     const todayRevenue = currentPayments
       .filter((p) => new Date(p.createdAt).toISOString().split('T')[0] === todayStr)
-      .reduce((sum, p) => sum + p.amount, 0)
+      .reduce((sum, p) => sum + toDecimal(p.amount), 0)
 
     // Revenue yesterday
     const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0]
     const yesterdayRevenue = currentPayments
       .filter((p) => new Date(p.createdAt).toISOString().split('T')[0] === yesterdayStr)
-      .reduce((sum, p) => sum + p.amount, 0)
+      .reduce((sum, p) => sum + toDecimal(p.amount), 0)
 
     // Revenue this month
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const thisMonthRevenue = currentPayments
       .filter((p) => new Date(p.createdAt) >= monthStart)
-      .reduce((sum, p) => sum + p.amount, 0)
+      .reduce((sum, p) => sum + toDecimal(p.amount), 0)
 
     // Revenue last month
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
@@ -140,7 +141,7 @@ export async function GET(request: Request) {
         const d = new Date(p.createdAt)
         return d >= lastMonthStart && d <= lastMonthEnd
       })
-      .reduce((sum, p) => sum + p.amount, 0)
+      .reduce((sum, p) => sum + toDecimal(p.amount), 0)
 
     // Average order value
     const totalCount = currentRevenue._count
@@ -152,7 +153,7 @@ export async function GET(request: Request) {
     // Revenue by method
     const revenueByMethod = currentRevenueByMethod.map((r) => ({
       method: r.method,
-      revenue: r._sum.amount || 0,
+      revenue: toDecimal(r._sum.amount || 0),
       count: r._count,
     }))
 
@@ -172,16 +173,16 @@ export async function GET(request: Request) {
 
     const revenueByContent = currentRevenueByContent.map((r) => ({
       source: r.contentType || 'unknown',
-      revenue: r._sum.amount || 0,
+      revenue: toDecimal(r._sum.amount || 0),
       count: r._count,
-      percentage: totalRevenue > 0 ? Math.round(((r._sum.amount || 0) / totalRevenue) * 100 * 100) / 100 : 0,
+      percentage: totalRevenue > 0 ? Math.round(((toDecimal(r._sum.amount || 0) / totalRevenue) * 100 * 100) / 100) : 0,
     }))
 
     // Daily revenue aggregation
     const dailyMap = new Map<string, number>()
     dailyPayments.forEach((p) => {
       const day = new Date(p.createdAt).toISOString().split('T')[0]
-      dailyMap.set(day, (dailyMap.get(day) || 0) + p.amount)
+      dailyMap.set(day, (dailyMap.get(day) || 0) + toDecimal(p.amount))
     })
     const dailyRevenue = Array.from(dailyMap.entries())
       .map(([date, revenue]) => ({ date, revenue }))
@@ -191,7 +192,7 @@ export async function GET(request: Request) {
     const monthlyMap = new Map<string, number>()
     dailyPayments.forEach((p) => {
       const month = new Date(p.createdAt).toISOString().slice(0, 7)
-      monthlyMap.set(month, (monthlyMap.get(month) || 0) + p.amount)
+      monthlyMap.set(month, (monthlyMap.get(month) || 0) + toDecimal(p.amount))
     })
     const monthlyRevenue = Array.from(monthlyMap.entries())
       .map(([month, revenue]) => ({ month, revenue }))
@@ -235,7 +236,7 @@ export async function GET(request: Request) {
         .forEach((p) => {
           const title = nameMap.get(p.contentId || '') || p.contentTitle || 'Unknown'
           const existing = map.get(title) || { title, revenue: 0, count: 0 }
-          existing.revenue += p.amount
+          existing.revenue += toDecimal(p.amount)
           existing.count += 1
           map.set(title, existing)
         })
@@ -268,10 +269,10 @@ export async function GET(request: Request) {
       revenueByExam,
       revenueBySuggestion,
       revenueByMethod,
-      pendingRevenue: pendingAgg._sum.amount || 0,
+      pendingRevenue: toDecimal(pendingAgg._sum.amount || 0),
       approvedRevenue: totalRevenue,
-      rejectedAmount: rejectedAgg._sum.amount || 0,
-      refunds: rejectedAgg._sum.amount || 0,
+      rejectedAmount: toDecimal(rejectedAgg._sum.amount || 0),
+      refunds: toDecimal(rejectedAgg._sum.amount || 0),
       dailyRevenue,
       monthlyRevenue,
       revenueTrend,
@@ -279,7 +280,7 @@ export async function GET(request: Request) {
       topSources: revenueByContent
         .map((r) => ({ source: contentTypeNames[r.source] || r.source, revenue: r.revenue, percentage: r.percentage }))
         .sort((a, b) => b.revenue - a.revenue),
-      heatmap: generateRevenueHeatmap(dailyPayments),
+      heatmap: generateRevenueHeatmap(dailyPayments.map(p => ({ ...p, amount: Number(p.amount) }))),
     }, null, undefined, cacheControlHeader(120))
   } catch (error) {
     return handleApiError(error, 'Revenue Analytics')
@@ -321,7 +322,7 @@ function generateForecast(monthlyData: Array<{ month: string; revenue: number }>
   return forecast
 }
 
-function generateRevenueHeatmap(payments: Array<{ amount: number; createdAt: Date }>) {
+function generateRevenueHeatmap(payments: Array<{ amount: number | string | null; createdAt: Date }>) {
   const heatmap = new Map<string, number>()
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -330,7 +331,7 @@ function generateRevenueHeatmap(payments: Array<{ amount: number; createdAt: Dat
     const day = days[d.getDay()]
     const hour = d.getHours()
     const key = `${day}-${hour}`
-    heatmap.set(key, (heatmap.get(key) || 0) + p.amount)
+    heatmap.set(key, (heatmap.get(key) || 0) + toDecimal(p.amount || 0))
   })
 
   const result: Array<{ day: string; hour: number; revenue: number }> = []

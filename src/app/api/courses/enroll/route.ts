@@ -17,7 +17,7 @@ export async function POST(request: Request) {
       select: { id: true, isPremium: true, price: true, status: true },
     })
     if (!course) return apiError('Course not found', 404)
-    if (course.status !== 'published') return apiError('Course is not published', 400)
+    if (course.status !== 'PUBLISHED') return apiError('Course is not published', 400)
 
     const existing = await db.courseEnrollment.findUnique({
       where: { userId_courseId: { userId: auth.user.id, courseId } },

@@ -54,7 +54,7 @@ function formatExamDate(dateStr: string | null, startTime: string | null): strin
 }
 
 export default function StudentExamsTab({ rows, examCalendar = [], hasAccess }: Props) {
-  const { navigate } = useRouterStore()
+  const navigate = useRouterStore((s) => s.navigate)
   const [liveNow, setLiveNow] = useState<Set<string>>(new Set())
   const [upcomingSet, setUpcomingSet] = useState<Set<string>>(new Set())
 

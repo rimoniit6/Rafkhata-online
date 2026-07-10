@@ -3,6 +3,7 @@
 import DataTable,{ type BulkAction,type ColumnDef } from '@/components/shared/DataTable'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { toDecimal } from '@/lib/decimal'
 import { Card,CardContent } from '@/components/ui/card'
 import {
 Dialog,
@@ -120,7 +121,7 @@ export default function AdminPaymentsPage() {
         setPayments(paymentsData)
         setTotal(json.data?.pagination?.total ?? json.pagination?.total ?? 0)
 
-        setTotalRevenue(paymentsData.filter((p: PaymentRecord) => p.status === 'approved').reduce((s: number, p: PaymentRecord) => s + p.amount, 0))
+        setTotalRevenue(paymentsData.filter((p: PaymentRecord) => p.status === 'approved').reduce((s: number, p: PaymentRecord) => s + toDecimal(p.amount), 0))
         setPendingCount(paymentsData.filter((p: PaymentRecord) => p.status === 'pending').length)
         setApprovedCount(paymentsData.filter((p: PaymentRecord) => p.status === 'approved').length)
       }
@@ -189,6 +190,8 @@ export default function AdminPaymentsPage() {
   }
 
   const handleBulkDelete = async (ids: string[]) => {
+    if (processing) return
+    setProcessing(true)
     try {
       const res = await fetch(`/api/admin/payments?ids=${ids.join(',')}`, { method: 'DELETE' })
       if (res.ok) {
@@ -200,6 +203,7 @@ export default function AdminPaymentsPage() {
         toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
       }
     } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    finally { setProcessing(false) }
   }
 
   const columns: ColumnDef<PaymentRecord>[] = [
@@ -273,6 +277,7 @@ export default function AdminPaymentsPage() {
       icon: <Trash2 className="size-4" />,
       variant: 'destructive',
       handler: handleBulkDelete,
+      disabled: processing,
     },
   ]
 

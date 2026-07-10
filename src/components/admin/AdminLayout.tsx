@@ -31,6 +31,7 @@ import {
   Tags,
   HelpCircle,
   MessageSquareQuote,
+  MessageSquareText,
   StickyNote,
   Trophy,
   ShoppingCart,
@@ -41,7 +42,7 @@ import {
 } from 'lucide-react'
 import { usePathname, useSearchParams } from 'next/navigation'
 import { useRouterStore, RoutePath, isAdminRoute } from '@/store/router'
-import { useAuthStore } from '@/store/auth'
+import { useAuthStore, useAuthUser } from '@/store/auth'
 import { parseUrl } from '@/lib/urls'
 import AdminAuthGuard from './AdminAuthGuard'
 import { Button } from '@/components/ui/button'
@@ -103,6 +104,7 @@ const AdminPages = {
   'admin-testimonials': lazy(() => import('./AdminTestimonialsPage')),
   'admin-notes': lazy(() => import('./AdminNotesPage')),
   'admin-teacher-moderators': lazy(() => import('./AdminTeacherModeratorsPage')),
+  'admin-feedback': lazy(() => import('./AdminFeedbackPage')),
   
   // Settings
   'admin-settings': lazy(() => import('./AdminSettingsPage')),
@@ -181,6 +183,7 @@ const sidebarItems: SidebarItem[] = [
   { label: 'ব্যানার', icon: ImageIcon, route: 'admin-banners', group: GROUPS.CMS },
   { label: 'নোটিফিকেশন', icon: Bell, route: 'admin-notifications', group: GROUPS.CMS },
   { label: 'টেস্টিমোনিয়াল', icon: MessageSquareQuote, route: 'admin-testimonials', group: GROUPS.CMS },
+  { label: 'ফিডব্যাক', icon: MessageSquareText, route: 'admin-feedback', group: GROUPS.CMS },
   { label: 'সেটিংস', icon: Settings, route: 'admin-settings', group: GROUPS.SETTINGS },
 
   // Analytics (single entry — all tabs inside)
@@ -198,8 +201,9 @@ function SidebarContent({
   onNavigate?: () => void
   onToggleCollapse: () => void
 }) {
-  const { navigate } = useRouterStore()
-  const { user, logout } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const user = useAuthUser()
+  const logout = useAuthStore((s) => s.logout)
   const { config } = useSiteConfig()
   const siteName = config?.siteName || 'শিক্ষা বাংলা'
 

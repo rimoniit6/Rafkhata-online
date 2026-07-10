@@ -2,24 +2,25 @@ import { db } from '@/lib/db'
 import { apiResponse, withAdmin } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { toDecimal } from '@/lib/decimal'
 
 const SECTION_QUERIES: Record<string, (from: Date, to: Date) => Promise<Record<string, unknown>>> = {
   revenue: async (from, to) => {
     const agg = await db.payment.aggregate({
-      where: { status: 'approved', createdAt: { gte: from, lte: to } },
+      where: { status: 'APPROVED', createdAt: { gte: from, lte: to } },
       _sum: { amount: true },
       _count: true,
     })
     const byMethod = await db.payment.groupBy({
       by: ['method'],
-      where: { status: 'approved', createdAt: { gte: from, lte: to } },
+      where: { status: 'APPROVED', createdAt: { gte: from, lte: to } },
       _sum: { amount: true },
       _count: true,
     })
     return {
-      totalRevenue: agg._sum.amount || 0,
+      totalRevenue: toDecimal(agg._sum.amount || 0),
       totalTransactions: agg._count,
-      revenueByMethod: byMethod.map((m) => ({ method: m.method, revenue: m._sum.amount || 0, count: m._count })),
+      revenueByMethod: byMethod.map((m) => ({ method: m.method, revenue: toDecimal(m._sum.amount || 0), count: m._count })),
     }
   },
   students: async (from, to) => {
@@ -52,9 +53,9 @@ const SECTION_QUERIES: Record<string, (from: Date, to: Date) => Promise<Record<s
     return { submissions }
   },
   payments: async (from, to) => {
-    const pending = await db.payment.count({ where: { status: 'pending', createdAt: { gte: from, lte: to } } })
-    const approved = await db.payment.count({ where: { status: 'approved', createdAt: { gte: from, lte: to } } })
-    const rejected = await db.payment.count({ where: { status: 'rejected', createdAt: { gte: from, lte: to } } })
+    const pending = await db.payment.count({ where: { status: 'PENDING', createdAt: { gte: from, lte: to } } })
+    const approved = await db.payment.count({ where: { status: 'APPROVED', createdAt: { gte: from, lte: to } } })
+    const rejected = await db.payment.count({ where: { status: 'REJECTED', createdAt: { gte: from, lte: to } } })
     return { pending, approved, rejected }
   },
 }

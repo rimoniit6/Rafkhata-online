@@ -101,7 +101,7 @@ export async function GET(request: Request) {
             where: {
               userId,
               set: { packageId: { in: mcqPackageIds } },
-              status: 'completed',
+              status: 'COMPLETED' as const,
             },
           })
         : 0,
@@ -110,7 +110,7 @@ export async function GET(request: Request) {
             where: {
               userId,
               set: { packageId: { in: cqPackageIds } },
-              status: { in: ['submitted', 'graded', 'published'] },
+              status: { in: ['SUBMITTED', 'GRADED', 'PUBLISHED'] },
             },
           })
         : 0,

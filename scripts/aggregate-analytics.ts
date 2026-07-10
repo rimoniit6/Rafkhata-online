@@ -31,13 +31,13 @@ function dateRange(target: Date) {
 
 async function aggregateRevenue(from: Date, to: Date) {
   const agg = await db.payment.aggregate({
-    where: { status: 'approved', createdAt: { gte: from, lte: to } },
+    where: { status: 'APPROVED', createdAt: { gte: from, lte: to } },
     _sum: { amount: true },
     _count: true,
   })
   const byMethod = await db.payment.groupBy({
     by: ['method'],
-    where: { status: 'approved', createdAt: { gte: from, lte: to } },
+    where: { status: 'APPROVED', createdAt: { gte: from, lte: to } },
     _sum: { amount: true },
     _count: true,
   })

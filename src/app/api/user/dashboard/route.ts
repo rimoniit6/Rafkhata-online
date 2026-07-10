@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/auth'
+import { toDecimal } from '@/lib/decimal'
 
 export async function GET(request: Request) {
   try {
@@ -42,17 +43,17 @@ export async function GET(request: Request) {
     const lectureProgress = progress.filter((p) => p.contentType === 'lecture')
     const completedLectures = lectureProgress.filter((p) => p.progress >= 100).length
 
-    const mcqResults = examResults.filter((r) => r.totalMarks > 0)
+    const mcqResults = examResults.filter((r) => toDecimal(r.totalMarks) > 0)
     const avgMcqScore =
       mcqResults.length > 0
-        ? Math.round(mcqResults.reduce((sum, r) => sum + (r.score / r.totalMarks) * 100, 0) / mcqResults.length)
+        ? Math.round(mcqResults.reduce((sum, r) => sum + (toDecimal(r.score) / toDecimal(r.totalMarks)) * 100, 0) / mcqResults.length)
         : 0
 
     const recentExams = examResults.map((er) => ({
       id: er.id,
       subject: er.exam?.title || 'পরীক্ষা',
-      score: Math.round(er.score),
-      total: Math.round(er.totalMarks),
+      score: Math.round(toDecimal(er.score)),
+      total: Math.round(toDecimal(er.totalMarks)),
       date: new Date(er.completedAt).toLocaleDateString('bn-BD'),
     }))
 

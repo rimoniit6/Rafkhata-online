@@ -2,8 +2,9 @@
 
 import { Crown, Sparkles, Tag, Gift, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useAuthStore } from '@/store/auth'
+import { useAuthUser } from '@/store/auth'
 import { cn } from '@/lib/utils'
+import { toDecimal } from '@/lib/decimal'
 import type { PackageOffer, BundleOffer } from '@/types/board-questions'
 
 interface PremiumLockOverlayProps {
@@ -15,14 +16,14 @@ interface PremiumLockOverlayProps {
 }
 
 function findLowestPrice(packages: PackageOffer[], bundles: BundleOffer[], directPrice: number): number {
-  let min = directPrice
-  for (const pkg of packages) { if (pkg.price > 0 && pkg.price < min) min = pkg.price }
-  for (const bundle of bundles) { if (bundle.price > 0 && bundle.price < min) min = bundle.price }
+  let min = toDecimal(directPrice)
+  for (const pkg of packages) { if (toDecimal(pkg.price) > 0 && toDecimal(pkg.price) < min) min = toDecimal(pkg.price) }
+  for (const bundle of bundles) { if (toDecimal(bundle.price) > 0 && toDecimal(bundle.price) < min) min = toDecimal(bundle.price) }
   return min
 }
 
 export function PremiumLockOverlay({ price, packages = [], bundles = [], onAction, className }: PremiumLockOverlayProps) {
-  const { user } = useAuthStore()
+  const user = useAuthUser()
   const isGuest = !user
   const hasOffers = packages.length > 0 || bundles.length > 0
   const lowestPrice = findLowestPrice(packages, bundles, price)

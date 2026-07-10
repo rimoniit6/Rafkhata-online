@@ -3,7 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card,CardContent } from '@/components/ui/card'
-import { useAuthStore } from '@/store/auth'
+import { useIsAuthenticated } from '@/store/auth'
 import { useRouterStore } from '@/store/router'
 import { Crown,Lock,Sparkles } from 'lucide-react'
 import { useState } from 'react'
@@ -29,8 +29,8 @@ export default function PremiumPaywall({
   isPremium,
   classLevel,
 }: PremiumPaywallProps) {
-  const { navigate } = useRouterStore()
-  const { isAuthenticated } = useAuthStore()
+  const navigate = useRouterStore((s) => s.navigate)
+  const isAuthenticated = useIsAuthenticated()
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
 
   // If content is not premium, no paywall needed
