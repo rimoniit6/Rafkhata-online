@@ -70,15 +70,15 @@ export async function PATCH(request: Request) {
     if ('error' in validation) return validation.error
     const { id, ids, name, role, phone, institute, classLevel, board, isVerified, isPremium, premiumExpiry } = validation.data
 
-    // NEVER allow setting role to SUPER_ADMIN through API
-    if (role === SUPER_ADMIN_ROLE || role === ('SUPER_ADMIN' as any)) {
-      return apiError('এই API দিয়ে সুপার অ্যাডমিন তৈরি করা যাবে না। শুধুমাত্র CLI স্ক্রিপ্ট ব্যবহার করুন।', 403, 'FORBIDDEN')
+    // Only SUPER_ADMIN can set role to SUPER_ADMIN
+    if (role === SUPER_ADMIN_ROLE && auth.user.role !== SUPER_ADMIN_ROLE) {
+      return apiError('শুধুমাত্র সুপার অ্যাডমিন অন্যকে সুপার অ্যাডমিন করতে পারবেন।', 403, 'FORBIDDEN')
     }
 
     if (ids && ids.length > 0) {
-      // Block bulk role change to SUPER_ADMIN
-      if (role === SUPER_ADMIN_ROLE) {
-        return apiError('বাল্ক আপডেটে সুপার অ্যাডমিন রোল সেট করা যাবে না।', 403, 'FORBIDDEN')
+      // Only SUPER_ADMIN can bulk-set SUPER_ADMIN role
+      if (role === SUPER_ADMIN_ROLE && auth.user.role !== SUPER_ADMIN_ROLE) {
+        return apiError('শুধুমাত্র সুপার অ্যাডমিন বাল্কে সুপার অ্যাডমিন রোল সেট করতে পারবেন।', 403, 'FORBIDDEN')
       }
 
       // Check if any target users are SUPER_ADMIN
@@ -95,7 +95,7 @@ export async function PATCH(request: Request) {
       if (isVerified !== undefined) updateData.isVerified = isVerified
 
       const result = await db.user.updateMany({
-        where: { id: { in: ids }, role: { not: SUPER_ADMIN_ROLE } },
+        where: { id: { in: ids }, ...(auth.user.role !== SUPER_ADMIN_ROLE && { role: { not: SUPER_ADMIN_ROLE } }) },
         data: updateData,
       })
 

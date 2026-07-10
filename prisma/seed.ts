@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { db } from './seed-db'
 import { hashPassword } from '@/lib/password'
 
 async function seed() {

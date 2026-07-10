@@ -1,4 +1,4 @@
-import { db } from '@/lib/db'
+import { db } from './seed-db'
 
 async function seedContent() {
   console.log('🌱 Seeding supplementary content data...\n')

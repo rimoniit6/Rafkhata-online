@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
 import Header from './Header'
 import Footer from './Footer'
 import BottomNav from './BottomNav'
@@ -8,14 +9,18 @@ import NoticeBar from '@/components/shared/NoticeBar'
 import SpecialNoticePopup from '@/components/home/SpecialNoticePopup'
 import ScrollToTop from '@/components/shared/ScrollToTop'
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary'
-import { useRouterStore, isAdminRoute } from '@/store/router'
+import { isAdminRoute } from '@/store/router'
+import { parseUrl } from '@/lib/urls'
 
 interface AppShellProps {
   children: React.ReactNode
 }
 
 export default function AppShell({ children }: AppShellProps) {
-  const isAdmin = useRouterStore((s) => isAdminRoute(s.currentRoute))
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const parsed = parseUrl(pathname, searchParams ?? undefined)
+  const isAdmin = parsed ? isAdminRoute(parsed.route) : false
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">

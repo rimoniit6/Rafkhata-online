@@ -11,12 +11,12 @@ const CONTENT_VERSION_PREFIX = 'content:version:'
  * Content types that have cacheable public API responses.
  * Add new content types here as needed.
  */
-export type CacheableContent = 'mcq' | 'cq' | 'lecture' | 'suggestion' | 'exam' | 'bundle' | 'package' | 'notice' | 'faq' | 'banner' | 'board-question' | 'board' | 'class' | 'subject' | 'chapter' | 'settings'
+export type CacheableContent = 'mcq' | 'cq' | 'lecture' | 'suggestion' | 'exam' | 'bundle' | 'package' | 'notice' | 'faq' | 'banner' | 'board-question' | 'board' | 'class' | 'subject' | 'chapter' | 'settings' | 'notification'
 
 const VALID_CONTENT_TYPES = new Set<string>([
   'mcq', 'cq', 'lecture', 'suggestion', 'exam',
   'bundle', 'package', 'notice', 'faq', 'banner',
-  'board-question', 'board', 'class', 'subject', 'chapter', 'settings',
+  'board-question', 'board', 'class', 'subject', 'chapter', 'settings', 'notification',
 ])
 
 /**

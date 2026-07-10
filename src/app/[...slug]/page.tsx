@@ -5,6 +5,8 @@ import dynamic from 'next/dynamic'
 import { useRouterStore, useRouteParams, useCurrentRoute, RoutePath, isAdminRoute } from '@/store/router'
 import { usePageMeta } from '@/hooks/use-page-meta'
 import AppShell from '@/components/layout/AppShell'
+import { parseUrl } from '@/lib/urls'
+import { usePathname, useSearchParams } from 'next/navigation'
 
 const HomePage = dynamic(() => import('@/components/home/HomePage'))
 const SocialLoginPage = dynamic(() => import('@/components/auth/SocialLoginPage'))
@@ -50,7 +52,15 @@ function StudentCourseDetailWrapper() {
 
 function RouteRenderer() {
   usePageMeta()
-  const currentRoute = useCurrentRoute()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const storeRoute = useCurrentRoute()
+
+  // Derive route from URL first (correct on fresh load), fall back to store
+  // (updated after RouteSync runs). This prevents the default 'home' value
+  // from causing a flash of the wrong page/layout on initial render.
+  const parsed = parseUrl(pathname, searchParams ?? undefined)
+  const currentRoute: RoutePath = parsed?.route ?? storeRoute
 
   if (isAdminRoute(currentRoute)) {
     return <AdminLayout />
