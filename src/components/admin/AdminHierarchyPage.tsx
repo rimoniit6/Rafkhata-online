@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { cn } from '@/lib/utils'
+import { cn, generateSlug } from '@/lib/utils'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
 AlignLeft,
@@ -84,15 +84,6 @@ interface BoardItem {
   order: number
   createdAt: string
   updatedAt: string
-}
-
-// ─── Slug Helper ────────────────────────────────────────────────
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9\u0980-\u09FF]+/g, '-')
-    .replace(/^-|-$/g, '')
 }
 
 // ─── Animation Variants ─────────────────────────────────────────

@@ -25,7 +25,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { cn,toBengaliNumerals } from '@/lib/utils'
+import { cn, getGrade, toBengaliNumerals } from '@/lib/utils'
 import { useShallowAuth } from '@/store/auth'
 import { useRouterStore, useRouteParams } from '@/store/router'
 import { fetchCsrfToken } from '@/lib/api-client'
@@ -207,16 +207,6 @@ type PageView = 'detail' | 'exam' | 'result'
 type DetailTab = 'exams' | 'analysis' | 'leaderboard'
 
 // ─── Utility Functions ───────────────────────────────────────────────────────
-
-function getGrade(percentage: number): { grade: string; color: string } {
-  if (percentage >= 90) return { grade: 'A+', color: 'text-emerald-600' }
-  if (percentage >= 80) return { grade: 'A', color: 'text-emerald-500' }
-  if (percentage >= 70) return { grade: 'A-', color: 'text-teal-500' }
-  if (percentage >= 60) return { grade: 'B', color: 'text-cyan-500' }
-  if (percentage >= 50) return { grade: 'C', color: 'text-amber-500' }
-  if (percentage >= 40) return { grade: 'D', color: 'text-orange-500' }
-  return { grade: 'F', color: 'text-destructive' }
-}
 
 function formatTime(seconds: number): string {
   const m = Math.floor(seconds / 60)
