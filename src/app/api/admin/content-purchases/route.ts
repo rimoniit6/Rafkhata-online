@@ -3,6 +3,7 @@ import { apiError, withCsrf } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { getContentTypeLabels } from '@/lib/content-type-labels'
+import { handleApiError } from '@/lib/errors'
 
 export async function GET(request: Request) {
   try {
@@ -104,8 +105,7 @@ export async function GET(request: Request) {
       typeStats,
     })
   } catch (error) {
-    console.error('Admin Content Purchases GET error:', error)
-    return apiError('কন্টেন্ট ক্রয়ের তথ্য আনতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Get Content Purchases')
   }
 }
 
@@ -202,7 +202,6 @@ export async function PATCH(request: Request) {
       message: isActive ? 'ক্রয় সক্রিয় করা হয়েছে' : 'ক্রয় নিষ্ক্রিয় করা হয়েছে',
     })
   } catch (error) {
-    console.error('Admin Content Purchases PATCH error:', error)
-    return apiError('কন্টেন্ট ক্রয় আপডেট করতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Patch Content Purchases')
   }
 }

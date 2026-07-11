@@ -20,7 +20,7 @@ export interface SuggestionRecord {
   chapter?: { id: string; name: string; slug: string; subjectId: string }
 }
 
-export interface SuggestionListParams {
+export type SuggestionListParams = {
   search?: string
   classId?: string
   subjectId?: string

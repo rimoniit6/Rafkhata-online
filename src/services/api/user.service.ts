@@ -9,7 +9,7 @@ export interface UserRecord {
   createdAt: string
 }
 
-export interface UserListParams {
+export type UserListParams = {
   page?: number
   limit?: number
   search?: string

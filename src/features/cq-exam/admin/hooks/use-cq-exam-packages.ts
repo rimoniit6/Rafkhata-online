@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useReducer } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import {
@@ -9,10 +9,31 @@ import {
   CQExamSubmissionRecord,
   CQExamAnswerRecord,
   CQExamRetakeRequestRecord,
-  ViewMode,
 } from '@/features/cq-exam/types'
 import type { BulkSubmissionItem } from '@/features/cq-exam/admin/components/CQBulkGradingView'
 import { getErrorMessage, createRaceGuard } from '@/features/common/admin-utils'
+import {
+  navigationReducer, initialNavigationState,
+  packageFormReducer, initialPackageFormState,
+  setFormReducer, initialSetFormState,
+  filterReducer, initialFilterState,
+  searchDialogReducer, initialSearchDialogState,
+  bulkCreateDialogReducer, initialBulkCreateDialogState,
+  gradingDialogReducer, initialGradingDialogState,
+  submissionViewReducer, initialSubmissionViewState,
+  bulkGradingReducer, initialBulkGradingState,
+  type NavigationAction,
+  type PackageFormAction,
+  type SetFormAction,
+  type FilterAction,
+  type SearchDialogAction,
+  type BulkCreateDialogAction,
+  type GradingDialogAction,
+  type SubmissionViewAction,
+  type BulkGradingAction,
+  type NavigationState,
+  type GradingDialogState,
+} from './cq-exam-reducers'
 
 interface ClassCategory {
   id: string
@@ -25,11 +46,6 @@ interface SubjectOption {
   name: string
   slug: string
   classId: string
-}
-
-interface ChapterOption {
-  id: string
-  name: string
 }
 
 type LeaderboardEntry = CQExamSubmissionRecord
@@ -60,14 +76,16 @@ export function useCQExamPackages() {
 
   useEffect(() => () => raceRef.current.dispose(), [])
 
-  // View management
-  const [viewMode, setViewMode] = useState<ViewMode>('list')
-  const [editId, setEditId] = useState<string | null>(null)
-  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null)
-  const [selectedSetId, setSelectedSetId] = useState<string | null>(null)
-  const [deleteTarget, setDeleteTarget] = useState<{ type: 'package' | 'set'; id: string; packageId?: string } | null>(null)
+  const [nav, navDispatch] = useReducer(navigationReducer, initialNavigationState)
+  const [pkgForm, dispatchPkgForm] = useReducer(packageFormReducer, initialPackageFormState)
+  const [setForm, dispatchSetForm] = useReducer(setFormReducer, initialSetFormState)
+  const [filters, dispatchFilter] = useReducer(filterReducer, initialFilterState)
+  const [searchDlg, dispatchSearchDlg] = useReducer(searchDialogReducer, initialSearchDialogState)
+  const [bulkCreateDlg, dispatchBulkCreate] = useReducer(bulkCreateDialogReducer, initialBulkCreateDialogState)
+  const [gradingDlg, dispatchGradingDlg] = useReducer(gradingDialogReducer, initialGradingDialogState)
+  const [submissionView, dispatchSubmissionView] = useReducer(submissionViewReducer, initialSubmissionViewState)
+  const [bulkGrade, dispatchBulkGrade] = useReducer(bulkGradingReducer, initialBulkGradingState)
 
-  // Data states
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [packages, setPackages] = useState<CQExamPackageRecord[]>([])
@@ -77,112 +95,44 @@ export function useCQExamPackages() {
   const [currentSet, setCurrentSet] = useState<(CQExamSetRecord & { questions?: CQExamSetQuestionRecord[] }) | null>(null)
   const [submissions, setSubmissions] = useState<CQExamSubmissionRecord[]>([])
   const [submissionDetail, setSubmissionDetail] = useState<CQExamSubmissionRecord | null>(null)
-
-  // Class/subject data
   const [classes, setClasses] = useState<ClassCategory[]>([])
   const [subjects, setSubjects] = useState<SubjectOption[]>([])
+  const [retakeRequests, setRetakeRequests] = useState<CQExamRetakeRequestRecord[]>([])
+  const [retakeRequestsLoading, setRetakeRequestsLoading] = useState(false)
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([])
+  const [leaderboardSetTitle, setLeaderboardSetTitle] = useState('')
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
+  const [editQuestionData, setEditQuestionData] = useState<{
+    id: string
+    typedUddeepok: string
+    typedUddeepokImage: string
+    typedQuestion1: string
+    typedQuestion1Image: string
+    typedQuestion2: string
+    typedQuestion2Image: string
+    typedQuestion3: string
+    typedQuestion3Image: string
+    typedQuestion4: string
+    typedQuestion4Image: string
+    subMarks: number[]
+  } | null>(null)
 
-  // Filters
-  const [search, setSearch] = useState('')
-  const [filterClassId, setFilterClassId] = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
-
-  // Debounced search
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
-    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 400)
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(filters.search), 400)
     return () => {
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
     }
-  }, [search])
+  }, [filters.search])
 
-  // Populate classes from hierarchy metadata
   useEffect(() => {
     if (hierarchy.metadata?.classes) {
       setClasses(hierarchy.metadata.classes)
     }
   }, [hierarchy.metadata])
-
-  // Package Form Fields
-  const [pkgTitle, setPkgTitle] = useState('')
-  const [pkgDescription, setPkgDescription] = useState('')
-  const [pkgClassId, setPkgClassId] = useState('')
-  const [pkgSubjectIds, setPkgSubjectIds] = useState<string[]>([])
-  const [pkgPrice, setPkgPrice] = useState('')
-  const [pkgOriginalPrice, setPkgOriginalPrice] = useState('')
-  const [pkgThumbnail, setPkgThumbnail] = useState('')
-  const [pkgIsActive, setPkgIsActive] = useState(true)
-  const [pkgIsPremium, setPkgIsPremium] = useState(true)
-  const [pkgOrder, setPkgOrder] = useState('')
-  const [pkgStatus, setPkgStatus] = useState('draft')
-
-  // Set Form Fields
-  const [setTitle, setSetTitle] = useState('')
-  const [setDescription, setSetDescription] = useState('')
-  const [setScheduledDate, setSetScheduledDate] = useState('')
-  const [setStartTime, setSetStartTime] = useState('00:00')
-  const [setEndTime, setSetEndTime] = useState('23:59')
-  const [setDuration, setSetDuration] = useState('30')
-  const [setInstructions, setSetInstructions] = useState('')
-  const [setOrder, setSetOrder] = useState('0')
-  const [setStatus, setSetStatus] = useState('draft')
-  const [setAllowRetake, setSetAllowRetake] = useState(false)
-  const [setAnswerMode, setSetAnswerMode] = useState('flexible')
-  const [setShowAnnotatedImages, setSetShowAnnotatedImages] = useState(true)
-  const [setAutoPublishResults, setSetAutoPublishResults] = useState(false)
-  const [setMaxImagesPerAnswer, setSetMaxImagesPerAnswer] = useState('5')
-  const [setGradingDeadline, setSetGradingDeadline] = useState('')
-  const [setPassMarks, setSetPassMarks] = useState('0')
-  const [setShowCorrectAnswers, setSetShowCorrectAnswers] = useState(false)
-  const [setEnablePartialGrading, setSetEnablePartialGrading] = useState(true)
-
-  // CQ Search Dialog
-  const [searchDialogOpen, setSearchDialogOpen] = useState(false)
-  const [searchCqs, setSearchCqs] = useState<CQSearchResult[]>([])
-  const [searchCqLoading, setSearchCqLoading] = useState(false)
-  const [selectedCqIds, setSelectedCqIds] = useState<string[]>([])
-  const [searchCqClassLevel, setSearchCqClassLevel] = useState('')
-  const [searchCqSubjectId, setSearchCqSubjectId] = useState('')
-  const [searchCqChapterId, setSearchCqChapterId] = useState('')
-  const [searchCqText, setSearchCqText] = useState('')
-  const [searchCqSubjects, setSearchCqSubjects] = useState<SubjectOption[]>([])
-  const [searchCqChapters, setSearchCqChapters] = useState<ChapterOption[]>([])
-
-
-  // Submissions Viewing
-  const [submissionDetailOpen, setSubmissionDetailOpen] = useState(false)
-  const [selectedSubmission, setSelectedSubmission] = useState<CQExamSubmissionRecord | null>(null)
-
-  // Grading
-  const [gradingDialogOpen, setGradingDialogOpen] = useState(false)
-  const [gradingAnswers, setGradingAnswers] = useState<CQExamAnswerRecord[]>([])
-  const [selectedAnswerForGrading, setSelectedAnswerForGrading] = useState<{ answer: CQExamAnswerRecord; index: number } | null>(null)
-
-  // Bulk Create Sets Dialog
-  const [bulkCreateDialogOpen, setBulkCreateDialogOpen] = useState(false)
-  const [bulkPrefix, setBulkPrefix] = useState('এক্সাম সেট')
-  const [bulkStartDate, setBulkStartDate] = useState('')
-  const [bulkIntervalDays, setBulkIntervalDays] = useState('7')
-  const [bulkCount, setBulkCount] = useState('10')
-  const [bulkDuration, setBulkDuration] = useState('30')
-
-  // Retake Requests
-  const [retakeRequests, setRetakeRequests] = useState<CQExamRetakeRequestRecord[]>([])
-  const [retakeRequestsLoading, setRetakeRequestsLoading] = useState(false)
-
-  // Leaderboard
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardEntry[]>([])
-  const [leaderboardSetTitle, setLeaderboardSetTitle] = useState('')
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false)
-
-  // Bulk Grading
-  const [bulkSubmissions, setBulkSubmissions] = useState<BulkSubmissionItem[]>([])
-  const [bulkGradingLoading, setBulkGradingLoading] = useState(false)
-
-  // ─── Data Fetching ────────────────────────────────────────────────
 
   const fetchSubjectsForClass = useCallback(async (classId: string) => {
     if (!classId) {
@@ -203,8 +153,8 @@ export function useCQExamPackages() {
     try {
       const params = new URLSearchParams({ action: 'list', page: '1', limit: '50' })
       if (debouncedSearch) params.set('search', debouncedSearch)
-      if (filterClassId) params.set('classId', filterClassId)
-      if (filterStatus) params.set('status', filterStatus)
+      if (filters.filterClassId) params.set('classId', filters.filterClassId)
+      if (filters.filterStatus) params.set('status', filters.filterStatus)
       const data = await unwrapResponse<CqPackageListResponse>(`/api/admin/cq-exam-packages?${params}`)
       if (!isStale()) {
         setPackages(data.packages || [])
@@ -216,7 +166,7 @@ export function useCQExamPackages() {
     } finally {
       if (!isStale()) setLoading(false)
     }
-  }, [debouncedSearch, filterClassId, filterStatus])
+  }, [debouncedSearch, filters.filterClassId, filters.filterStatus])
 
   useEffect(() => {
     fetchPackages()
@@ -230,7 +180,6 @@ export function useCQExamPackages() {
       const pkg = data.package ?? null
       if (!isStale()) {
         setCurrentPackage(pkg)
-        // examSets is returned INSIDE the package object (via Prisma include)
         setExamSets((pkg as any)?.examSets || [])
       }
     } catch (err: unknown) {
@@ -286,7 +235,7 @@ export function useCQExamPackages() {
   // ─── Save Handlers ────────────────────────────────────────────────
 
   const handleSavePackage = async () => {
-    if (!pkgTitle || !pkgClassId) {
+    if (!pkgForm.pkgTitle || !pkgForm.pkgClassId) {
       toast({ title: 'ত্রুটি', description: 'শিরোনাম এবং শ্রেণি আবশ্যক', variant: 'destructive' })
       return
     }
@@ -294,28 +243,28 @@ export function useCQExamPackages() {
     setSaving(true)
     try {
       const body: Record<string, unknown> = {
-        action: editId ? 'update-package' : 'create-package',
-        title: pkgTitle,
-        description: pkgDescription || undefined,
-        classId: pkgClassId,
-        subjectIds: pkgSubjectIds,
-        price: parseFloat(pkgPrice) || 0,
-        originalPrice: parseFloat(pkgOriginalPrice) || 0,
-        thumbnail: pkgThumbnail || undefined,
-        isPremium: pkgIsPremium,
-        isActive: pkgIsActive,
-        order: parseInt(pkgOrder) || 0,
-        status: pkgStatus,
+        action: nav.editId ? 'update-package' : 'create-package',
+        title: pkgForm.pkgTitle,
+        description: pkgForm.pkgDescription || undefined,
+        classId: pkgForm.pkgClassId,
+        subjectIds: pkgForm.pkgSubjectIds,
+        price: parseFloat(pkgForm.pkgPrice) || 0,
+        originalPrice: parseFloat(pkgForm.pkgOriginalPrice) || 0,
+        thumbnail: pkgForm.pkgThumbnail || undefined,
+        isPremium: pkgForm.pkgIsPremium,
+        isActive: pkgForm.pkgIsActive,
+        order: parseInt(pkgForm.pkgOrder) || 0,
+        status: pkgForm.pkgStatus,
       }
-      if (editId) body.id = editId
+      if (nav.editId) body.id = nav.editId
 
-      const method = editId ? 'PUT' : 'POST'
+      const method = nav.editId ? 'PUT' : 'POST'
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method,
         body: JSON.stringify(body),
       })
-      toast({ title: editId ? 'প্যাকেজ আপডেট হয়েছে' : 'প্যাকেজ তৈরি হয়েছে' })
-      setViewMode('list')
+      toast({ title: nav.editId ? 'প্যাকেজ আপডেট হয়েছে' : 'প্যাকেজ তৈরি হয়েছে' })
+      navDispatch({ type: 'SET_VIEW', viewMode: 'list' })
       fetchPackages()
     } catch (err: unknown) {
       toast({ title: 'ত্রুটি', description: getErrorMessage(err, 'নেটওয়ার্ক সমস্যা'), variant: 'destructive' })
@@ -325,7 +274,7 @@ export function useCQExamPackages() {
   }
 
   const handleSaveSet = async () => {
-    if (!setTitle || !setScheduledDate || !selectedPackageId) {
+    if (!setForm.setTitle || !setForm.setScheduledDate || !nav.selectedPackageId) {
       toast({ title: 'ত্রুটি', description: 'শিরোনাম এবং তারিখ আবশ্যক', variant: 'destructive' })
       return
     }
@@ -333,40 +282,40 @@ export function useCQExamPackages() {
     setSaving(true)
     try {
       const body: Record<string, unknown> = {
-        action: editId ? 'update-set' : 'create-set',
-        title: setTitle,
-        description: setDescription || undefined,
-        scheduledDate: setScheduledDate,
-        startTime: setStartTime,
-        endTime: setEndTime,
-        duration: parseInt(setDuration) || 30,
-        instructions: setInstructions || undefined,
-        allowRetake: setAllowRetake,
-        order: parseInt(setOrder) || 0,
-        status: setStatus,
-        answerMode: setAnswerMode,
-        showAnnotatedImages: setShowAnnotatedImages,
-        autoPublishResults: setAutoPublishResults,
-        maxImagesPerAnswer: parseInt(setMaxImagesPerAnswer) || 5,
-        gradingDeadline: setGradingDeadline || undefined,
-        passMarks: parseFloat(setPassMarks) || 0,
-        showCorrectAnswers: setShowCorrectAnswers,
-        enablePartialGrading: setEnablePartialGrading,
+        action: nav.editId ? 'update-set' : 'create-set',
+        title: setForm.setTitle,
+        description: setForm.setDescription || undefined,
+        scheduledDate: setForm.setScheduledDate,
+        startTime: setForm.setStartTime,
+        endTime: setForm.setEndTime,
+        duration: parseInt(setForm.setDuration) || 30,
+        instructions: setForm.setInstructions || undefined,
+        allowRetake: setForm.setAllowRetake,
+        order: parseInt(setForm.setOrder) || 0,
+        status: setForm.setStatus,
+        answerMode: setForm.setAnswerMode,
+        showAnnotatedImages: setForm.setShowAnnotatedImages,
+        autoPublishResults: setForm.setAutoPublishResults,
+        maxImagesPerAnswer: parseInt(setForm.setMaxImagesPerAnswer) || 5,
+        gradingDeadline: setForm.setGradingDeadline || undefined,
+        passMarks: parseFloat(setForm.setPassMarks) || 0,
+        showCorrectAnswers: setForm.setShowCorrectAnswers,
+        enablePartialGrading: setForm.setEnablePartialGrading,
       }
-      if (editId) {
-        body.id = editId
+      if (nav.editId) {
+        body.id = nav.editId
       } else {
-        body.packageId = selectedPackageId
+        body.packageId = nav.selectedPackageId
       }
 
-      const method = editId ? 'PUT' : 'POST'
+      const method = nav.editId ? 'PUT' : 'POST'
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method,
         body: JSON.stringify(body),
       })
-      toast({ title: editId ? 'এক্সাম সেট আপডেট হয়েছে' : 'এক্সাম সেট তৈরি হয়েছে' })
-      fetchPackageDetail(selectedPackageId)
-      setViewMode('package-detail')
+      toast({ title: nav.editId ? 'এক্সাম সেট আপডেট হয়েছে' : 'এক্সাম সেট তৈরি হয়েছে' })
+      fetchPackageDetail(nav.selectedPackageId)
+      navDispatch({ type: 'SET_VIEW', viewMode: 'package-detail' })
     } catch (err: unknown) {
       toast({ title: 'ত্রুটি', description: getErrorMessage(err, 'নেটওয়ার্ক সমস্যা'), variant: 'destructive' })
     } finally {
@@ -377,20 +326,20 @@ export function useCQExamPackages() {
   // ─── Delete Handler ───────────────────────────────────────────────
 
   const handleDelete = async () => {
-    if (!deleteTarget) return
+    if (!nav.deleteTarget) return
     try {
-      if (deleteTarget.type === 'package') {
-        await unwrapResponse(`/api/admin/cq-exam-packages?action=delete-package&id=${deleteTarget.id}`, { method: 'DELETE' })
+      if (nav.deleteTarget.type === 'package') {
+        await unwrapResponse(`/api/admin/cq-exam-packages?action=delete-package&id=${nav.deleteTarget.id}`, { method: 'DELETE' })
         toast({ title: 'প্যাকেজ মুছে ফেলা হয়েছে' })
-        setDeleteTarget(null)
+        navDispatch({ type: 'SET_DELETE_TARGET', target: null })
         fetchPackages()
       } else {
-        const params = new URLSearchParams({ action: 'delete-set', id: deleteTarget.id })
-        if (deleteTarget.packageId) params.set('packageId', deleteTarget.packageId)
+        const params = new URLSearchParams({ action: 'delete-set', id: nav.deleteTarget.id })
+        if (nav.deleteTarget.packageId) params.set('packageId', nav.deleteTarget.packageId)
         await unwrapResponse(`/api/admin/cq-exam-packages?${params}`, { method: 'DELETE' })
         toast({ title: 'এক্সাম সেট মুছে ফেলা হয়েছে' })
-        setDeleteTarget(null)
-        if (selectedPackageId) fetchPackageDetail(selectedPackageId)
+        navDispatch({ type: 'SET_DELETE_TARGET', target: null })
+        if (nav.selectedPackageId) fetchPackageDetail(nav.selectedPackageId)
       }
     } catch {
       toast({ title: 'ত্রুটি', variant: 'destructive' })
@@ -400,37 +349,37 @@ export function useCQExamPackages() {
   // ─── CQ Search Handlers ───────────────────────────────────────────
 
   const handleSearchCqs = useCallback(async () => {
-    setSearchCqLoading(true)
+    dispatchSearchDlg({ type: 'SET_LOADING', loading: true })
     try {
       const params = new URLSearchParams({ action: 'search-cqs', page: '1', limit: '30' })
-      if (searchCqClassLevel) params.set('classLevel', searchCqClassLevel)
-      if (searchCqSubjectId) params.set('subjectId', searchCqSubjectId)
-      if (searchCqChapterId) params.set('chapterId', searchCqChapterId)
-      if (searchCqText) params.set('q', searchCqText)
+      if (searchDlg.searchCqClassLevel) params.set('classLevel', searchDlg.searchCqClassLevel)
+      if (searchDlg.searchCqSubjectId) params.set('subjectId', searchDlg.searchCqSubjectId)
+      if (searchDlg.searchCqChapterId) params.set('chapterId', searchDlg.searchCqChapterId)
+      if (searchDlg.searchCqText) params.set('q', searchDlg.searchCqText)
       const data = await unwrapResponse<CqSearchResponse>(`/api/admin/cq-exam-packages?${params}`)
-      setSearchCqs(data.cqs || [])
+      dispatchSearchDlg({ type: 'SET_RESULTS', results: data.cqs || [] })
     } catch (err) {
       console.error('[CQExam] Failed to search CQs:', err)
     } finally {
-      setSearchCqLoading(false)
+      dispatchSearchDlg({ type: 'SET_LOADING', loading: false })
     }
-  }, [searchCqClassLevel, searchCqSubjectId, searchCqChapterId, searchCqText])
+  }, [searchDlg.searchCqClassLevel, searchDlg.searchCqSubjectId, searchDlg.searchCqChapterId, searchDlg.searchCqText])
 
   const fetchSearchCqSubjects = useCallback(
     (classLevel: string) => {
       if (!classLevel) {
-        setSearchCqSubjects([])
+        dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqSubjects', value: [] })
         return
       }
       const cls = hierarchy.metadata?.classes.find((c) => c.slug === classLevel)
       if (!cls) {
-        setSearchCqSubjects([])
+        dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqSubjects', value: [] })
         return
       }
       const filtered = hierarchy.subjects
         .filter((s) => s.classId === cls.id)
         .map((s) => ({ id: s.id, name: s.name, slug: s.slug, classId: s.classId }))
-      setSearchCqSubjects(filtered)
+      dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqSubjects', value: filtered })
     },
     [hierarchy.metadata, hierarchy.subjects],
   )
@@ -438,33 +387,33 @@ export function useCQExamPackages() {
   const fetchSearchCqChapters = useCallback(
     (subjectId: string) => {
       if (!subjectId) {
-        setSearchCqChapters([])
+        dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqChapters', value: [] })
         return
       }
       const filtered = hierarchy.chapters
         .filter((c) => c.subjectId === subjectId)
         .map((c) => ({ id: c.id, name: c.name }))
-      setSearchCqChapters(filtered)
+      dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqChapters', value: filtered })
     },
     [hierarchy.chapters],
   )
 
   const handleAddCqs = async () => {
-    if (selectedCqIds.length === 0 || !selectedSetId) return
+    if (searchDlg.selectedCqIds.length === 0 || !nav.selectedSetId) return
     setSaving(true)
     try {
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method: 'POST',
         body: JSON.stringify({
           action: 'add-questions',
-          setId: selectedSetId,
-          cqIds: selectedCqIds,
+          setId: nav.selectedSetId,
+          cqIds: searchDlg.selectedCqIds,
         }),
       })
-      toast({ title: `${selectedCqIds.length}টি প্রশ্ন যোগ করা হয়েছে` })
-      setSelectedCqIds([])
-      setSearchDialogOpen(false)
-      fetchSetDetail(selectedSetId)
+      toast({ title: `${searchDlg.selectedCqIds.length}টি প্রশ্ন যোগ করা হয়েছে` })
+      dispatchSearchDlg({ type: 'RESET_SELECTED' })
+      dispatchSearchDlg({ type: 'CLOSE' })
+      fetchSetDetail(nav.selectedSetId)
     } catch (err) {
       console.error('[CQExam] Failed to add CQs:', err)
     } finally {
@@ -485,19 +434,19 @@ export function useCQExamPackages() {
     typedQuestion4Image: string
     subMarks: number[]
   }) => {
-    if (!selectedSetId) return
+    if (!nav.selectedSetId) return
     setSaving(true)
     try {
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method: 'POST',
         body: JSON.stringify({
           action: 'create-typed-question',
-          setId: selectedSetId,
+          setId: nav.selectedSetId,
           ...data,
         }),
       })
       toast({ title: 'প্রশ্ন তৈরি করা হয়েছে' })
-      if (selectedSetId) await fetchSetDetail(selectedSetId)
+      if (nav.selectedSetId) await fetchSetDetail(nav.selectedSetId)
     } catch (err: unknown) {
       const msg = getErrorMessage(err, 'প্রশ্ন তৈরি করতে সমস্যা হয়েছে')
       toast({ title: 'ত্রুটি', description: msg, variant: 'destructive' })
@@ -514,19 +463,19 @@ export function useCQExamPackages() {
     config: Record<string, unknown>
     marks: number
   }) => {
-    if (!selectedSetId) return
+    if (!nav.selectedSetId) return
     setSaving(true)
     try {
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method: 'POST',
         body: JSON.stringify({
           action: 'create-non-cq-question',
-          setId: selectedSetId,
+          setId: nav.selectedSetId,
           ...data,
         }),
       })
       toast({ title: 'প্রশ্ন তৈরি করা হয়েছে' })
-      if (selectedSetId) await fetchSetDetail(selectedSetId)
+      if (nav.selectedSetId) await fetchSetDetail(nav.selectedSetId)
     } catch (err: unknown) {
       toast({ title: 'ত্রুটি', description: getErrorMessage(err, 'প্রশ্ন তৈরি করতে সমস্যা হয়েছে'), variant: 'destructive' })
       throw err
@@ -549,7 +498,7 @@ export function useCQExamPackages() {
         body: JSON.stringify({ action: 'update-non-cq-question', ...data }),
       })
       toast({ title: 'প্রশ্ন আপডেট করা হয়েছে' })
-      if (selectedSetId) await fetchSetDetail(selectedSetId)
+      if (nav.selectedSetId) await fetchSetDetail(nav.selectedSetId)
       return true
     } catch (err: unknown) {
       toast({ title: 'ত্রুটি', description: getErrorMessage(err, 'প্রশ্ন আপডেট করতে সমস্যা হয়েছে'), variant: 'destructive' })
@@ -558,22 +507,6 @@ export function useCQExamPackages() {
       setSaving(false)
     }
   }
-
-  // Question editing state
-  const [editQuestionData, setEditQuestionData] = useState<{
-    id: string
-    typedUddeepok: string
-    typedUddeepokImage: string
-    typedQuestion1: string
-    typedQuestion1Image: string
-    typedQuestion2: string
-    typedQuestion2Image: string
-    typedQuestion3: string
-    typedQuestion3Image: string
-    typedQuestion4: string
-    typedQuestion4Image: string
-    subMarks: number[]
-  } | null>(null)
 
   const handleUpdateTypedQuestion = async (data: {
     questionId: string
@@ -596,7 +529,7 @@ export function useCQExamPackages() {
         body: JSON.stringify({ action: 'update-typed-question', ...data }),
       })
       toast({ title: 'প্রশ্ন আপডেট করা হয়েছে' })
-      if (selectedSetId) await fetchSetDetail(selectedSetId)
+      if (nav.selectedSetId) await fetchSetDetail(nav.selectedSetId)
       return true
     } catch (err: unknown) {
       toast({ title: 'ত্রুটি', description: getErrorMessage(err, 'প্রশ্ন আপডেট করতে সমস্যা হয়েছে'), variant: 'destructive' })
@@ -614,7 +547,7 @@ export function useCQExamPackages() {
         body: JSON.stringify({ action: 'update-question-marks', questionId, marks }),
       })
       toast({ title: 'নম্বর আপডেট করা হয়েছে' })
-      if (selectedSetId) await fetchSetDetail(selectedSetId)
+      if (nav.selectedSetId) await fetchSetDetail(nav.selectedSetId)
     } catch {
       toast({ title: 'ত্রুটি', variant: 'destructive' })
     } finally {
@@ -623,25 +556,25 @@ export function useCQExamPackages() {
   }
 
   const handleRemoveQuestion = async (id: string, isTyped: boolean) => {
-    if (!selectedSetId) return
+    if (!nav.selectedSetId) return
     try {
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method: 'PUT',
         body: JSON.stringify({
           action: 'remove-question',
-          setId: selectedSetId,
+          setId: nav.selectedSetId,
           ...(isTyped ? { questionId: id } : { cqId: id }),
         }),
       })
       toast({ title: 'প্রশ্ন সরানো হয়েছে' })
-      fetchSetDetail(selectedSetId)
+      fetchSetDetail(nav.selectedSetId)
     } catch (err) {
       console.error('[CQExam] Failed to remove question:', err)
     }
   }
 
   const handleMoveQuestion = async (questionId: string, direction: 'up' | 'down') => {
-    if (!currentSet?.questions || !selectedSetId) return
+    if (!currentSet?.questions || !nav.selectedSetId) return
     const questions = [...currentSet.questions]
     const idx = questions.findIndex((q) => q.id === questionId)
     if (idx < 0) return
@@ -654,9 +587,9 @@ export function useCQExamPackages() {
     try {
       await unwrapResponse('/api/admin/cq-exam-packages', {
         method: 'PUT',
-        body: JSON.stringify({ action: 'reorder-questions', setId: selectedSetId, questionOrders }),
+        body: JSON.stringify({ action: 'reorder-questions', setId: nav.selectedSetId, questionOrders }),
       })
-      fetchSetDetail(selectedSetId)
+      fetchSetDetail(nav.selectedSetId)
     } catch (err) {
       console.error('[CQExam] Failed to reorder questions:', err)
     }
@@ -681,7 +614,7 @@ export function useCQExamPackages() {
         }),
       })
       toast({ title: 'উত্তর মূল্যায়ন সংরক্ষিত হয়েছে' })
-      fetchSubmissions(selectedSubmission?.setId || '')
+      fetchSubmissions(submissionView.selectedSubmission?.setId || '')
     } catch {
       toast({ title: 'ত্রুটি', variant: 'destructive' })
     } finally {
@@ -692,20 +625,20 @@ export function useCQExamPackages() {
   // ─── Bulk Grading By Question ────────────────────────────────────
 
   const handleFetchBulkSubmissions = useCallback(async (questionId: string) => {
-    if (!selectedSetId) return
-    setBulkGradingLoading(true)
+    if (!nav.selectedSetId) return
+    dispatchBulkGrade({ type: 'SET_LOADING', loading: true })
     try {
       const data = await unwrapResponse<BulkSubmissionsResponse>(
-        `/api/admin/cq-exam-packages?action=bulk-grade-by-question&setId=${selectedSetId}&questionId=${questionId}`
+        `/api/admin/cq-exam-packages?action=bulk-grade-by-question&setId=${nav.selectedSetId}&questionId=${questionId}`
       )
-      setBulkSubmissions(data.submissions || [])
+      dispatchBulkGrade({ type: 'SET_SUBMISSIONS', submissions: data.submissions || [] })
     } catch {
       toast({ title: 'ত্রুটি', variant: 'destructive' })
-      setBulkSubmissions([])
+      dispatchBulkGrade({ type: 'SET_SUBMISSIONS', submissions: [] })
     } finally {
-      setBulkGradingLoading(false)
+      dispatchBulkGrade({ type: 'SET_LOADING', loading: false })
     }
-  }, [selectedSetId, toast])
+  }, [nav.selectedSetId, toast])
 
   const handleSaveBulkGrades = async (
     questionId: string,
@@ -780,7 +713,7 @@ export function useCQExamPackages() {
       toast({
         title: canRetake ? 'পুনরায় পরীক্ষার অনুমতি দেওয়া হয়েছে' : 'পুনরায় পরীক্ষার অনুমতি সরানো হয়েছে',
       })
-      if (selectedSetId) fetchSubmissions(selectedSetId)
+      if (nav.selectedSetId) fetchSubmissions(nav.selectedSetId)
     } catch {
       toast({ title: 'ত্রুটি', variant: 'destructive' })
     } finally {
@@ -796,7 +729,7 @@ export function useCQExamPackages() {
         body: JSON.stringify({ action: 'reopen-grading', submissionId }),
       })
       toast({ title: 'গ্রেডিং পুনরায় খোলা হয়েছে', description: 'এখন আবার গ্রেড করতে পারবেন' })
-      if (selectedSetId) fetchSubmissions(selectedSetId)
+      if (nav.selectedSetId) fetchSubmissions(nav.selectedSetId)
     } catch {
       toast({ title: 'ত্রুটি', variant: 'destructive' })
     } finally {
@@ -843,9 +776,9 @@ export function useCQExamPackages() {
       toast({
         title: approve ? 'অনুরোধ অনুমোদিত হয়েছে' : 'অনুরোধ প্রত্যাখ্যান করা হয়েছে',
       })
-      if (selectedSetId) {
-        fetchRetakeRequests(selectedSetId)
-        fetchSubmissions(selectedSetId)
+      if (nav.selectedSetId) {
+        fetchRetakeRequests(nav.selectedSetId)
+        fetchSubmissions(nav.selectedSetId)
       }
       return data
     } catch {
@@ -859,11 +792,11 @@ export function useCQExamPackages() {
   // ─── Bulk Create ──────────────────────────────────────────────────
 
   const handleBulkCreateSets = async () => {
-    if (!bulkStartDate || !selectedPackageId) return
+    if (!bulkCreateDlg.bulkStartDate || !nav.selectedPackageId) return
 
-    const count = parseInt(bulkCount) || 10
-    const interval = parseInt(bulkIntervalDays) || 7
-    const baseDate = new Date(bulkStartDate)
+    const count = parseInt(bulkCreateDlg.bulkCount) || 10
+    const interval = parseInt(bulkCreateDlg.bulkIntervalDays) || 7
+    const baseDate = new Date(bulkCreateDlg.bulkStartDate)
 
     setSaving(true)
     try {
@@ -875,20 +808,20 @@ export function useCQExamPackages() {
           method: 'POST',
           body: JSON.stringify({
             action: 'create-set',
-            packageId: selectedPackageId,
-            title: `${bulkPrefix} ${i + 1}`,
+            packageId: nav.selectedPackageId,
+            title: `${bulkCreateDlg.bulkPrefix} ${i + 1}`,
             scheduledDate: date.toISOString().split('T')[0],
             startTime: '00:00',
             endTime: '23:59',
-            duration: parseInt(bulkDuration) || 30,
+            duration: parseInt(bulkCreateDlg.bulkDuration) || 30,
             order: i,
             status: 'draft',
           }),
         })
       }
       toast({ title: `${count}টি সেট তৈরি হয়েছে` })
-      setBulkCreateDialogOpen(false)
-      fetchPackageDetail(selectedPackageId)
+      dispatchBulkCreate({ type: 'CLOSE' })
+      fetchPackageDetail(nav.selectedPackageId)
     } catch (err: unknown) {
       toast({ title: 'ত্রুটি', description: getErrorMessage(err, 'নেটওয়ার্ক সমস্যা'), variant: 'destructive' })
     } finally {
@@ -902,7 +835,7 @@ export function useCQExamPackages() {
     setLeaderboardSetTitle(setTitle)
     setLeaderboardData([])
     setLeaderboardLoading(true)
-    setViewMode('leaderboard')
+    navDispatch({ type: 'SET_VIEW', viewMode: 'leaderboard' })
     try {
       const data = await unwrapResponse<CqSubmissionsResponse>(`/api/admin/cq-exam-packages?action=submissions&setId=${setId}`)
       const sorted = [...(data.submissions || [])].sort((a, b) => (b.obtainedMarks || 0) - (a.obtainedMarks || 0))
@@ -932,11 +865,26 @@ export function useCQExamPackages() {
   // ─── Return ───────────────────────────────────────────────────────
 
   return {
-    viewMode, setViewMode,
-    editId, setEditId,
-    selectedPackageId, setSelectedPackageId,
-    selectedSetId, setSelectedSetId,
-    deleteTarget, setDeleteTarget,
+    viewMode: nav.viewMode,
+    setViewMode: (v: NavigationState['viewMode'] | ((prev: NavigationState['viewMode']) => NavigationState['viewMode'])) => {
+      if (typeof v === 'function') { navDispatch({ type: 'SET_VIEW', viewMode: v(nav.viewMode) }) } else { navDispatch({ type: 'SET_VIEW', viewMode: v }) }
+    },
+    editId: nav.editId,
+    setEditId: (v: string | null | ((prev: string | null) => string | null)) => {
+      if (typeof v === 'function') { navDispatch({ type: 'SET_EDIT_ID', editId: v(nav.editId) }) } else { navDispatch({ type: 'SET_EDIT_ID', editId: v }) }
+    },
+    selectedPackageId: nav.selectedPackageId,
+    setSelectedPackageId: (v: string | null | ((prev: string | null) => string | null)) => {
+      if (typeof v === 'function') { navDispatch({ type: 'SELECT_PACKAGE', packageId: v(nav.selectedPackageId) }) } else { navDispatch({ type: 'SELECT_PACKAGE', packageId: v }) }
+    },
+    selectedSetId: nav.selectedSetId,
+    setSelectedSetId: (v: string | null | ((prev: string | null) => string | null)) => {
+      if (typeof v === 'function') { navDispatch({ type: 'SELECT_SET', setId: v(nav.selectedSetId) }) } else { navDispatch({ type: 'SELECT_SET', setId: v }) }
+    },
+    deleteTarget: nav.deleteTarget,
+    setDeleteTarget: (v: typeof nav.deleteTarget | ((prev: typeof nav.deleteTarget) => typeof nav.deleteTarget)) => {
+      if (typeof v === 'function') { navDispatch({ type: 'SET_DELETE_TARGET', target: v(nav.deleteTarget) }) } else { navDispatch({ type: 'SET_DELETE_TARGET', target: v }) }
+    },
 
     loading, saving,
     packages, total,
@@ -946,70 +894,225 @@ export function useCQExamPackages() {
 
     classes, subjects, setSubjects,
 
-    search, setSearch,
-    filterClassId, setFilterClassId,
-    filterStatus, setFilterStatus,
+    search: filters.search,
+    setSearch: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchFilter({ type: 'SET_FILTER', field: 'search', value: v(filters.search) }) } else { dispatchFilter({ type: 'SET_FILTER', field: 'search', value: v }) }
+    },
+    filterClassId: filters.filterClassId,
+    setFilterClassId: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchFilter({ type: 'SET_FILTER', field: 'filterClassId', value: v(filters.filterClassId) }) } else { dispatchFilter({ type: 'SET_FILTER', field: 'filterClassId', value: v }) }
+    },
+    filterStatus: filters.filterStatus,
+    setFilterStatus: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchFilter({ type: 'SET_FILTER', field: 'filterStatus', value: v(filters.filterStatus) }) } else { dispatchFilter({ type: 'SET_FILTER', field: 'filterStatus', value: v }) }
+    },
 
-    pkgTitle, setPkgTitle,
-    pkgDescription, setPkgDescription,
-    pkgClassId, setPkgClassId,
-    pkgSubjectIds, setPkgSubjectIds,
-    pkgPrice, setPkgPrice,
-    pkgOriginalPrice, setPkgOriginalPrice,
-    pkgThumbnail, setPkgThumbnail,
-    pkgIsActive, setPkgIsActive,
-    pkgIsPremium, setPkgIsPremium,
-    pkgOrder, setPkgOrder,
-    pkgStatus, setPkgStatus,
+    pkgTitle: pkgForm.pkgTitle,
+    setPkgTitle: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgTitle', value: v(pkgForm.pkgTitle) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgTitle', value: v }) }
+    },
+    pkgDescription: pkgForm.pkgDescription,
+    setPkgDescription: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgDescription', value: v(pkgForm.pkgDescription) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgDescription', value: v }) }
+    },
+    pkgClassId: pkgForm.pkgClassId,
+    setPkgClassId: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgClassId', value: v(pkgForm.pkgClassId) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgClassId', value: v }) }
+    },
+    pkgSubjectIds: pkgForm.pkgSubjectIds,
+    setPkgSubjectIds: (v: string[] | ((prev: string[]) => string[])) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgSubjectIds', value: v(pkgForm.pkgSubjectIds) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgSubjectIds', value: v }) }
+    },
+    pkgPrice: pkgForm.pkgPrice,
+    setPkgPrice: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgPrice', value: v(pkgForm.pkgPrice) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgPrice', value: v }) }
+    },
+    pkgOriginalPrice: pkgForm.pkgOriginalPrice,
+    setPkgOriginalPrice: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgOriginalPrice', value: v(pkgForm.pkgOriginalPrice) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgOriginalPrice', value: v }) }
+    },
+    pkgThumbnail: pkgForm.pkgThumbnail,
+    setPkgThumbnail: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgThumbnail', value: v(pkgForm.pkgThumbnail) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgThumbnail', value: v }) }
+    },
+    pkgIsActive: pkgForm.pkgIsActive,
+    setPkgIsActive: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgIsActive', value: v(pkgForm.pkgIsActive) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgIsActive', value: v }) }
+    },
+    pkgIsPremium: pkgForm.pkgIsPremium,
+    setPkgIsPremium: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgIsPremium', value: v(pkgForm.pkgIsPremium) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgIsPremium', value: v }) }
+    },
+    pkgOrder: pkgForm.pkgOrder,
+    setPkgOrder: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgOrder', value: v(pkgForm.pkgOrder) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgOrder', value: v }) }
+    },
+    pkgStatus: pkgForm.pkgStatus,
+    setPkgStatus: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgStatus', value: v(pkgForm.pkgStatus) }) } else { dispatchPkgForm({ type: 'SET_FIELD', field: 'pkgStatus', value: v }) }
+    },
 
-    setTitle, setSetTitle,
-    setDescription, setSetDescription,
-    setScheduledDate, setSetScheduledDate,
-    setStartTime, setSetStartTime,
-    setEndTime, setSetEndTime,
-    setDuration, setSetDuration,
-    setInstructions, setSetInstructions,
-    setOrder, setSetOrder,
-    setStatus, setSetStatus,
-    setAllowRetake, setSetAllowRetake,
-    setAnswerMode, setSetAnswerMode,
-    setShowAnnotatedImages, setSetShowAnnotatedImages,
-    setAutoPublishResults, setSetAutoPublishResults,
-    setMaxImagesPerAnswer, setSetMaxImagesPerAnswer,
-    setGradingDeadline, setSetGradingDeadline,
-    setPassMarks, setSetPassMarks,
-    setShowCorrectAnswers, setSetShowCorrectAnswers,
-    setEnablePartialGrading, setSetEnablePartialGrading,
+    setTitle: setForm.setTitle,
+    setSetTitle: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setTitle', value: v(setForm.setTitle) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setTitle', value: v }) }
+    },
+    setDescription: setForm.setDescription,
+    setSetDescription: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setDescription', value: v(setForm.setDescription) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setDescription', value: v }) }
+    },
+    setScheduledDate: setForm.setScheduledDate,
+    setSetScheduledDate: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setScheduledDate', value: v(setForm.setScheduledDate) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setScheduledDate', value: v }) }
+    },
+    setStartTime: setForm.setStartTime,
+    setSetStartTime: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setStartTime', value: v(setForm.setStartTime) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setStartTime', value: v }) }
+    },
+    setEndTime: setForm.setEndTime,
+    setSetEndTime: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setEndTime', value: v(setForm.setEndTime) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setEndTime', value: v }) }
+    },
+    setDuration: setForm.setDuration,
+    setSetDuration: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setDuration', value: v(setForm.setDuration) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setDuration', value: v }) }
+    },
+    setInstructions: setForm.setInstructions,
+    setSetInstructions: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setInstructions', value: v(setForm.setInstructions) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setInstructions', value: v }) }
+    },
+    setOrder: setForm.setOrder,
+    setSetOrder: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setOrder', value: v(setForm.setOrder) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setOrder', value: v }) }
+    },
+    setStatus: setForm.setStatus,
+    setSetStatus: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setStatus', value: v(setForm.setStatus) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setStatus', value: v }) }
+    },
+    setAllowRetake: setForm.setAllowRetake,
+    setSetAllowRetake: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setAllowRetake', value: v(setForm.setAllowRetake) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setAllowRetake', value: v }) }
+    },
+    setAnswerMode: setForm.setAnswerMode,
+    setSetAnswerMode: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setAnswerMode', value: v(setForm.setAnswerMode) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setAnswerMode', value: v }) }
+    },
+    setShowAnnotatedImages: setForm.setShowAnnotatedImages,
+    setSetShowAnnotatedImages: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setShowAnnotatedImages', value: v(setForm.setShowAnnotatedImages) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setShowAnnotatedImages', value: v }) }
+    },
+    setAutoPublishResults: setForm.setAutoPublishResults,
+    setSetAutoPublishResults: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setAutoPublishResults', value: v(setForm.setAutoPublishResults) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setAutoPublishResults', value: v }) }
+    },
+    setMaxImagesPerAnswer: setForm.setMaxImagesPerAnswer,
+    setSetMaxImagesPerAnswer: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setMaxImagesPerAnswer', value: v(setForm.setMaxImagesPerAnswer) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setMaxImagesPerAnswer', value: v }) }
+    },
+    setGradingDeadline: setForm.setGradingDeadline,
+    setSetGradingDeadline: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setGradingDeadline', value: v(setForm.setGradingDeadline) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setGradingDeadline', value: v }) }
+    },
+    setPassMarks: setForm.setPassMarks,
+    setSetPassMarks: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setPassMarks', value: v(setForm.setPassMarks) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setPassMarks', value: v }) }
+    },
+    setShowCorrectAnswers: setForm.setShowCorrectAnswers,
+    setSetShowCorrectAnswers: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setShowCorrectAnswers', value: v(setForm.setShowCorrectAnswers) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setShowCorrectAnswers', value: v }) }
+    },
+    setEnablePartialGrading: setForm.setEnablePartialGrading,
+    setSetEnablePartialGrading: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { dispatchSetForm({ type: 'SET_FIELD', field: 'setEnablePartialGrading', value: v(setForm.setEnablePartialGrading) }) } else { dispatchSetForm({ type: 'SET_FIELD', field: 'setEnablePartialGrading', value: v }) }
+    },
 
-    searchDialogOpen, setSearchDialogOpen,
-    searchCqs, setSearchCqs, searchCqLoading,
-    selectedCqIds, setSelectedCqIds,
-    searchCqClassLevel, setSearchCqClassLevel,
-    searchCqSubjectId, setSearchCqSubjectId,
-    searchCqChapterId, setSearchCqChapterId,
-    searchCqText, setSearchCqText,
-    searchCqSubjects, setSearchCqSubjects,
-    searchCqChapters,
+    searchDialogOpen: searchDlg.searchDialogOpen,
+    setSearchDialogOpen: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { v(searchDlg.searchDialogOpen) ? dispatchSearchDlg({ type: 'OPEN' }) : dispatchSearchDlg({ type: 'CLOSE' }) } else { v ? dispatchSearchDlg({ type: 'OPEN' }) : dispatchSearchDlg({ type: 'CLOSE' }) }
+    },
+    searchCqs: searchDlg.searchCqs,
+    setSearchCqs: (v: CQSearchResult[] | ((prev: CQSearchResult[]) => CQSearchResult[])) => {
+      if (typeof v === 'function') { dispatchSearchDlg({ type: 'SET_RESULTS', results: v(searchDlg.searchCqs) }) } else { dispatchSearchDlg({ type: 'SET_RESULTS', results: v }) }
+    },
+    searchCqLoading: searchDlg.searchCqLoading,
+    selectedCqIds: searchDlg.selectedCqIds,
+    setSelectedCqIds: (v: string[] | ((prev: string[]) => string[])) => {
+      if (typeof v === 'function') { dispatchSearchDlg({ type: 'SET_SELECTED_IDS', ids: v(searchDlg.selectedCqIds) }) } else { dispatchSearchDlg({ type: 'SET_SELECTED_IDS', ids: v }) }
+    },
+    searchCqClassLevel: searchDlg.searchCqClassLevel,
+    setSearchCqClassLevel: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqClassLevel', value: v(searchDlg.searchCqClassLevel) }) } else { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqClassLevel', value: v }) }
+    },
+    searchCqSubjectId: searchDlg.searchCqSubjectId,
+    setSearchCqSubjectId: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqSubjectId', value: v(searchDlg.searchCqSubjectId) }) } else { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqSubjectId', value: v }) }
+    },
+    searchCqChapterId: searchDlg.searchCqChapterId,
+    setSearchCqChapterId: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqChapterId', value: v(searchDlg.searchCqChapterId) }) } else { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqChapterId', value: v }) }
+    },
+    searchCqText: searchDlg.searchCqText,
+    setSearchCqText: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqText', value: v(searchDlg.searchCqText) }) } else { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqText', value: v }) }
+    },
+    searchCqSubjects: searchDlg.searchCqSubjects,
+    setSearchCqSubjects: (v: SubjectOption[] | ((prev: SubjectOption[]) => SubjectOption[])) => {
+      if (typeof v === 'function') { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqSubjects', value: v(searchDlg.searchCqSubjects) }) } else { dispatchSearchDlg({ type: 'SET_FIELD', field: 'searchCqSubjects', value: v }) }
+    },
+    searchCqChapters: searchDlg.searchCqChapters,
 
-    submissionDetailOpen, setSubmissionDetailOpen,
-    selectedSubmission, setSelectedSubmission,
-    selectedAnswerForGrading, setSelectedAnswerForGrading,
+    submissionDetailOpen: submissionView.submissionDetailOpen,
+    setSubmissionDetailOpen: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { v(submissionView.submissionDetailOpen) ? dispatchSubmissionView({ type: 'OPEN', submission: submissionView.selectedSubmission! }) : dispatchSubmissionView({ type: 'CLOSE' }) } else { v ? dispatchSubmissionView({ type: 'OPEN', submission: submissionView.selectedSubmission! }) : dispatchSubmissionView({ type: 'CLOSE' }) }
+    },
+    selectedSubmission: submissionView.selectedSubmission,
+    setSelectedSubmission: (v: CQExamSubmissionRecord | null | ((prev: CQExamSubmissionRecord | null) => CQExamSubmissionRecord | null)) => {
+      if (typeof v === 'function') { dispatchSubmissionView({ type: 'SET_SUBMISSION', submission: v(submissionView.selectedSubmission) }) } else { dispatchSubmissionView({ type: 'SET_SUBMISSION', submission: v }) }
+    },
+    selectedAnswerForGrading: gradingDlg.selectedAnswerForGrading,
+    setSelectedAnswerForGrading: (v: GradingDialogState['selectedAnswerForGrading'] | ((prev: GradingDialogState['selectedAnswerForGrading']) => GradingDialogState['selectedAnswerForGrading'])) => {
+      if (typeof v === 'function') { dispatchGradingDlg({ type: 'SET_SELECTED_ANSWER', selected: v(gradingDlg.selectedAnswerForGrading) }) } else { dispatchGradingDlg({ type: 'SET_SELECTED_ANSWER', selected: v }) }
+    },
 
-    gradingDialogOpen, setGradingDialogOpen,
-    gradingAnswers, setGradingAnswers,
+    gradingDialogOpen: gradingDlg.gradingDialogOpen,
+    setGradingDialogOpen: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { v(gradingDlg.gradingDialogOpen) ? dispatchGradingDlg({ type: 'OPEN', answers: gradingDlg.gradingAnswers }) : dispatchGradingDlg({ type: 'CLOSE' }) } else { v ? dispatchGradingDlg({ type: 'OPEN', answers: gradingDlg.gradingAnswers }) : dispatchGradingDlg({ type: 'CLOSE' }) }
+    },
+    gradingAnswers: gradingDlg.gradingAnswers,
+    setGradingAnswers: (v: CQExamAnswerRecord[] | ((prev: CQExamAnswerRecord[]) => CQExamAnswerRecord[])) => {
+      if (typeof v === 'function') { dispatchGradingDlg({ type: 'SET_ANSWERS', answers: v(gradingDlg.gradingAnswers) }) } else { dispatchGradingDlg({ type: 'SET_ANSWERS', answers: v }) }
+    },
 
-    bulkCreateDialogOpen, setBulkCreateDialogOpen,
-    bulkPrefix, setBulkPrefix,
-    bulkStartDate, setBulkStartDate,
-    bulkIntervalDays, setBulkIntervalDays,
-    bulkCount, setBulkCount,
-    bulkDuration, setBulkDuration,
+    bulkCreateDialogOpen: bulkCreateDlg.bulkCreateDialogOpen,
+    setBulkCreateDialogOpen: (v: boolean | ((prev: boolean) => boolean)) => {
+      if (typeof v === 'function') { v(bulkCreateDlg.bulkCreateDialogOpen) ? dispatchBulkCreate({ type: 'OPEN' }) : dispatchBulkCreate({ type: 'CLOSE' }) } else { v ? dispatchBulkCreate({ type: 'OPEN' }) : dispatchBulkCreate({ type: 'CLOSE' }) }
+    },
+    bulkPrefix: bulkCreateDlg.bulkPrefix,
+    setBulkPrefix: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkPrefix', value: v(bulkCreateDlg.bulkPrefix) }) } else { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkPrefix', value: v }) }
+    },
+    bulkStartDate: bulkCreateDlg.bulkStartDate,
+    setBulkStartDate: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkStartDate', value: v(bulkCreateDlg.bulkStartDate) }) } else { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkStartDate', value: v }) }
+    },
+    bulkIntervalDays: bulkCreateDlg.bulkIntervalDays,
+    setBulkIntervalDays: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkIntervalDays', value: v(bulkCreateDlg.bulkIntervalDays) }) } else { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkIntervalDays', value: v }) }
+    },
+    bulkCount: bulkCreateDlg.bulkCount,
+    setBulkCount: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkCount', value: v(bulkCreateDlg.bulkCount) }) } else { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkCount', value: v }) }
+    },
+    bulkDuration: bulkCreateDlg.bulkDuration,
+    setBulkDuration: (v: string | ((prev: string) => string)) => {
+      if (typeof v === 'function') { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkDuration', value: v(bulkCreateDlg.bulkDuration) }) } else { dispatchBulkCreate({ type: 'SET_FIELD', field: 'bulkDuration', value: v }) }
+    },
 
     retakeRequests, retakeRequestsLoading,
 
     leaderboardData, leaderboardSetTitle, leaderboardLoading,
 
-    bulkSubmissions, bulkGradingLoading,
+    bulkSubmissions: bulkGrade.bulkSubmissions,
+    bulkGradingLoading: bulkGrade.bulkGradingLoading,
 
     fetchPackages, fetchPackageDetail, fetchSetDetail,
     fetchSubmissions, fetchSubmissionDetail,

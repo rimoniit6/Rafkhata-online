@@ -20,6 +20,7 @@ SelectItem,
 SelectTrigger,
 SelectValue,
 } from '@/components/ui/select'
+import { QueryError } from '@/components/admin/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useTableSelection } from '@/hooks/use-table-selection'
@@ -38,7 +39,10 @@ Users,
 UserX,
 XCircle
 } from 'lucide-react'
-import { useCallback,useEffect,useState } from 'react'
+import { useState } from 'react'
+
+import { useContentPurchases } from '@/hooks/admin/use-content-purchases'
+import { contentPurchaseService } from '@/services/api/content-purchase.service'
 
 interface PurchaseRecord {
   id: string
@@ -57,16 +61,10 @@ interface PurchaseRecord {
 
 export default function AdminContentPurchasesPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [purchases, setPurchases] = useState<PurchaseRecord[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [contentTypeFilter, setContentTypeFilter] = useState('all')
   const [activeFilter, setActiveFilter] = useState('all')
   const [search, setSearch] = useState('')
-  const [stats, setStats] = useState({ totalPurchases: 0, activePurchases: 0, inactivePurchases: 0 })
-  const [contentTypeLabels, setContentTypeLabels] = useState<Record<string, string>>({})
-  const [typeStats, setTypeStats] = useState<Record<string, { total: number; active: number; inactive: number }>>({})
   const [detailPurchase, setDetailPurchase] = useState<PurchaseRecord | null>(null)
   const [toggleDialog, setToggleDialog] = useState<PurchaseRecord | null>(null)
   const [toggleReason, setToggleReason] = useState('')
@@ -74,75 +72,50 @@ export default function AdminContentPurchasesPage() {
   const [showTypeStats, setShowTypeStats] = useState(false)
   const limit = 20
 
-  const fetchPurchases = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', page.toString())
-      params.set('limit', limit.toString())
-      if (contentTypeFilter !== 'all') params.set('contentType', contentTypeFilter)
-      if (activeFilter !== 'all') params.set('isActive', activeFilter)
-      if (search) params.set('search', search)
+  const { purchases, pagination, stats, contentTypeLabels, typeStats, isLoading, isError, error, refetch, invalidate } = useContentPurchases({
+    page,
+    limit,
+    contentType: contentTypeFilter !== 'all' ? contentTypeFilter : undefined,
+    isActive: activeFilter !== 'all' ? activeFilter : undefined,
+    search: search || undefined,
+  })
 
-      const res = await fetch(`/api/admin/content-purchases?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setPurchases(Array.isArray(json.data) ? json.data : [])
-        setTotal(json.pagination?.total || 0)
-        setStats(json.stats || { totalPurchases: 0, activePurchases: 0, inactivePurchases: 0 })
-        setContentTypeLabels(json.contentTypeLabels || {})
-        setTypeStats(json.typeStats || {})
-      }
-    } catch {
-      toast({ title: 'ত্রুটি', description: 'ক্রয়ের তথ্য লোড করতে সমস্যা হয়েছে', variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [page, contentTypeFilter, activeFilter, search, toast])
+  const total = pagination?.total ?? 0
 
-  useEffect(() => { fetchPurchases() }, [fetchPurchases])
+  const selection = useTableSelection(purchases)
 
   const handleToggleActive = async () => {
     if (!toggleDialog) return
     setProcessing(true)
     try {
       const newIsActive = !toggleDialog.isActive
-      const res = await fetch('/api/admin/content-purchases', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: toggleDialog.id,
-          isActive: newIsActive,
-          reason: toggleReason,
-        }),
+      await contentPurchaseService.toggleActive({
+        id: toggleDialog.id,
+        isActive: newIsActive,
+        reason: toggleReason,
       })
-      if (res.ok) {
-        toast({
-          title: newIsActive ? 'ক্রয় সক্রিয় করা হয়েছে' : 'ক্রয় নিষ্ক্রিয় করা হয়েছে',
-          description: `${toggleDialog.user?.name} এর ক্রয় ${newIsActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'} করা হয়েছে`,
-        })
-        fetchPurchases()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
-    } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
-    } finally {
-      setProcessing(false)
+      toast({
+        title: newIsActive ? 'ক্রয় সক্রিয় করা হয়েছে' : 'ক্রয় নিষ্ক্রিয় করা হয়েছে',
+        description: `${toggleDialog.user?.name} এর ক্রয় ${newIsActive ? 'সক্রিয়' : 'নিষ্ক্রিয়'} করা হয়েছে`,
+      })
       setToggleDialog(null)
       setToggleReason('')
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally {
+      setProcessing(false)
     }
   }
-
-  const selection = useTableSelection(purchases)
 
   const handleBulkDelete = async (ids: string[]) => {
     if (processing) return
     setProcessing(true)
     try {
-      const res = await fetch(`/api/admin/content-purchases?ids=${ids.join(',')}`, { method: 'DELETE' })
-      if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+      await contentPurchaseService.bulkDelete(ids)
+      toast({ title: 'মুছে ফেলা হয়েছে' })
+      selection.clearSelection()
+      invalidate()
     } finally {
       setProcessing(false)
     }
@@ -152,12 +125,10 @@ export default function AdminContentPurchasesPage() {
     if (processing) return
     setProcessing(true)
     try {
-      const res = await fetch('/api/admin/content-purchases', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, isActive: false }),
-      })
-      if (res.ok) { toast({ title: 'নিষ্ক্রিয় করা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+      await contentPurchaseService.bulkDeactivate(ids)
+      toast({ title: 'নিষ্ক্রিয় করা হয়েছে' })
+      selection.clearSelection()
+      invalidate()
     } finally {
       setProcessing(false)
     }
@@ -338,7 +309,7 @@ export default function AdminContentPurchasesPage() {
     }
   }
 
-  if (loading && purchases.length === 0) {
+  if (isLoading && purchases.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -350,6 +321,10 @@ export default function AdminContentPurchasesPage() {
         <Skeleton className="h-96" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (
@@ -414,7 +389,7 @@ export default function AdminContentPurchasesPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">মোট ক্রয়</p>
-              <p className="text-xl font-bold">{stats.totalPurchases.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.totalPurchases ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -425,7 +400,7 @@ export default function AdminContentPurchasesPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">সক্রিয় ক্রয়</p>
-              <p className="text-xl font-bold">{stats.activePurchases.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.activePurchases ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -436,7 +411,7 @@ export default function AdminContentPurchasesPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">নিষ্ক্রিয় ক্রয়</p>
-              <p className="text-xl font-bold">{stats.inactivePurchases.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.inactivePurchases ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -449,7 +424,7 @@ export default function AdminContentPurchasesPage() {
         page={page}
         pageSize={limit}
         onPageChange={setPage}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}

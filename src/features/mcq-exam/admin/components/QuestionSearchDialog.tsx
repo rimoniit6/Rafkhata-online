@@ -43,7 +43,7 @@ interface QuestionSearchDialogProps {
   loading: boolean
   results: MCQSearchResult[]
   selectedIds: string[]
-  setSelectedIds: React.Dispatch<React.SetStateAction<string[]>>
+  setSelectedIds: (v: string[]) => void
   alreadyInSetIds: string[]
   saving: boolean
   onAddSelected: () => void
@@ -144,9 +144,9 @@ export function QuestionSearchDialog({
                   onClick={() => {
                     if (alreadyInSet) return
                     if (isSelected) {
-                      setSelectedIds(prev => prev.filter(id => id !== mcq.id))
+                      setSelectedIds(selectedIds.filter(id => id !== mcq.id))
                     } else {
-                      setSelectedIds(prev => [...prev, mcq.id])
+                      setSelectedIds([...selectedIds, mcq.id])
                     }
                   }}
                 >

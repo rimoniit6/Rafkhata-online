@@ -44,21 +44,13 @@ import {
 import { useToast } from '@/hooks/use-toast'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
+import { QueryError } from '@/components/admin/QueryError'
+import { faqService, type FAQRecord } from '@/services/api/faq.service'
+import { useFaqs } from '@/hooks/admin/use-faqs'
 import { cn } from '@/lib/utils'
 import RichContentRenderer from '@/components/ui/rich-content-renderer'
 
 // ─── Data Model ───────────────────────────────────────────────
-interface FAQRecord {
-  id: string
-  question: string
-  answer: string
-  category: string | null
-  order: number
-  isActive: boolean
-  createdAt: string
-  updatedAt: string
-}
-
 const emptyForm = {
   question: '',
   answer: '',
@@ -70,8 +62,6 @@ const emptyForm = {
 // ─── Component ────────────────────────────────────────────────
 export default function AdminFAQsPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [faqs, setFaqs] = useState<FAQRecord[]>([])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
@@ -81,27 +71,7 @@ export default function AdminFAQsPage() {
   const [filterCategory, setFilterCategory] = useState<string>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  // ── Fetch FAQs ──
-  const fetchFaqs = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (filterCategory && filterCategory !== 'all') params.set('category', filterCategory)
-      const res = await fetch(`/api/admin/faqs?${params.toString()}`)
-      if (res.ok) {
-        const json = await res.json()
-        setFaqs(Array.isArray(json.data) ? json.data : [])
-      }
-    } catch {
-      /* */
-    } finally {
-      setLoading(false)
-    }
-  }, [filterCategory])
-
-  useEffect(() => {
-    fetchFaqs()
-  }, [fetchFaqs])
+  const { faqs, isLoading, isError, error, refetch, invalidate } = useFaqs(filterCategory !== 'all' ? filterCategory : undefined)
 
   // ── Unique categories ──
   const categories = Array.from(new Set(faqs.map((f) => f.category).filter(Boolean))) as string[]
@@ -160,28 +130,16 @@ export default function AdminFAQsPage() {
         isActive: form.isActive,
       }
 
-      const res = editId
-        ? await fetch('/api/admin/faqs', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: editId, ...body }),
-          })
-        : await fetch('/api/admin/faqs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          })
-
-      if (res.ok) {
-        toast({ title: editId ? 'FAQ আপডেট হয়েছে' : 'FAQ তৈরি হয়েছে' })
-        setDialogOpen(false)
-        fetchFaqs()
+      if (editId) {
+        await faqService.update(editId, body)
       } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error || 'সংরক্ষণ করতে সমস্যা হয়েছে', variant: 'destructive' })
+        await faqService.create(body)
       }
+      toast({ title: editId ? 'FAQ আপডেট হয়েছে' : 'FAQ তৈরি হয়েছে' })
+      setDialogOpen(false)
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally {
       setSaving(false)
     }
@@ -190,30 +148,20 @@ export default function AdminFAQsPage() {
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      const res = await fetch(`/api/admin/faqs?id=${deleteId}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: 'FAQ মুছে ফেলা হয়েছে' })
-        setDeleteId(null)
-        fetchFaqs()
-      } else {
-        toast({ title: 'ত্রুটি', variant: 'destructive' })
-      }
+      await faqService.remove(deleteId)
+      toast({ title: 'FAQ মুছে ফেলা হয়েছে' })
+      setDeleteId(null)
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
   const toggleActive = async (faq: FAQRecord) => {
     try {
-      const res = await fetch('/api/admin/faqs', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: faq.id, isActive: !faq.isActive }),
-      })
-      if (res.ok) {
-        toast({ title: faq.isActive ? 'FAQ নিষ্ক্রিয় করা হয়েছে' : 'FAQ সক্রিয় করা হয়েছে' })
-        fetchFaqs()
-      }
+      await faqService.update(faq.id, { isActive: !faq.isActive })
+      toast({ title: faq.isActive ? 'FAQ নিষ্ক্রিয় করা হয়েছে' : 'FAQ সক্রিয় করা হয়েছে' })
+      invalidate()
     } catch {
       /* */
     }
@@ -222,19 +170,25 @@ export default function AdminFAQsPage() {
   const selection = useTableSelection(filteredFaqs)
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/faqs?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchFaqs() }
-    else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    try {
+      await faqService.bulkRemove(ids)
+      toast({ title: 'মুছে ফেলা হয়েছে' })
+      selection.clearSelection()
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    }
   }
 
   const handleBulkToggle = async (ids: string[], isActive: boolean) => {
-    const res = await fetch('/api/admin/faqs', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, isActive }),
-    })
-    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchFaqs() }
-    else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    try {
+      await faqService.bulkUpdate(ids, isActive)
+      toast({ title: 'আপডেট হয়েছে' })
+      selection.clearSelection()
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    }
   }
 
   const moveFaq = async (faq: FAQRecord, direction: 'up' | 'down') => {
@@ -247,18 +201,10 @@ export default function AdminFAQsPage() {
 
     try {
       await Promise.all([
-        fetch('/api/admin/faqs', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: faq.id, order: swapWith.order }),
-        }),
-        fetch('/api/admin/faqs', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: swapWith.id, order: faq.order }),
-        }),
+        faqService.update(faq.id, { order: swapWith.order }),
+        faqService.update(swapWith.id, { order: faq.order }),
       ])
-      fetchFaqs()
+      invalidate()
     } catch {
       /* */
     }
@@ -389,7 +335,7 @@ export default function AdminFAQsPage() {
   )
 
   // ── Loading skeleton ──
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -401,6 +347,10 @@ export default function AdminFAQsPage() {
         <Skeleton className="h-64" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (
@@ -485,7 +435,7 @@ export default function AdminFAQsPage() {
         page={1}
         pageSize={filteredFaqs.length || 1}
         onPageChange={() => {}}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}

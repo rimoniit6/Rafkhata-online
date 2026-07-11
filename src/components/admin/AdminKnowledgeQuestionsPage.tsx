@@ -4,39 +4,39 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card,CardContent } from '@/components/ui/card'
 import {
-Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle,
+  Dialog,DialogContent,DialogFooter,DialogHeader,DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-Select,SelectContent,SelectItem,SelectTrigger,SelectValue,
+  Select,SelectContent,SelectItem,SelectTrigger,SelectValue,
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { ExcelParseError,safeParseExcelClient } from '@/lib/excel-parse'
 import {
-Crown,
-Download,
-Edit,
-Loader2,
-Plus,
-Save,
-Search,
-Trash2,
-Upload,
-X,
+  Crown,
+  Download,
+  Edit,
+  Loader2,
+  Plus,
+  Save,
+  Search,
+  Trash2,
+  Upload,
+  X,
 } from 'lucide-react'
-import React,{ useCallback,useEffect,useRef,useState } from 'react'
+import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react'
 
 import DataTable from '@/components/shared/DataTable'
 import ImageUploader from '@/components/ui/image-uploader'
+import { useHierarchyChapters,useHierarchyClasses,useHierarchySubjects } from '@/hooks/admin/use-hierarchy-selectors'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import { useToast } from '@/hooks/use-toast'
+import { knowledgeQuestionService } from '@/services/api/knowledge-question.service'
+import { useKnowledgeQuestions } from '@/hooks/admin/use-knowledge-questions'
+import { QueryError } from '@/components/admin/QueryError'
 import { cn,toBengaliNumerals } from '@/lib/utils'
-
-interface ClassItem { id: string; name: string; slug: string }
-interface SubjectItem { id: string; name: string; slug: string }
-interface ChapterItem { id: string; name: string; order: number }
 
 interface QuestionRecord {
   id: string
@@ -66,8 +66,6 @@ interface DialogHierarchy {
   classId: string
   subjectId: string
   chapterId: string
-  subjects: SubjectItem[]
-  chapters: ChapterItem[]
 }
 
 interface FormData {
@@ -98,14 +96,9 @@ const emptyForm: FormData = {
 export default function AdminKnowledgeQuestionsPage() {
   const { toast } = useToast()
 
-  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [questions, setQuestions] = useState<QuestionRecord[]>([])
   const [total, setTotal] = useState(0)
-
-  const [classes, setClasses] = useState<ClassItem[]>([])
-  const [filterSubjects, setFilterSubjects] = useState<SubjectItem[]>([])
-  const [filterChapters, setFilterChapters] = useState<ChapterItem[]>([])
 
   const [filterClass, setFilterClass] = useState('')
   const [filterSubject, setFilterSubject] = useState('')
@@ -114,13 +107,22 @@ export default function AdminKnowledgeQuestionsPage() {
   const [bulkClassId, setBulkClassId] = useState('')
   const [bulkSubjectId, setBulkSubjectId] = useState('')
   const [bulkChapterId, setBulkChapterId] = useState('')
-  const [bulkSubjects, setBulkSubjects] = useState<SubjectItem[]>([])
-  const [bulkChapters, setBulkChapters] = useState<ChapterItem[]>([])
 
   const [dialogHierarchy, setDialogHierarchy] = useState<DialogHierarchy>({
     classId: '', subjectId: '', chapterId: '',
-    subjects: [], chapters: [],
   })
+
+  const classes = useHierarchyClasses()
+  const filterClassId = useMemo(
+    () => classes.find((c) => c.slug === filterClass)?.id,
+    [classes, filterClass],
+  )
+  const filterSubjects = useHierarchySubjects(filterClassId)
+  const filterChapters = useHierarchyChapters(filterSubject)
+  const dialogSubjects = useHierarchySubjects(dialogHierarchy.classId)
+  const dialogChapters = useHierarchyChapters(dialogHierarchy.subjectId)
+  const bulkSubjects = useHierarchySubjects(bulkClassId)
+  const bulkChapters = useHierarchyChapters(bulkSubjectId)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [form, setForm] = useState<FormData>({ ...emptyForm })
@@ -137,110 +139,36 @@ export default function AdminKnowledgeQuestionsPage() {
   const [activeFilter, setActiveFilter] = useState('all')
   const selection = useTableSelection(questions)
 
-  const fetchClasses = useCallback(async () => {
-    try {
-      const res = await fetch('/api/classes')
-      const json = await res.json()
-      const raw = json?.success ? json.data?.classes : json
-      setClasses(Array.isArray(raw) ? raw as ClassItem[] : [])
-    } catch { setClasses([]) }
-  }, [])
-
-  const fetchFilterSubjects = useCallback(async (classId: string) => {
-    if (!classId) { setFilterSubjects([]); return }
-    try {
-      const res = await fetch(`/api/admin/subjects?classId=${classId}`)
-      const json = await res.json()
-      const arr = json?.success ? (Array.isArray(json.data) ? json.data : []) : []
-      setFilterSubjects(arr as SubjectItem[])
-    } catch { setFilterSubjects([]) }
-  }, [])
-
-  const fetchFilterChapters = useCallback(async (subjectId: string) => {
-    if (!subjectId) { setFilterChapters([]); return }
-    try {
-      const res = await fetch(`/api/admin/chapters?subjectId=${subjectId}`)
-      const json = await res.json()
-      const arr = json?.success ? (Array.isArray(json.data) ? json.data : []) : []
-      setFilterChapters(arr as ChapterItem[])
-    } catch { setFilterChapters([]) }
-  }, [])
-
-  const fetchDialogSubjects = async (classId: string) => {
-    if (!classId) {
-      setDialogHierarchy(h => ({ ...h, subjectId: '', chapterId: '', subjects: [], chapters: [] }))
-      return
-    }
-    try {
-      const res = await fetch(`/api/admin/subjects?classId=${classId}`)
-      const json = await res.json()
-      const arr = json?.success ? (Array.isArray(json.data) ? json.data : []) : []
-      setDialogHierarchy(h => ({ ...h, subjectId: '', chapterId: '', subjects: arr as SubjectItem[], chapters: [] }))
-    } catch {
-      setDialogHierarchy(h => ({ ...h, subjects: [], chapters: [] }))
-    }
-  }
-
-  const fetchDialogChapters = async (subjectId: string) => {
-    if (!subjectId) {
-      setDialogHierarchy(h => ({ ...h, chapterId: '', chapters: [] }))
-      return
-    }
-    try {
-      const res = await fetch(`/api/admin/chapters?subjectId=${subjectId}`)
-      const json = await res.json()
-      const arr = json?.success ? (Array.isArray(json.data) ? json.data : []) : []
-      setDialogHierarchy(h => ({ ...h, chapters: arr as ChapterItem[] }))
-    } catch {
-      setDialogHierarchy(h => ({ ...h, chapters: [] }))
-    }
-  }
-
-  const fetchQuestions = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', String(page))
-      params.set('limit', String(perPage))
-      if (filterChapter) params.set('chapterId', filterChapter)
-      if (filterClass) params.set('classLevel', filterClass)
-      if (filterSubject) params.set('subjectId', filterSubject)
-      if (search) params.set('q', search)
-      if (premiumFilter !== 'all') params.set('isPremium', premiumFilter === 'premium' ? 'true' : 'false')
-      if (activeFilter !== 'all') params.set('isActive', activeFilter === 'active' ? 'true' : 'false')
-
-      const res = await fetch(`/api/admin/knowledge-questions?${params}`)
-      const json = await res.json()
-      const data = json.success ? json.data : (Array.isArray(json) ? json : [])
-      setQuestions(data || [])
-      if (json.pagination?.total !== undefined) setTotal(json.pagination.total)
-    } catch { setQuestions([]) }
-    finally { setLoading(false) }
-  }, [filterChapter, filterClass, filterSubject, page, search, premiumFilter, activeFilter])
-
-  useEffect(() => { fetchClasses() }, [fetchClasses])
+  const {
+    questions: fetchedQuestions,
+    total: fetchedTotal,
+    isLoading: loading,
+    isError,
+    error,
+    invalidate,
+  } = useKnowledgeQuestions({
+    page,
+    limit: perPage,
+    chapterId: filterChapter || undefined,
+    classLevel: filterClass || undefined,
+    subjectId: filterSubject || undefined,
+    q: search || undefined,
+    isPremium: premiumFilter === 'premium' ? true : premiumFilter === 'free' ? false : undefined,
+    isActive: activeFilter === 'active' ? true : activeFilter === 'inactive' ? false : undefined,
+  })
 
   useEffect(() => {
-    if (filterClass) fetchFilterSubjects(filterClass)
-    else { setFilterSubjects([]); setFilterChapter('') }
-  }, [filterClass, fetchFilterSubjects])
-
-  useEffect(() => {
-    if (filterSubject) fetchFilterChapters(filterSubject)
-    else { setFilterChapters([]); setFilterChapter('') }
-  }, [filterSubject, fetchFilterChapters])
-
-  useEffect(() => { fetchQuestions() }, [fetchQuestions])
+    setQuestions(fetchedQuestions)
+    setTotal(fetchedTotal)
+  }, [fetchedQuestions, fetchedTotal])
 
   const openCreate = () => {
     const chapterId = filterChapter || ''
     setForm({ ...emptyForm, chapterId, order: questions.length + 1 })
     setDialogHierarchy({
-      classId: filterClass,
+      classId: filterClassId || '',
       subjectId: filterSubject,
       chapterId,
-      subjects: filterSubjects,
-      chapters: filterChapters,
     })
     setDialogOpen(true)
   }
@@ -262,8 +190,6 @@ export default function AdminKnowledgeQuestionsPage() {
       classId: '',
       subjectId: '',
       chapterId: q.chapterId,
-      subjects: [],
-      chapters: [],
     })
     setDialogOpen(true)
   }
@@ -280,57 +206,42 @@ export default function AdminKnowledgeQuestionsPage() {
     }
     setSaving(true)
     try {
-      const method = form.id ? 'PUT' : 'POST'
-      const res = await fetch('/api/admin/knowledge-questions', {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, chapterId, type: 'knowledge' }),
-      })
-      const json = await res.json()
-      if (json.success) {
-        toast({ title: form.id ? 'আপডেট হয়েছে' : 'সংরক্ষিত হয়েছে' })
-        setDialogOpen(false)
-        fetchQuestions()
+      const payload = { ...form, chapterId, type: 'knowledge' }
+      if (form.id) {
+        await knowledgeQuestionService.update(form.id, payload)
       } else {
-        toast({ title: json.error || 'ত্রুটি হয়েছে', variant: 'destructive' })
+        await knowledgeQuestionService.create(payload)
       }
+      toast({ title: form.id ? 'আপডেট হয়েছে' : 'সংরক্ষিত হয়েছে' })
+      setDialogOpen(false)
+      invalidate()
     } catch {
-      toast({ title: 'সংরক্ষণে ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally { setSaving(false) }
   }
 
   const confirmDelete = async () => {
     if (!deleteId) return
     try {
-      const res = await fetch(`/api/admin/knowledge-questions?id=${deleteId}`, { method: 'DELETE' })
-      const json = await res.json()
-      if (json.success) {
-        toast({ title: 'মুছে ফেলা হয়েছে' })
-        setDeleteId(null)
-        fetchQuestions()
-      } else {
-        toast({ title: json.error || 'ত্রুটি হয়েছে', variant: 'destructive' })
-      }
+      await knowledgeQuestionService.remove(deleteId)
+      toast({ title: 'মুছে ফেলা হয়েছে' })
+      setDeleteId(null)
+      invalidate()
     } catch {
-      toast({ title: 'মুছতে ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
   const handleBulkDelete = useCallback(async (ids: string[]) => {
     try {
-      const res = await fetch(`/api/admin/knowledge-questions?ids=${ids.join(',')}`, { method: 'DELETE' })
-      const json = await res.json()
-      if (json.success) {
-        toast({ title: 'মুছে ফেলা হয়েছে' })
-        selection.clearSelection()
-        fetchQuestions()
-      } else {
-        toast({ title: json.error || 'ত্রুটি হয়েছে', variant: 'destructive' })
-      }
+      await knowledgeQuestionService.bulkRemove(ids)
+      toast({ title: 'মুছে ফেলা হয়েছে' })
+      selection.clearSelection()
+      invalidate()
     } catch {
-      toast({ title: 'মুছতে ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
-  }, [selection, fetchQuestions, toast])
+  }, [selection, invalidate, toast])
 
   const downloadDemoFile = async () => {
     const XLSX = await import('xlsx')
@@ -370,26 +281,6 @@ export default function AdminKnowledgeQuestionsPage() {
     parseBulkFile(f)
   }
 
-  const fetchBulkSubjects = async (classId: string) => {
-    if (!classId) { setBulkSubjects([]); return }
-    try {
-      const res = await fetch(`/api/admin/subjects?classId=${classId}`)
-      const json = await res.json()
-      const arr = json?.success ? (Array.isArray(json.data) ? json.data : []) : []
-      setBulkSubjects(arr as SubjectItem[])
-    } catch { setBulkSubjects([]) }
-  }
-
-  const fetchBulkChapters = async (subjectId: string) => {
-    if (!subjectId) { setBulkChapters([]); return }
-    try {
-      const res = await fetch(`/api/admin/chapters?subjectId=${subjectId}`)
-      const json = await res.json()
-      const arr = json?.success ? (Array.isArray(json.data) ? json.data : []) : []
-      setBulkChapters(arr as ChapterItem[])
-    } catch { setBulkChapters([]) }
-  }
-
   const handleBulkUpload = async () => {
     if (!bulkChapterId || !bulkFile) return
     setBulkUploading(true)
@@ -399,25 +290,19 @@ export default function AdminKnowledgeQuestionsPage() {
       formData.append('type', 'knowledge')
       formData.append('chapterId', bulkChapterId)
 
-      const res = await fetch('/api/admin/bulk-import', { method: 'POST', body: formData })
-      const json = await res.json()
+      const result = await knowledgeQuestionService.bulkImport(formData)
       setBulkDialogOpen(false); setBulkFile(null); setBulkPreview([])
-      fetchQuestions()
-      if (json.success !== undefined) {
-        const success = json.success
-        const errors: { row: number; message: string }[] = json.errors || []
-        const errorSummary = errors.length > 0
-          ? `\n${errors.slice(0, 5).map(e => `সারি ${e.row}: ${e.message}`).join('\n')}${errors.length > 5 ? `\n...আরও ${errors.length - 5} টি ত্রুটি` : ''}`
-          : ''
-        toast({
-          title: `${toBengaliNumerals(success)} টি যোগ হয়েছে${errors.length ? `, ${toBengaliNumerals(errors.length)} টি ব্যর্থ` : ''}`,
-          description: errorSummary || undefined,
-        })
-      } else {
-        toast({ title: json.error || 'আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' })
-      }
-    } catch { toast({ title: 'আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' }) }
-    finally { setBulkUploading(false) }
+      invalidate()
+      const errorSummary = result.errors.length > 0
+        ? `\n${result.errors.slice(0, 5).map(e => `সারি ${e.row}: ${e.message}`).join('\n')}${result.errors.length > 5 ? `\n...আরও ${result.errors.length - 5} টি ত্রুটি` : ''}`
+        : ''
+      toast({
+        title: `${toBengaliNumerals(result.success)} টি যোগ হয়েছে${result.errors.length ? `, ${toBengaliNumerals(result.errors.length)} টি ব্যর্থ` : ''}`,
+        description: errorSummary || undefined,
+      })
+    } catch {
+      toast({ title: 'আপলোড করতে সমস্যা হয়েছে', variant: 'destructive' })
+    } finally { setBulkUploading(false) }
   }
 
   return (
@@ -605,8 +490,7 @@ export default function AdminKnowledgeQuestionsPage() {
                 <Select
                   value={dialogHierarchy.classId}
                   onValueChange={(v) => {
-                    setDialogHierarchy(h => ({ ...h, classId: v, subjectId: '', chapterId: '', subjects: [], chapters: [] }))
-                    fetchDialogSubjects(v)
+                    setDialogHierarchy(h => ({ ...h, classId: v, subjectId: '', chapterId: '' }))
                   }}
                 >
                   <SelectTrigger><SelectValue placeholder="শ্রেণি" /></SelectTrigger>
@@ -622,14 +506,13 @@ export default function AdminKnowledgeQuestionsPage() {
                 <Select
                   value={dialogHierarchy.subjectId}
                   onValueChange={(v) => {
-                    setDialogHierarchy(h => ({ ...h, subjectId: v, chapterId: '', chapters: [] }))
-                    fetchDialogChapters(v)
+                    setDialogHierarchy(h => ({ ...h, subjectId: v, chapterId: '' }))
                   }}
                   disabled={!dialogHierarchy.classId}
                 >
                   <SelectTrigger><SelectValue placeholder="বিষয়" /></SelectTrigger>
                   <SelectContent>
-                    {dialogHierarchy.subjects.map(s => (
+                    {dialogSubjects.map(s => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -644,7 +527,7 @@ export default function AdminKnowledgeQuestionsPage() {
                 >
                   <SelectTrigger><SelectValue placeholder="অধ্যায়" /></SelectTrigger>
                   <SelectContent>
-                    {dialogHierarchy.chapters.map(ch => (
+                    {dialogChapters.map(ch => (
                       <SelectItem key={ch.id} value={ch.id}>{ch.order}. {ch.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -747,7 +630,7 @@ export default function AdminKnowledgeQuestionsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label>শ্রেণি</Label>
-                <Select value={bulkClassId} onValueChange={(v) => { setBulkClassId(v); setBulkSubjectId(''); setBulkChapterId(''); fetchBulkSubjects(v) }}>
+                <Select value={bulkClassId} onValueChange={(v) => { setBulkClassId(v); setBulkSubjectId(''); setBulkChapterId('') }}>
                   <SelectTrigger><SelectValue placeholder="শ্রেণি" /></SelectTrigger>
                   <SelectContent>
                     {classes.map(c => (
@@ -758,7 +641,7 @@ export default function AdminKnowledgeQuestionsPage() {
               </div>
               <div className="space-y-1">
                 <Label>বিষয়</Label>
-                <Select value={bulkSubjectId} onValueChange={(v) => { setBulkSubjectId(v); setBulkChapterId(''); fetchBulkChapters(v) }} disabled={!bulkClassId}>
+                <Select value={bulkSubjectId} onValueChange={(v) => { setBulkSubjectId(v); setBulkChapterId('') }} disabled={!bulkClassId}>
                   <SelectTrigger><SelectValue placeholder="বিষয়" /></SelectTrigger>
                   <SelectContent>
                     {bulkSubjects.map(s => (
@@ -851,6 +734,8 @@ export default function AdminKnowledgeQuestionsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {isError && <QueryError error={error} onRetry={invalidate} />}
     </div>
   )
 }

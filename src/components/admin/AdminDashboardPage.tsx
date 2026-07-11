@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { QueryError } from '@/components/admin/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table,
@@ -27,8 +28,8 @@ import {
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import type { Stats } from './AdminDashboardCharts'
+
+import { useDashboardStats } from '@/hooks/admin/use-dashboard'
 
 const AdminDashboardCharts = dynamic(() => import('./AdminDashboardCharts'), {
   ssr: false,
@@ -55,17 +56,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function AdminDashboardPage() {
   const user = useAuthStore((s) => s.user)
   const navigate = useRouterStore((s) => s.navigate)
-
-  const { data: stats, isLoading: loading } = useQuery<Stats>({
-    queryKey: ['admin', 'stats'],
-    queryFn: async () => {
-      const res = await fetch('/api/admin/stats')
-      if (!res.ok) throw new Error(`Stats fetch failed: ${res.status}`)
-      const json = await res.json()
-      return json.data.stats as Stats
-    },
-    staleTime: 60_000,
-  })
+  const { stats, isLoading, isError, error, refetch } = useDashboardStats()
 
   const statCards = useMemo(() => [
     {
@@ -112,7 +103,7 @@ export default function AdminDashboardPage() {
     },
   ], [stats])
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-64" />
@@ -127,6 +118,10 @@ export default function AdminDashboardPage() {
         </div>
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (

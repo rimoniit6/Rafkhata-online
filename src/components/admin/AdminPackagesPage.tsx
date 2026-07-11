@@ -17,6 +17,8 @@ Select,SelectContent,SelectItem,SelectTrigger,SelectValue,
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { QueryError } from '@/components/admin/QueryError'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useHierarchyMetadata } from '@/hooks/use-hierarchy-metadata'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import { useToast } from '@/hooks/use-toast'
@@ -36,7 +38,10 @@ Tag,
 Trash2,
 Users
 } from 'lucide-react'
-import { useCallback,useEffect,useRef,useState } from 'react'
+import { useEffect,useRef,useState } from 'react'
+
+import { usePackages } from '@/hooks/admin/use-packages'
+import { packageService } from '@/services/api/package.service'
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -83,12 +88,6 @@ const durationLabelMap: Record<number, string> = {
 export default function AdminPackagesPage() {
   const { toast } = useToast()
   const { classOptions: classLevelOptions, classLevelLabels, classLevelColors } = useHierarchyMetadata()
-  const [loading, setLoading] = useState(true)
-  const [packages, setPackages] = useState<PackageRecord[]>([])
-  const [total, setTotal] = useState(0)
-  const [saving, setSaving] = useState(false)
-
-  // View mode
   const [viewMode, setViewMode] = useState<'list' | 'editor'>('list')
   const [editId, setEditId] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -122,44 +121,30 @@ export default function AdminPackagesPage() {
   // Pagination
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
+  const [saving, setSaving] = useState(false)
+
+  const { packages, total, isLoading, isError, error, refetch, invalidate } = usePackages({
+    page,
+    limit: perPage,
+    search: debouncedSearch || undefined,
+    classLevel: filterClassLevel || undefined,
+  })
 
   const selection = useTableSelection(packages)
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/packages?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPackages() }
+    await packageService.bulkDelete(ids)
+    toast({ title: 'মুছে ফেলা হয়েছে' })
+    selection.clearSelection()
+    invalidate()
   }
 
   const handleBulkToggle = async (ids: string[], isActive: boolean) => {
-    const res = await fetch(`/api/admin/packages`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, isActive }),
-    })
-    if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchPackages() }
+    await packageService.bulkToggle(ids, isActive)
+    toast({ title: 'আপডেট হয়েছে' })
+    selection.clearSelection()
+    invalidate()
   }
-
-  // ─── Fetch Packages ────────────────────────────────────────────
-
-  const fetchPackages = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (debouncedSearch) params.set('search', debouncedSearch)
-      if (filterClassLevel) params.set('classLevel', filterClassLevel)
-      params.set('page', String(page))
-      params.set('limit', String(perPage))
-      const res = await fetch(`/api/admin/packages?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setPackages(json.data.packages || [])
-        setTotal(json.data.pagination?.total || 0)
-      }
-    } catch { /* */ }
-    finally { setLoading(false) }
-  }, [debouncedSearch, filterClassLevel, page, perPage])
-
-  useEffect(() => { fetchPackages() }, [fetchPackages])
 
   // ─── Form Helpers ─────────────────────────────────────────────
 
@@ -180,10 +165,10 @@ export default function AdminPackagesPage() {
     setFormOriginalPrice('')
     setFormIsActive(true)
     setFormOrder('')
+    setEditId(null)
   }
 
   const openCreate = () => {
-    setEditId(null)
     resetForm()
     setViewMode('editor')
   }
@@ -226,52 +211,39 @@ export default function AdminPackagesPage() {
         order: parseInt(formOrder) || 0,
       }
 
-      const res = editId
-        ? await fetch('/api/admin/packages', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editId, ...body }) })
-        : await fetch('/api/admin/packages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-
-      if (res.ok) {
-        toast({ title: editId ? 'প্যাকেজ আপডেট হয়েছে' : 'প্যাকেজ তৈরি হয়েছে' })
-        setViewMode('list')
-        fetchPackages()
+      if (editId) {
+        await packageService.update(editId, body)
       } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
+        await packageService.create(body)
       }
+
+      toast({ title: editId ? 'প্যাকেজ আপডেট হয়েছে' : 'প্যাকেজ তৈরি হয়েছে' })
+      setViewMode('list')
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', description: 'নেটওয়ার্ক সমস্যা', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally { setSaving(false) }
   }
 
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      const res = await fetch(`/api/admin/packages?id=${deleteId}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: 'প্যাকেজ মুছে ফেলা হয়েছে' })
-        setDeleteId(null)
-        fetchPackages()
-      } else {
-        toast({ title: 'ত্রুটি', variant: 'destructive' })
-      }
+      await packageService.remove(deleteId)
+      toast({ title: 'প্যাকেজ মুছে ফেলা হয়েছে' })
+      setDeleteId(null)
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
   const toggleActive = async (pkg: PackageRecord) => {
     try {
-      const res = await fetch('/api/admin/packages', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: pkg.id, isActive: !pkg.isActive }),
-      })
-      if (res.ok) {
-        toast({ title: pkg.isActive ? 'প্যাকেজ নিষ্ক্রিয় করা হয়েছে' : 'প্যাকেজ সক্রিয় করা হয়েছে' })
-        fetchPackages()
-      }
+      await packageService.update(pkg.id, { isActive: !pkg.isActive })
+      toast({ title: pkg.isActive ? 'প্যাকেজ নিষ্ক্রিয় করা হয়েছে' : 'প্যাকেজ সক্রিয় করা হয়েছে' })
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
@@ -372,7 +344,7 @@ export default function AdminPackagesPage() {
         pageSize={perPage}
         onPageChange={setPage}
         onPageSizeChange={setPerPage}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}
@@ -548,6 +520,19 @@ export default function AdminPackagesPage() {
       </Card>
     </div>
   )
+
+  if (isLoading && packages.length === 0) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-96" />
+      </div>
+    )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
+  }
 
   return (
     <div className="space-y-6 animate-fade-in-up">

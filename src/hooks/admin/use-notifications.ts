@@ -7,7 +7,6 @@ import { queryKeys } from '@/lib/query-keys'
 
 export function useNotifications(params?: { page?: number; search?: string; type?: string }) {
   const qc = useQueryClient()
-  const { page, search, type } = params ?? {}
   const query = useQuery({
     queryKey: queryKeys.admin.notifications(params),
     queryFn: () => notificationService.list(params),

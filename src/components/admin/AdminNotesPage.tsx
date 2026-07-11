@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import {
   StickyNote,
   Trash2,
@@ -34,33 +34,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useToast } from '@/hooks/use-toast'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
+import { QueryError } from '@/components/admin/QueryError'
+import { noteService, type NoteRecord } from '@/services/api/note.service'
+import { useNotes } from '@/hooks/admin/use-notes'
 import { cn } from '@/lib/utils'
-
-// ─── Data Model ───────────────────────────────────────────────
-interface NoteUser {
-  id: string
-  name: string | null
-  email: string
-  avatar: string | null
-}
-
-interface NoteRecord {
-  id: string
-  userId: string
-  contentId: string
-  contentType: string
-  content: string
-  createdAt: string
-  updatedAt: string
-  user: NoteUser
-}
-
-interface Pagination {
-  page: number
-  limit: number
-  total: number
-  totalPages: number
-}
 
 // ─── Content type labels ──────────────────────────────────────
 const CONTENT_TYPE_LABELS: Record<string, string> = {
@@ -115,74 +92,51 @@ function getInitials(name: string) {
 // ─── Component ────────────────────────────────────────────────
 export default function AdminNotesPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [notes, setNotes] = useState<NoteRecord[]>([])
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0,
-  })
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [filterContentType, setFilterContentType] = useState<string>('all')
   const [filterUserId, setFilterUserId] = useState('')
+  const [page, setPage] = useState(1)
 
-  // ── Fetch Notes ──
-  const fetchNotes = useCallback(
-    async (page = 1) => {
-      setLoading(true)
-      try {
-        const params = new URLSearchParams()
-        params.set('page', page.toString())
-        params.set('limit', '20')
-        if (filterContentType && filterContentType !== 'all')
-          params.set('contentType', filterContentType)
-        if (filterUserId) params.set('userId', filterUserId)
-        if (searchQuery) params.set('search', searchQuery)
-
-        const res = await fetch(`/api/admin/notes?${params.toString()}`)
-        if (res.ok) {
-          const json = await res.json()
-          setNotes(Array.isArray(json.data?.data) ? json.data.data : [])
-          setPagination(json.data?.pagination || { page, limit: 20, total: 0, totalPages: 0 })
-        }
-      } catch {
-        /* */
-      } finally {
-        setLoading(false)
-      }
-    },
-    [filterContentType, filterUserId, searchQuery]
-  )
-
-  useEffect(() => {
-    fetchNotes(1)
-  }, [fetchNotes])
+  const {
+    notes,
+    pagination,
+    isLoading,
+    isError,
+    error,
+    refetch,
+    invalidate,
+  } = useNotes({
+    page,
+    contentType: filterContentType !== 'all' ? filterContentType : undefined,
+    userId: filterUserId || undefined,
+    search: searchQuery || undefined,
+  })
 
   // ── Delete handler ──
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      const res = await fetch(`/api/admin/notes?id=${deleteId}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: 'নোট মুছে ফেলা হয়েছে' })
-        setDeleteId(null)
-        fetchNotes(pagination.page)
-      } else {
-        toast({ title: 'ত্রুটি', variant: 'destructive' })
-      }
+      await noteService.remove(deleteId)
+      toast({ title: 'নোট মুছে ফেলা হয়েছে' })
+      setDeleteId(null)
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
   const selection = useTableSelection(notes)
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/notes?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchNotes(pagination.page) }
-    else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+    try {
+      await noteService.bulkRemove(ids)
+      toast({ title: 'মুছে ফেলা হয়েছে' })
+      selection.clearSelection()
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    }
   }
 
   // ── Stats ──
@@ -193,9 +147,9 @@ export default function AdminNotesPage() {
   }
 
   // ── Pagination ──
-  const goToPage = (page: number) => {
-    if (page < 1 || page > pagination.totalPages) return
-    fetchNotes(page)
+  const goToPage = (p: number) => {
+    if (p < 1 || p > pagination.totalPages) return
+    setPage(p)
   }
 
   const columns: ColumnDef<NoteRecord>[] = [
@@ -269,9 +223,9 @@ export default function AdminNotesPage() {
     <div className="flex flex-col sm:flex-row gap-3">
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="নোট খুঁজুন…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
+        <Input placeholder="নোট খুঁজুন…" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1) }} className="pl-9" />
       </div>
-      <Select value={filterContentType} onValueChange={setFilterContentType}>
+      <Select value={filterContentType} onValueChange={(v) => { setFilterContentType(v); setPage(1) }}>
         <SelectTrigger className="w-full sm:w-48">
           <SelectValue placeholder="কন্টেন্ট টাইপ" />
         </SelectTrigger>
@@ -288,13 +242,13 @@ export default function AdminNotesPage() {
       </Select>
       <div className="relative">
         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="ইউজার ID" value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} className="pl-9 w-full sm:w-40" />
+        <Input placeholder="ইউজার ID" value={filterUserId} onChange={(e) => { setFilterUserId(e.target.value); setPage(1) }} className="pl-9 w-full sm:w-40" />
       </div>
     </div>
   )
 
   // ── Loading skeleton ──
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -306,6 +260,10 @@ export default function AdminNotesPage() {
         <Skeleton className="h-64" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (
@@ -374,7 +332,7 @@ export default function AdminNotesPage() {
         page={pagination.page}
         pageSize={pagination.limit}
         onPageChange={(p) => goToPage(p)}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}

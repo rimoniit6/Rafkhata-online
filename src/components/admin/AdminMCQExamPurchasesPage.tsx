@@ -20,6 +20,7 @@ SelectItem,
 SelectTrigger,
 SelectValue,
 } from '@/components/ui/select'
+import { QueryError } from '@/components/admin/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import { useToast } from '@/hooks/use-toast'
@@ -33,7 +34,11 @@ Users,
 UserX,
 XCircle
 } from 'lucide-react'
-import { useCallback,useEffect,useState } from 'react'
+import { useState } from 'react'
+
+import { useMcqExamPurchases } from '@/hooks/admin/use-mcq-exam-purchases'
+import { usePackages } from '@/hooks/admin/use-packages'
+import { mcqExamPurchaseService } from '@/services/api/mcq-exam-purchase.service'
 
 interface PurchaseRecord {
   id: string
@@ -46,101 +51,59 @@ interface PurchaseRecord {
   package: { id: string; title: string; price: number; isPremium: boolean }
 }
 
-interface PackageOption {
-  id: string
-  title: string
-}
-
 export default function AdminMCQExamPurchasesPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [purchases, setPurchases] = useState<PurchaseRecord[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [packageFilter, setPackageFilter] = useState('all')
   const [activeFilter, setActiveFilter] = useState('all')
   const [userSearch, setUserSearch] = useState('')
-  const [stats, setStats] = useState({ totalPurchases: 0, activePurchases: 0, inactivePurchases: 0 })
   const [detailPurchase, setDetailPurchase] = useState<PurchaseRecord | null>(null)
   const [deactivateDialog, setDeactivateDialog] = useState<PurchaseRecord | null>(null)
   const [processing, setProcessing] = useState(false)
-  const [packages, setPackages] = useState<PackageOption[]>([])
   const limit = 20
 
-  const fetchPackages = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/mcq-exam-packages?limit=200')
-      if (res.ok) {
-        const json = await res.json()
-        setPackages((Array.isArray(json.data?.packages) ? json.data.packages : []).map((p: { id: string; title: string }) => ({ id: p.id, title: p.title })))
-      }
-    } catch { /* */ }
-  }, [])
+  const { purchases, pagination, stats, isLoading, isError, error, refetch, invalidate } = useMcqExamPurchases({
+    page,
+    limit,
+    packageId: packageFilter !== 'all' ? packageFilter : undefined,
+    isActive: activeFilter !== 'all' ? activeFilter : undefined,
+    userId: userSearch || undefined,
+  })
 
-  const fetchPurchases = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', page.toString())
-      params.set('limit', limit.toString())
-      if (packageFilter !== 'all') params.set('packageId', packageFilter)
-      if (activeFilter !== 'all') params.set('isActive', activeFilter)
-      if (userSearch) params.set('userId', userSearch)
+  const total = pagination?.total ?? 0
 
-      const res = await fetch(`/api/admin/mcq-exam-purchases?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setPurchases(Array.isArray(json.data) ? json.data : [])
-        setTotal(json.pagination?.total || 0)
-        setStats(json.stats || { totalPurchases: 0, activePurchases: 0, inactivePurchases: 0 })
-      }
-    } catch {
-      toast({ title: 'ত্রুটি', description: 'ক্রয়ের তথ্য লোড করতে সমস্যা হয়েছে', variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [page, packageFilter, activeFilter, userSearch, toast])
+  const { packages } = usePackages({ limit: 200 })
 
-  useEffect(() => { fetchPackages() }, [fetchPackages])
-  useEffect(() => { fetchPurchases() }, [fetchPurchases])
+  const selection = useTableSelection(purchases)
 
   const handleToggleActive = async (purchase: PurchaseRecord) => {
     setProcessing(true)
     try {
       if (purchase.isActive) {
-        // Deactivate
-        const res = await fetch(`/api/admin/mcq-exam-purchases?id=${purchase.id}`, { method: 'DELETE' })
-        if (res.ok) {
-          toast({ title: 'ক্রয় নিষ্ক্রিয় করা হয়েছে', description: `${purchase.user?.name} এর ক্রয় নিষ্ক্রিয় করা হয়েছে` })
-          fetchPurchases()
-        } else {
-          const json = await res.json()
-          toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-        }
+        await mcqExamPurchaseService.deactivate(purchase.id)
       }
-      // Note: reactivation not supported via DELETE, would need a PUT endpoint
+      toast({ title: 'ক্রয় নিষ্ক্রিয় করা হয়েছে', description: `${purchase.user?.name} এর ক্রয় নিষ্ক্রিয় করা হয়েছে` })
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally {
       setProcessing(false)
       setDeactivateDialog(null)
     }
   }
 
-  const selection = useTableSelection(purchases)
-
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/mcq-exam-purchases?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+    await mcqExamPurchaseService.bulkDelete(ids)
+    toast({ title: 'মুছে ফেলা হয়েছে' })
+    selection.clearSelection()
+    invalidate()
   }
 
   const handleBulkDeactivate = async (ids: string[]) => {
-    const res = await fetch('/api/admin/mcq-exam-purchases', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids, isActive: false }),
-    })
-    if (res.ok) { toast({ title: 'নিষ্ক্রিয় করা হয়েছে' }); selection.clearSelection(); fetchPurchases() }
+    await mcqExamPurchaseService.bulkDeactivate(ids)
+    toast({ title: 'নিষ্ক্রিয় করা হয়েছে' })
+    selection.clearSelection()
+    invalidate()
   }
 
   const columns: ColumnDef<PurchaseRecord>[] = [
@@ -264,7 +227,7 @@ export default function AdminMCQExamPurchasesPage() {
     </Card>
   )
 
-  if (loading && purchases.length === 0) {
+  if (isLoading && purchases.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -276,6 +239,10 @@ export default function AdminMCQExamPurchasesPage() {
         <Skeleton className="h-96" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (
@@ -297,7 +264,7 @@ export default function AdminMCQExamPurchasesPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">মোট ক্রয়</p>
-              <p className="text-xl font-bold">{stats.totalPurchases.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.totalPurchases ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -308,7 +275,7 @@ export default function AdminMCQExamPurchasesPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">সক্রিয় ক্রয়</p>
-              <p className="text-xl font-bold">{stats.activePurchases.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.activePurchases ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -319,7 +286,7 @@ export default function AdminMCQExamPurchasesPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">নিষ্ক্রিয় ক্রয়</p>
-              <p className="text-xl font-bold">{stats.inactivePurchases.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.inactivePurchases ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -332,7 +299,7 @@ export default function AdminMCQExamPurchasesPage() {
         page={page}
         pageSize={limit}
         onPageChange={setPage}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}

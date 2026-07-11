@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { handleApiError } from '@/lib/errors'
 
 export async function GET(request: NextRequest) {
   try {
@@ -78,7 +79,6 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Admin Get Exam Results error:', error)
-    return apiError('পরীক্ষার ফলাফল আনতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Get Exam Results')
   }
 }

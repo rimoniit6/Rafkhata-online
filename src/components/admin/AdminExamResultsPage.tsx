@@ -19,6 +19,7 @@ SelectItem,
 SelectTrigger,
 SelectValue,
 } from '@/components/ui/select'
+import { QueryError } from '@/components/admin/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import { useToast } from '@/hooks/use-toast'
@@ -32,7 +33,11 @@ Trash2,
 TrendingUp,
 Trophy,
 } from 'lucide-react'
-import { useCallback,useEffect,useState } from 'react'
+import { useState } from 'react'
+
+import { useExamResults } from '@/hooks/admin/use-exam-results'
+import { useExams } from '@/hooks/admin/use-exams'
+import { examResultService } from '@/services/api/exam-result.service'
 
 interface ExamResultRecord {
   id: string
@@ -45,11 +50,6 @@ interface ExamResultRecord {
   completedAt: string
   user: { id: string; name: string; email: string }
   exam: { id: string; title: string; type: string; classLevel: string; totalMarks: number }
-}
-
-interface ExamOption {
-  id: string
-  title: string
 }
 
 function formatTime(seconds: number): string {
@@ -67,60 +67,32 @@ function getScoreColor(score: number, total: number): string {
 
 export default function AdminExamResultsPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [results, setResults] = useState<ExamResultRecord[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [examFilter, setExamFilter] = useState('all')
   const [userSearch, setUserSearch] = useState('')
-  const [stats, setStats] = useState({ totalResults: 0, avgScore: 0, avgTime: 0, highestScore: 0 })
   const [detailResult, setDetailResult] = useState<ExamResultRecord | null>(null)
-  const [exams, setExams] = useState<ExamOption[]>([])
   const limit = 20
 
-  const fetchExams = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/exams?limit=100')
-      if (res.ok) {
-        const json = await res.json()
-        setExams((Array.isArray(json.data) ? json.data : []).map((e: { id: string; title: string }) => ({ id: e.id, title: e.title })))
-      }
-    } catch { /* */ }
-  }, [])
+  const { results, pagination, stats, isLoading, isError, error, refetch, invalidate } = useExamResults({
+    page,
+    limit,
+    examId: examFilter !== 'all' ? examFilter : undefined,
+    userId: userSearch || undefined,
+  })
 
-  const fetchResults = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', page.toString())
-      params.set('limit', limit.toString())
-      if (examFilter !== 'all') params.set('examId', examFilter)
-      if (userSearch) params.set('userId', userSearch)
+  const total = pagination?.total ?? 0
 
-      const res = await fetch(`/api/admin/exam-results?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setResults(Array.isArray(json.data) ? json.data : [])
-        setTotal(json.pagination?.total || 0)
-        setStats(json.stats || { totalResults: 0, avgScore: 0, avgTime: 0, highestScore: 0 })
-      }
-    } catch {
-      toast({ title: 'ত্রুটি', description: 'ফলাফল লোড করতে সমস্যা হয়েছে', variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [page, examFilter, userSearch, toast])
-
-  useEffect(() => { fetchExams() }, [fetchExams])
-  useEffect(() => { fetchResults() }, [fetchResults])
+  const { exams } = useExams({ limit: 100 })
 
   const parseAnswers = (answers: unknown) => answers
 
   const selection = useTableSelection(results)
 
   const handleBulkDelete = async (ids: string[]) => {
-    const res = await fetch(`/api/admin/exam-results?ids=${ids.join(',')}`, { method: 'DELETE' })
-    if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchResults() }
+    await examResultService.bulkDelete(ids)
+    toast({ title: 'মুছে ফেলা হয়েছে' })
+    selection.clearSelection()
+    invalidate()
   }
 
   const columns: ColumnDef<ExamResultRecord>[] = [
@@ -223,11 +195,11 @@ export default function AdminExamResultsPage() {
     </Card>
   )
 
-  if (loading && results.length === 0) {
+  if (isLoading && results.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-24" />
           ))}
@@ -235,6 +207,10 @@ export default function AdminExamResultsPage() {
         <Skeleton className="h-96" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (
@@ -256,7 +232,7 @@ export default function AdminExamResultsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">মোট ফলাফল</p>
-              <p className="text-xl font-bold">{stats.totalResults.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.totalResults ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -267,7 +243,7 @@ export default function AdminExamResultsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">গড় স্কোর</p>
-              <p className="text-xl font-bold">{stats.avgScore}%</p>
+              <p className="text-xl font-bold">{stats?.avgScore ?? 0}%</p>
             </div>
           </CardContent>
         </Card>
@@ -278,7 +254,7 @@ export default function AdminExamResultsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">গড় সময়</p>
-              <p className="text-xl font-bold">{formatTime(stats.avgTime)}</p>
+              <p className="text-xl font-bold">{formatTime(stats?.avgTime ?? 0)}</p>
             </div>
           </CardContent>
         </Card>
@@ -289,7 +265,7 @@ export default function AdminExamResultsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">সর্বোচ্চ স্কোর</p>
-              <p className="text-xl font-bold">{stats.highestScore}%</p>
+              <p className="text-xl font-bold">{stats?.highestScore ?? 0}%</p>
             </div>
           </CardContent>
         </Card>
@@ -302,7 +278,7 @@ export default function AdminExamResultsPage() {
         page={page}
         pageSize={limit}
         onPageChange={setPage}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}

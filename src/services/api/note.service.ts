@@ -30,7 +30,7 @@ export interface NoteListResponse {
   pagination: NotePagination
 }
 
-export interface NoteListParams {
+export type NoteListParams = {
   page?: number
   limit?: number
   contentType?: string

@@ -59,6 +59,7 @@ export const queryKeys = {
     lectures: (params?: Record<string, unknown>) => ['admin', 'lectures', params] as const,
     exams: (params?: Record<string, unknown>) => ['admin', 'exams', params] as const,
     examQuestions: (params?: Record<string, unknown>) => ['admin', 'exams', 'questions', params] as const,
+    examResults: (params?: Record<string, unknown>) => ['admin', 'exam-results', params] as const,
     knowledgeQuestions: (params?: Record<string, unknown>) => ['admin', 'knowledge-questions', params] as const,
     boardQuestions: (params?: Record<string, unknown>) => ['admin', 'board-questions', params] as const,
     adminClasses: () => ['admin', 'classes'] as const,

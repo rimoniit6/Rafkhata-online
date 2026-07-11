@@ -2,6 +2,7 @@ import { db } from '@/lib/db'
 import { apiError } from '@/lib/api-utils'
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
+import { handleApiError } from '@/lib/errors'
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,8 +65,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Admin Get MCQ Exam Purchases error:', error)
-    return apiError('MCQ এক্সাম প্যাকেজ ক্রয়ের তথ্য আনতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Get MCQ Exam Purchases')
   }
 }
 
@@ -96,7 +96,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: { message: 'ক্রয় নিষ্ক্রিয় করা হয়েছে' } })
   } catch (error) {
-    console.error('Admin Deactivate MCQ Exam Purchase error:', error)
-    return apiError('ক্রয় নিষ্ক্রিয় করতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Deactivate MCQ Exam Purchase')
   }
 }

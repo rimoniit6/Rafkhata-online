@@ -52,8 +52,7 @@ const COLOR_OPTIONS = [
 
 export default function AdminContentTypesPage() {
   const { toast } = useToast()
-  const [items, setItems] = useState<ContentTypeItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const { contentTypes: items, isLoading, isError, error, refetch, invalidate } = useContentTypes()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -76,20 +75,6 @@ export default function AdminContentTypesPage() {
     order: 0,
   })
 
-  const fetchItems = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/admin/content-types')
-      if (!res.ok) throw new Error('Failed')
-      const data = await res.json()
-      setItems(Array.isArray(data.data) ? data.data : [])
-    } catch {
-      toast({ title: 'ত্রুটি', description: 'কন্টেন্ট টাইপ আনতে সমস্যা হয়েছে', variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [toast])
-
   const [seeding, setSeeding] = useState(false)
 
   const handleSeed = async () => {
@@ -106,7 +91,7 @@ export default function AdminContentTypesPage() {
       const json = await res.json()
       if (json.success) {
         toast({ title: json.message || 'সিড সম্পন্ন' })
-        fetchItems()
+        invalidate()
       } else {
         toast({ title: json.error || 'সিড করতে সমস্যা হয়েছে', variant: 'destructive' })
       }
@@ -114,10 +99,6 @@ export default function AdminContentTypesPage() {
       toast({ title: 'সিড করতে সমস্যা হয়েছে', variant: 'destructive' })
     } finally { setSeeding(false) }
   }
-
-  useEffect(() => {
-    fetchItems()
-  }, [fetchItems])
 
   const resetForm = () => {
     setForm({
@@ -164,23 +145,11 @@ export default function AdminContentTypesPage() {
 
     setSaving(true)
     try {
-      const url = '/api/admin/content-types'
-      const method = editId ? 'PUT' : 'POST'
-      const body = editId
-        ? { id: editId, ...form }
-        : form
-
-      const res = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed')
-
-      // Invalidate frontend cache
-      invalidateContentTypesCache()
+      if (editId) {
+        await contentTypeService.update(editId, form)
+      } else {
+        await contentTypeService.create(form)
+      }
 
       toast({
         title: editId ? 'আপডেট হয়েছে' : 'তৈরি হয়েছে',
@@ -189,13 +158,9 @@ export default function AdminContentTypesPage() {
 
       setDialogOpen(false)
       resetForm()
-      fetchItems()
-    } catch (err) {
-      toast({
-        title: 'ত্রুটি',
-        description: (err as Error).message || 'সংরক্ষণ করতে সমস্যা হয়েছে',
-        variant: 'destructive',
-      })
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
     } finally {
       setSaving(false)
     }
@@ -203,18 +168,11 @@ export default function AdminContentTypesPage() {
 
   const handleToggleActive = async (item: ContentTypeItem) => {
     try {
-      const res = await fetch('/api/admin/content-types', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: item.id, isActive: !item.isActive }),
-      })
-      if (!res.ok) throw new Error('Failed')
-
-      invalidateContentTypesCache()
+      await contentTypeService.update(item.id, { isActive: !item.isActive })
+      invalidate()
       toast({ title: item.isActive ? 'নিষ্ক্রিয় হয়েছে' : 'সক্রিয় হয়েছে' })
-      fetchItems()
     } catch {
-      toast({ title: 'ত্রুটি', description: 'আপডেট করতে সমস্যা হয়েছে', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
@@ -226,42 +184,29 @@ export default function AdminContentTypesPage() {
     const swapItem = items[swapIndex]
 
     try {
-      // Update both items
       await Promise.all([
-        fetch('/api/admin/content-types', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: item.id, order: swapItem.order }),
-        }),
-        fetch('/api/admin/content-types', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: swapItem.id, order: item.order }),
-        }),
+        contentTypeService.update(item.id, { order: swapItem.order }),
+        contentTypeService.update(swapItem.id, { order: item.order }),
       ])
 
-      invalidateContentTypesCache()
-      fetchItems()
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', description: 'অর্ডার পরিবর্তন করতে সমস্যা', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/admin/content-types?id=${id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed')
-
-      invalidateContentTypesCache()
+      await contentTypeService.remove(id)
+      invalidate()
       toast({ title: 'মুছে ফেলা হয়েছে' })
       setDeleteConfirm(null)
-      fetchItems()
     } catch {
-      toast({ title: 'ত্রুটি', description: 'মুছে ফেলতে সমস্যা', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-48" />
@@ -270,6 +215,10 @@ export default function AdminContentTypesPage() {
         ))}
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (

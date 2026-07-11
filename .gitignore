@@ -37,3 +37,4 @@ next-env.d.ts
 *.db
 public/uploads/
 nul
+.gstack/

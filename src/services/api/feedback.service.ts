@@ -33,7 +33,7 @@ export interface FeedbackMessageResponse {
   messages: Message[]
 }
 
-export interface FeedbackListParams {
+export type FeedbackListParams = {
   status?: string
   q?: string
 }

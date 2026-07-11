@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { apiError, validateBody } from '@/lib/api-utils'
+import { handleApiError } from '@/lib/errors'
 import { requireAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
@@ -29,8 +30,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ success: true, data: items })
   } catch (error) {
-    console.error('[Admin Navigation] GET error:', error)
-    return apiError('নেভিগেশন আনতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Get Navigation')
   }
 }
 
@@ -62,8 +62,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true, data: item }, { status: 201 })
   } catch (error) {
-    console.error('[Admin Navigation] POST error:', error)
-    return apiError('নেভিগেশন তৈরি করতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Create Navigation')
   }
 }
 
@@ -89,8 +88,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true, data: item })
   } catch (error) {
-    console.error('[Admin Navigation] PUT error:', error)
-    return apiError('নেভিগেশন আপডেট করতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Update Navigation')
   }
 }
 
@@ -116,7 +114,6 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true, data: item, message: 'নেভিগেশন আইটেম নিষ্ক্রিয় করা হয়েছে' })
   } catch (error) {
-    console.error('[Admin Navigation] DELETE error:', error)
-    return apiError('নেভিগেশন মুছতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Delete Navigation')
   }
 }

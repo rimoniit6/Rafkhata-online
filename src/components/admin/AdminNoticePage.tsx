@@ -54,7 +54,7 @@ import Image from 'next/image'
 import React, { useState } from 'react'
 
 import { QueryError } from '@/components/admin/QueryError'
-import { noticeService, type NoticeRecord } from '@/services/api/notice.service'
+import { noticeService, type NoticeRecord, type NoticeInput } from '@/services/api/notice.service'
 import { useNotices } from '@/hooks/admin/use-notices'
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -520,7 +520,7 @@ export default function AdminNoticePage() {
                 )
               })}
 
-              {notices.length === 0 && !loading && (
+              {notices.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Bell className="h-12 w-12 mb-3 opacity-30" />
                   <p className="text-lg font-medium">কোনো নোটিশ পাওয়া যায়নি</p>

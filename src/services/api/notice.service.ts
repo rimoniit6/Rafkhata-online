@@ -18,7 +18,7 @@ export interface NoticeRecord {
   updatedAt: string
 }
 
-export interface NoticeListParams {
+export type NoticeListParams = {
   search?: string
   type?: string
   classLevel?: string

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState } from 'react'
 import {
   CreditCard,
   Search,
@@ -34,10 +34,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { QueryError } from '@/components/admin/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useTableSelection } from '@/hooks/use-table-selection'
 import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
+
+import { useSubscriptions } from '@/hooks/admin/use-subscriptions'
+import { usePackages } from '@/hooks/admin/use-packages'
+import { subscriptionService } from '@/services/api/subscription.service'
 
 interface SubscriptionRecord {
   id: string
@@ -53,11 +58,6 @@ interface SubscriptionRecord {
   package: { id: string; title: string; duration: number; durationLabel: string; price: number }
 }
 
-interface PackageOption {
-  id: string
-  title: string
-}
-
 function getDaysLeft(endDate: string): number {
   const end = new Date(endDate)
   const now = new Date()
@@ -67,81 +67,42 @@ function getDaysLeft(endDate: string): number {
 
 export default function AdminSubscriptionsPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [subscriptions, setSubscriptions] = useState<SubscriptionRecord[]>([])
-  const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [activeFilter, setActiveFilter] = useState('all')
   const [packageFilter, setPackageFilter] = useState('all')
   const [userSearch, setUserSearch] = useState('')
-  const [stats, setStats] = useState({ totalSubscriptions: 0, activeSubscriptions: 0, expiredButActive: 0 })
   const [detailSub, setDetailSub] = useState<SubscriptionRecord | null>(null)
   const [deactivateDialog, setDeactivateDialog] = useState<SubscriptionRecord | null>(null)
   const [extendDialog, setExtendDialog] = useState<SubscriptionRecord | null>(null)
   const [extendDays, setExtendDays] = useState(30)
   const [processing, setProcessing] = useState(false)
-  const [packages, setPackages] = useState<PackageOption[]>([])
   const limit = 20
 
+  const { subscriptions, pagination, stats, isLoading, isError, error, refetch, invalidate } = useSubscriptions({
+    page,
+    limit,
+    isActive: activeFilter !== 'all' ? activeFilter : undefined,
+    packageId: packageFilter !== 'all' ? packageFilter : undefined,
+    userId: userSearch || undefined,
+  })
+
+  const total = pagination?.total ?? 0
+
+  const { packages } = usePackages({ limit: 200 })
+
   const selection = useTableSelection(subscriptions)
-
-  const fetchPackages = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/packages?limit=200')
-      if (res.ok) {
-        const json = await res.json()
-        setPackages((json.data?.packages || []).map((p: { id: string; title: string }) => ({ id: p.id, title: p.title })))
-      }
-    } catch { /* */ }
-  }, [])
-
-  const fetchSubscriptions = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', page.toString())
-      params.set('limit', limit.toString())
-      if (activeFilter !== 'all') params.set('isActive', activeFilter)
-      if (packageFilter !== 'all') params.set('packageId', packageFilter)
-      if (userSearch) params.set('userId', userSearch)
-
-      const res = await fetch(`/api/admin/subscriptions?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setSubscriptions(Array.isArray(json.data?.data) ? json.data.data : [])
-        setTotal(json.data?.pagination?.total || 0)
-        setStats(json.data?.stats || { totalSubscriptions: 0, activeSubscriptions: 0, expiredButActive: 0 })
-      }
-    } catch {
-      toast({ title: 'ত্রুটি', description: 'সাবস্ক্রিপশনের তথ্য লোড করতে সমস্যা হয়েছে', variant: 'destructive' })
-    } finally {
-      setLoading(false)
-    }
-  }, [page, activeFilter, packageFilter, userSearch, toast])
-
-  useEffect(() => { fetchPackages() }, [fetchPackages])
-  useEffect(() => { fetchSubscriptions() }, [fetchSubscriptions])
 
   const handleToggleActive = async (sub: SubscriptionRecord) => {
     setProcessing(true)
     try {
-      const res = await fetch('/api/admin/subscriptions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: sub.id, isActive: !sub.isActive }),
+      await subscriptionService.update({ id: sub.id, isActive: !sub.isActive })
+      toast({
+        title: sub.isActive ? 'সাবস্ক্রিপশন নিষ্ক্রিয় করা হয়েছে' : 'সাবস্ক্রিপশন সক্রিয় করা হয়েছে',
+        description: `${sub.user?.name} এর সাবস্ক্রিপশন আপডেট হয়েছে`,
       })
-      if (res.ok) {
-        toast({
-          title: sub.isActive ? 'সাবস্ক্রিপশন নিষ্ক্রিয় করা হয়েছে' : 'সাবস্ক্রিপশন সক্রিয় করা হয়েছে',
-          description: `${sub.user?.name} এর সাবস্ক্রিপশন আপডেট হয়েছে`,
-        })
-        fetchSubscriptions()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally {
       setProcessing(false)
       setDeactivateDialog(null)
@@ -151,16 +112,11 @@ export default function AdminSubscriptionsPage() {
   const handleDeactivate = async (sub: SubscriptionRecord) => {
     setProcessing(true)
     try {
-      const res = await fetch(`/api/admin/subscriptions?id=${sub.id}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: 'সাবস্ক্রিপশন নিষ্ক্রিয় করা হয়েছে', description: `${sub.user?.name} এর সাবস্ক্রিপশন নিষ্ক্রিয় করা হয়েছে` })
-        fetchSubscriptions()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
+      await subscriptionService.remove(sub.id)
+      toast({ title: 'সাবস্ক্রিপশন নিষ্ক্রিয় করা হয়েছে', description: `${sub.user?.name} এর সাবস্ক্রিপশন নিষ্ক্রিয় করা হয়েছে` })
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally {
       setProcessing(false)
       setDeactivateDialog(null)
@@ -171,23 +127,14 @@ export default function AdminSubscriptionsPage() {
     if (!extendDialog || extendDays <= 0) return
     setProcessing(true)
     try {
-      const res = await fetch('/api/admin/subscriptions', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: extendDialog.id, extendDays }),
+      await subscriptionService.update({ id: extendDialog.id, extendDays })
+      toast({
+        title: 'সাবস্ক্রিপশন বাড়ানো হয়েছে',
+        description: `${extendDialog.user?.name} এর সাবস্ক্রিপশন ${extendDays} দিন বাড়ানো হয়েছে`,
       })
-      if (res.ok) {
-        toast({
-          title: 'সাবস্ক্রিপশন বাড়ানো হয়েছে',
-          description: `${extendDialog.user?.name} এর সাবস্ক্রিপশন ${extendDays} দিন বাড়ানো হয়েছে`,
-        })
-        fetchSubscriptions()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally {
       setProcessing(false)
       setExtendDialog(null)
@@ -199,9 +146,10 @@ export default function AdminSubscriptionsPage() {
     if (processing) return
     setProcessing(true)
     try {
-      const res = await fetch(`/api/admin/subscriptions?ids=${ids.join(',')}`, { method: 'DELETE' })
-      if (res.ok) { toast({ title: 'মুছে ফেলা হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
-      else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+      await subscriptionService.bulkDelete(ids)
+      toast({ title: 'মুছে ফেলা হয়েছে' })
+      selection.clearSelection()
+      invalidate()
     } finally {
       setProcessing(false)
     }
@@ -211,13 +159,10 @@ export default function AdminSubscriptionsPage() {
     if (processing) return
     setProcessing(true)
     try {
-      const res = await fetch('/api/admin/subscriptions', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, isActive }),
-      })
-      if (res.ok) { toast({ title: 'আপডেট হয়েছে' }); selection.clearSelection(); fetchSubscriptions() }
-      else { const j = await res.json(); toast({ title: 'ত্রুটি', description: j.error, variant: 'destructive' }) }
+      await subscriptionService.bulkToggle({ ids, isActive })
+      toast({ title: 'আপডেট হয়েছে' })
+      selection.clearSelection()
+      invalidate()
     } finally {
       setProcessing(false)
     }
@@ -379,7 +324,7 @@ export default function AdminSubscriptionsPage() {
     </Card>
   )
 
-  if (loading && subscriptions.length === 0) {
+  if (isLoading && subscriptions.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -391,6 +336,10 @@ export default function AdminSubscriptionsPage() {
         <Skeleton className="h-96" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (
@@ -412,7 +361,7 @@ export default function AdminSubscriptionsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">মোট সাবস্ক্রিপশন</p>
-              <p className="text-xl font-bold">{stats.totalSubscriptions.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.totalSubscriptions ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -423,7 +372,7 @@ export default function AdminSubscriptionsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">সক্রিয় সাবস্ক্রিপশন</p>
-              <p className="text-xl font-bold">{stats.activeSubscriptions.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.activeSubscriptions ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -434,7 +383,7 @@ export default function AdminSubscriptionsPage() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">মেয়াদোত্তীর্ণ (সক্রিয়)</p>
-              <p className="text-xl font-bold">{stats.expiredButActive.toLocaleString('bn-BD')}</p>
+              <p className="text-xl font-bold">{(stats?.expiredButActive ?? 0).toLocaleString('bn-BD')}</p>
             </div>
           </CardContent>
         </Card>
@@ -448,7 +397,7 @@ export default function AdminSubscriptionsPage() {
         page={page}
         pageSize={limit}
         onPageChange={setPage}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}

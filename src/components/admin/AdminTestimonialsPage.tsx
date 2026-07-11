@@ -18,6 +18,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { QueryError } from '@/components/admin/QueryError'
+import { testimonialService, type TestimonialRecord } from '@/services/api/testimonial.service'
+import { useTestimonials } from '@/hooks/admin/use-testimonials'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import {
@@ -34,22 +37,9 @@ Trash2,
 User,
 XCircle,
 } from 'lucide-react'
-import { useCallback,useEffect,useState } from 'react'
+import { useState } from 'react'
 
 // ─── Data Model ───────────────────────────────────────────────
-interface TestimonialRecord {
-  id: string
-  name: string
-  role: string | null
-  avatar: string | null
-  content: string
-  rating: number
-  isActive: boolean
-  order: number
-  createdAt: string
-  updatedAt: string
-}
-
 const emptyForm = {
   name: '',
   role: '',
@@ -127,33 +117,12 @@ function getInitials(name: string) {
 // ─── Component ────────────────────────────────────────────────
 export default function AdminTestimonialsPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [testimonials, setTestimonials] = useState<TestimonialRecord[]>([])
+  const { testimonials, isLoading, isError, error, refetch, invalidate } = useTestimonials()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-
-  // ── Fetch Testimonials ──
-  const fetchTestimonials = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/admin/testimonials')
-      if (res.ok) {
-        const json = await res.json()
-        setTestimonials(Array.isArray(json.data) ? json.data : [])
-      }
-    } catch {
-      /* */
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchTestimonials()
-  }, [fetchTestimonials])
 
   // ── Stats ──
   const stats = {
@@ -199,99 +168,69 @@ export default function AdminTestimonialsPage() {
         role: form.role.trim() || null,
         avatar: form.avatar.trim() || null,
         content: form.content.trim(),
-        rating: form.rating,
-        order: form.order,
-        isActive: form.isActive,
-      }
-
-      const res = editId
-        ? await fetch('/api/admin/testimonials', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: editId, ...body }),
-          })
-        : await fetch('/api/admin/testimonials', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          })
-
-      if (res.ok) {
-        toast({ title: editId ? 'টেস্টিমোনিয়াল আপডেট হয়েছে' : 'টেস্টিমোনিয়াল তৈরি হয়েছে' })
-        setDialogOpen(false)
-        fetchTestimonials()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error || 'সংরক্ষণ করতে সমস্যা হয়েছে', variant: 'destructive' })
-      }
-    } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
-    } finally {
-      setSaving(false)
+      rating: form.rating,
+      order: form.order,
+      isActive: form.isActive,
     }
-  }
 
-  const handleDelete = async () => {
-    if (!deleteId) return
-    try {
-      const res = await fetch(`/api/admin/testimonials?id=${deleteId}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: 'টেস্টিমোনিয়াল মুছে ফেলা হয়েছে' })
-        setDeleteId(null)
-        fetchTestimonials()
-      } else {
-        toast({ title: 'ত্রুটি', variant: 'destructive' })
-      }
-    } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+    if (editId) {
+      await testimonialService.update(editId, body)
+    } else {
+      await testimonialService.create(body)
     }
+    toast({ title: editId ? 'টেস্টিমোনিয়াল আপডেট হয়েছে' : 'টেস্টিমোনিয়াল তৈরি হয়েছে' })
+    setDialogOpen(false)
+    invalidate()
+  } catch {
+    // Errors are surfaced globally by ApiErrorHandler
+  } finally {
+    setSaving(false)
   }
+}
 
-  const toggleActive = async (t: TestimonialRecord) => {
-    try {
-      const res = await fetch('/api/admin/testimonials', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: t.id, isActive: !t.isActive }),
-      })
-      if (res.ok) {
-        toast({ title: t.isActive ? 'টেস্টিমোনিয়াল নিষ্ক্রিয় করা হয়েছে' : 'টেস্টিমোনিয়াল সক্রিয় করা হয়েছে' })
-        fetchTestimonials()
-      }
-    } catch {
-      /* */
-    }
+const handleDelete = async () => {
+  if (!deleteId) return
+  try {
+    await testimonialService.remove(deleteId)
+    toast({ title: 'টেস্টিমোনিয়াল মুছে ফেলা হয়েছে' })
+    setDeleteId(null)
+    invalidate()
+  } catch {
+    // Errors are surfaced globally by ApiErrorHandler
   }
+}
 
-  const moveTestimonial = async (t: TestimonialRecord, direction: 'up' | 'down') => {
-    const sorted = [...testimonials].sort((a, b) => a.order - b.order)
-    const idx = sorted.findIndex((item) => item.id === t.id)
-    if ((direction === 'up' && idx === 0) || (direction === 'down' && idx === sorted.length - 1)) return
-
-    const swapWith = direction === 'up' ? sorted[idx - 1] : sorted[idx + 1]
-    if (!swapWith) return
-
-    try {
-      await Promise.all([
-        fetch('/api/admin/testimonials', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: t.id, order: swapWith.order }),
-        }),
-        fetch('/api/admin/testimonials', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: swapWith.id, order: t.order }),
-        }),
-      ])
-      fetchTestimonials()
-    } catch {
-      /* */
-    }
+const toggleActive = async (t: TestimonialRecord) => {
+  try {
+    await testimonialService.update(t.id, { isActive: !t.isActive })
+    toast({ title: t.isActive ? 'টেস্টিমোনিয়াল নিষ্ক্রিয় করা হয়েছে' : 'টেস্টিমোনিয়াল সক্রিয় করা হয়েছে' })
+    invalidate()
+  } catch {
+    /* */
   }
+}
 
-  // ── Loading skeleton ──
-  if (loading) {
+const moveTestimonial = async (t: TestimonialRecord, direction: 'up' | 'down') => {
+  const sorted = [...testimonials].sort((a, b) => a.order - b.order)
+  const idx = sorted.findIndex((item) => item.id === t.id)
+  if ((direction === 'up' && idx === 0) || (direction === 'down' && idx === sorted.length - 1)) return
+
+  const swapWith = direction === 'up' ? sorted[idx - 1] : sorted[idx + 1]
+  if (!swapWith) return
+
+  try {
+    await Promise.all([
+      testimonialService.update(t.id, { order: swapWith.order }),
+      testimonialService.update(swapWith.id, { order: t.order }),
+    ])
+    invalidate()
+  } catch {
+    /* */
+  }
+}
+
+// ── Loading skeleton ──
+if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -307,6 +246,10 @@ export default function AdminTestimonialsPage() {
         </div>
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (

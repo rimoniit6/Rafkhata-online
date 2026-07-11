@@ -23,6 +23,7 @@ SelectTrigger,
 SelectValue,
 } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { QueryError } from '@/components/admin/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
 import { useContentTypes } from '@/hooks/use-content-types'
@@ -43,7 +44,10 @@ TrendingUp,
 XCircle
 } from 'lucide-react'
 import Image from 'next/image'
-import { useCallback,useEffect,useState } from 'react'
+import { useState } from 'react'
+
+import { usePayments } from '@/hooks/admin/use-payments'
+import { paymentService } from '@/services/api/payment.service'
 
 interface PaymentRecord {
   id: string
@@ -81,9 +85,6 @@ export default function AdminPaymentsPage() {
     return <Icon className="size-4" />
   }
 
-  const [loading, setLoading] = useState(true)
-  const [payments, setPayments] = useState<PaymentRecord[]>([])
-  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [methodFilter, setMethodFilter] = useState('all')
@@ -97,65 +98,38 @@ export default function AdminPaymentsPage() {
   const [adminNote, setAdminNote] = useState('')
   const [rejectReason, setRejectReason] = useState('')
 
-  const [totalRevenue, setTotalRevenue] = useState(0)
-  const [pendingCount, setPendingCount] = useState(0)
-  const [approvedCount, setApprovedCount] = useState(0)
+  const { payments, pagination, isLoading, isError, error, refetch, invalidate } = usePayments({
+    page,
+    limit: perPage,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
+    method: methodFilter !== 'all' ? methodFilter : undefined,
+    contentType: contentTypeFilter !== 'all' ? contentTypeFilter : undefined,
+    q: search || undefined,
+  })
+
+  const total = pagination?.total ?? 0
 
   const selection = useTableSelection(payments)
-
-  const fetchPayments = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', String(page))
-      params.set('limit', String(perPage))
-      if (statusFilter !== 'all') params.set('status', statusFilter)
-      if (methodFilter !== 'all') params.set('method', methodFilter)
-      if (contentTypeFilter !== 'all') params.set('contentType', contentTypeFilter)
-      if (search) params.set('q', search)
-
-      const res = await fetch(`/api/admin/payments?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        const paymentsData = json.data?.data ?? json.data ?? []
-        setPayments(paymentsData)
-        setTotal(json.data?.pagination?.total ?? json.pagination?.total ?? 0)
-
-        setTotalRevenue(paymentsData.filter((p: PaymentRecord) => p.status === 'approved').reduce((s: number, p: PaymentRecord) => s + toDecimal(p.amount), 0))
-        setPendingCount(paymentsData.filter((p: PaymentRecord) => p.status === 'pending').length)
-        setApprovedCount(paymentsData.filter((p: PaymentRecord) => p.status === 'approved').length)
-      }
-    } catch { /* */ }
-    finally { setLoading(false) }
-  }, [page, perPage, statusFilter, methodFilter, contentTypeFilter, search])
-
-  useEffect(() => { fetchPayments() }, [fetchPayments])
 
   const handleApprove = async () => {
     if (!approveDialog) return
     setProcessing(true)
     try {
-      const res = await fetch('/api/admin/payments', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: approveDialog.id,
-          status: 'approved',
-          adminNote: adminNote || undefined,
-          reviewedBy: 'admin',
-        }),
+      await paymentService.approve({
+        id: approveDialog.id,
+        status: 'approved',
+        adminNote: adminNote || undefined,
+        reviewedBy: 'admin',
       })
-      if (res.ok) {
-        toast({ title: 'পেমেন্ট অনুমোদিত হয়েছে', description: `${approveDialog.user?.name} এর পেমেন্ট অনুমোদিত` })
-        setApproveDialog(null)
-        setAdminNote('')
-        fetchPayments()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setProcessing(false) }
+      toast({ title: 'পেমেন্ট অনুমোদিত হয়েছে', description: `${approveDialog.user?.name} এর পেমেন্ট অনুমোদিত` })
+      setApproveDialog(null)
+      setAdminNote('')
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const handleReject = async () => {
@@ -166,44 +140,34 @@ export default function AdminPaymentsPage() {
     }
     setProcessing(true)
     try {
-      const res = await fetch('/api/admin/payments', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: rejectDialog.id,
-          status: 'rejected',
-          adminNote: rejectReason,
-          reviewedBy: 'admin',
-        }),
+      await paymentService.reject({
+        id: rejectDialog.id,
+        status: 'rejected',
+        adminNote: rejectReason,
+        reviewedBy: 'admin',
       })
-      if (res.ok) {
-        toast({ title: 'পেমেন্ট প্রত্যাখ্যাত হয়েছে', description: `${rejectDialog.user?.name} এর পেমেন্ট প্রত্যাখ্যাত` })
-        setRejectDialog(null)
-        setRejectReason('')
-        fetchPayments()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setProcessing(false) }
+      toast({ title: 'পেমেন্ট প্রত্যাখ্যাত হয়েছে', description: `${rejectDialog.user?.name} এর পেমেন্ট প্রত্যাখ্যাত` })
+      setRejectDialog(null)
+      setRejectReason('')
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const handleBulkDelete = async (ids: string[]) => {
     if (processing) return
     setProcessing(true)
     try {
-      const res = await fetch(`/api/admin/payments?ids=${ids.join(',')}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: `${ids.length}টি পেমেন্ট মুছে ফেলা হয়েছে` })
-        selection.clearSelection()
-        fetchPayments()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setProcessing(false) }
+      await paymentService.bulkDelete(ids)
+      toast({ title: `${ids.length}টি পেমেন্ট মুছে ফেলা হয়েছে` })
+      selection.clearSelection()
+      invalidate()
+    } finally {
+      setProcessing(false)
+    }
   }
 
   const columns: ColumnDef<PaymentRecord>[] = [
@@ -326,7 +290,7 @@ export default function AdminPaymentsPage() {
     </Card>
   )
 
-  if (loading && payments.length === 0) {
+  if (isLoading && payments.length === 0) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -337,6 +301,14 @@ export default function AdminPaymentsPage() {
       </div>
     )
   }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
+  }
+
+  const totalRevenue = payments.filter((p) => p.status === 'approved').reduce((s, p) => s + toDecimal(p.amount), 0)
+  const pendingCount = payments.filter((p) => p.status === 'pending').length
+  const approvedCount = payments.filter((p) => p.status === 'approved').length
 
   return (
     <div className="space-y-6 animate-fade-in-up">
@@ -373,7 +345,7 @@ export default function AdminPaymentsPage() {
         pageSize={perPage}
         onPageChange={setPage}
         onPageSizeChange={setPerPage}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}
