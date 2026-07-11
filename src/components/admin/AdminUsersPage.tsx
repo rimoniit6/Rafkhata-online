@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react'
+import { useMemo, useState } from 'react'
 import {
   Search,
   Edit,
@@ -39,26 +39,17 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { QueryError } from '@/components/admin/QueryError'
 import { useToast } from '@/hooks/use-toast'
 import { useTableSelection } from '@/hooks/use-table-selection'
+import { useUsers } from '@/hooks/admin/use-users'
+import { userService, type UserRecord } from '@/services/api/user.service'
 import DataTable, { type ColumnDef, type BulkAction } from '@/components/shared/DataTable'
-
-interface UserRecord {
-  id: string
-  name: string | null
-  email: string
-  role: string
-  isPremium: boolean
-  createdAt: string
-}
 
 const roleLabels: Record<string, string> = { STUDENT: 'শিক্ষার্থী', ADMIN: 'অ্যাডমিন', SUPER_ADMIN: 'সুপার অ্যাডমিন' }
 
 export default function AdminUsersPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [users, setUsers] = useState<UserRecord[]>([])
-  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [premiumFilter, setPremiumFilter] = useState('all')
@@ -71,32 +62,18 @@ export default function AdminUsersPage() {
   const [perPage, setPerPage] = useState(10)
   const [isProcessing, setIsProcessing] = useState(false)
 
+  const params = useMemo(() => ({
+    page,
+    limit: perPage,
+    ...(search ? { search } : {}),
+    ...(roleFilter !== 'all' ? { role: roleFilter } : {}),
+    ...(premiumFilter === 'premium' ? { isPremium: true }
+      : premiumFilter === 'free' ? { isPremium: false } : {}),
+  }), [page, perPage, search, roleFilter, premiumFilter])
+
+  const { users, total, isLoading, isError, error, refetch, invalidate } = useUsers(params)
+
   const selection = useTableSelection(users)
-
-  const fetchUsers = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      params.set('page', String(page))
-      params.set('limit', String(perPage))
-      if (search) params.set('search', search)
-      if (roleFilter !== 'all') params.set('role', roleFilter)
-      if (premiumFilter === 'premium') params.set('isPremium', 'true')
-      else if (premiumFilter === 'free') params.set('isPremium', 'false')
-
-      const res = await fetch(`/api/admin/users?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        setUsers(Array.isArray(json.data) ? json.data : [])
-        setTotal(json.pagination?.total || 0)
-      } else {
-        console.error('[AdminUsers] Fetch failed:', res.status, await res.text().catch(() => ''))
-      }
-    } catch { /* */ }
-    finally { setLoading(false) }
-  }, [page, perPage, search, roleFilter, premiumFilter])
-
-  useEffect(() => { fetchUsers() }, [fetchUsers])
 
   const getInitials = (name: string | null) =>
     (name || 'U').split(' ').map((n) => n[0]).join('').slice(0, 2)
@@ -105,21 +82,13 @@ export default function AdminUsersPage() {
     if (!editUser) return
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: editUser.id, role: editRole, isPremium: editPremium }),
-      })
-      if (res.ok) {
-        toast({ title: 'ব্যবহারকারী আপডেট হয়েছে' })
-        setEditUser(null)
-        fetchUsers()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setSaving(false) }
+      await userService.update({ id: editUser.id, role: editRole, isPremium: editPremium })
+      toast({ title: 'ব্যবহারকারী আপডেট হয়েছে' })
+      setEditUser(null)
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally { setSaving(false) }
   }
 
   const handleDeleteUser = async () => {
@@ -127,68 +96,52 @@ export default function AdminUsersPage() {
     if (isProcessing) return
     setIsProcessing(true)
     try {
-      const res = await fetch(`/api/admin/users?id=${deleteUser.id}`, { method: 'DELETE' })
-      if (res.ok) { toast({ title: 'ব্যবহারকারী মুছে ফেলা হয়েছে' }); setDeleteUser(null); fetchUsers() }
-      else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setIsProcessing(false) }
+      await userService.remove(deleteUser.id)
+      toast({ title: 'ব্যবহারকারী মুছে ফেলা হয়েছে' })
+      setDeleteUser(null)
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally { setIsProcessing(false) }
   }
 
   const handleBulkDelete = async (ids: string[]) => {
     if (isProcessing) return
     setIsProcessing(true)
     try {
-      const res = await fetch(`/api/admin/users?ids=${ids.join(',')}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: `${ids.length} জন ব্যবহারকারী মুছে ফেলা হয়েছে` })
-        selection.clearSelection()
-        fetchUsers()
-      } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
-      }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setIsProcessing(false) }
+      await userService.bulkRemove(ids)
+      toast({ title: `${ids.length} জন ব্যবহারকারী মুছে ফেলা হয়েছে` })
+      selection.clearSelection()
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally { setIsProcessing(false) }
   }
 
   const handleBulkRole = async (ids: string[], role: string) => {
     if (isProcessing) return
     setIsProcessing(true)
     try {
-      const res = await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, role }),
-      })
-      if (res.ok) {
-        toast({ title: `${ids.length} জন ব্যবহারকারীর ভূমিকা আপডেট হয়েছে` })
-        selection.clearSelection()
-        fetchUsers()
-      } else {
-        toast({ title: 'ত্রুটি', variant: 'destructive' })
-      }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setIsProcessing(false) }
+      await userService.update({ ids, role })
+      toast({ title: `${ids.length} জন ব্যবহারকারীর ভূমিকা আপডেট হয়েছে` })
+      selection.clearSelection()
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally { setIsProcessing(false) }
   }
 
   const handleBulkPremium = async (ids: string[], isPremium: boolean) => {
     if (isProcessing) return
     setIsProcessing(true)
     try {
-      const res = await fetch('/api/admin/users', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids, isPremium }),
-      })
-      if (res.ok) {
-        toast({ title: `${ids.length} জন ব্যবহারকারীর প্রিমিয়াম স্ট্যাটাস আপডেট হয়েছে` })
-        selection.clearSelection()
-        fetchUsers()
-      } else {
-        toast({ title: 'ত্রুটি', variant: 'destructive' })
-      }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setIsProcessing(false) }
+      await userService.update({ ids, isPremium })
+      toast({ title: `${ids.length} জন ব্যবহারকারীর প্রিমিয়াম স্ট্যাটাস আপডেট হয়েছে` })
+      selection.clearSelection()
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally { setIsProcessing(false) }
   }
 
   const columns: ColumnDef<UserRecord>[] = [
@@ -327,7 +280,7 @@ export default function AdminUsersPage() {
     </Card>
   )
 
-  if (loading && users.length === 0) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
@@ -335,6 +288,10 @@ export default function AdminUsersPage() {
         <Skeleton className="h-96" />
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (
@@ -357,7 +314,7 @@ export default function AdminUsersPage() {
         pageSize={perPage}
         onPageChange={setPage}
         onPageSizeChange={setPerPage}
-        loading={loading}
+        loading={isLoading}
         selectable
         selectedIds={selection.selectedIds}
         onToggleOne={selection.toggleOne}

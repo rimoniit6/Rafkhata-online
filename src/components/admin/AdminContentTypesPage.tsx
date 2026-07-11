@@ -14,8 +14,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
-import { invalidateContentTypesCache } from '@/hooks/use-content-types'
+import { QueryError } from '@/components/admin/QueryError'
 import { useToast } from '@/hooks/use-toast'
+import { useContentTypes } from '@/hooks/admin/use-content-types'
+import { contentTypeService, type ContentTypeRecord as ContentTypeItem } from '@/services/api/content-type.service'
 import { cn } from '@/lib/utils'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
@@ -30,24 +32,7 @@ RefreshCw,
 Tags,
 Trash2
 } from 'lucide-react'
-import { useCallback,useEffect,useState } from 'react'
-
-interface ContentTypeItem {
-  id: string
-  key: string
-  labelBn: string
-  labelEn: string
-  description: string | null
-  icon: string
-  color: string
-  lightColor: string | null
-  textColor: string | null
-  route: string | null
-  paramKey: string | null
-  buttonLabel: string | null
-  isActive: boolean
-  order: number
-}
+import { useState } from 'react'
 
 const ICON_OPTIONS = [
   'PlayCircle', 'FileQuestion', 'ClipboardList', 'GraduationCap',

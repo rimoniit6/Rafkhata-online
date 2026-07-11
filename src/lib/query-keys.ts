@@ -9,6 +9,7 @@ export const queryKeys = {
   hierarchyMetadata: ['hierarchy', 'metadata'] as const,
   banners: ['banners'] as const,
   notices: ['notices'] as const,
+  notes: ['notes'] as const,
   notice: (id: string) => ['notices', id] as const,
   classes: ['classes'] as const,
   subjects: (classSlug: string) => ['subjects', classSlug] as const,

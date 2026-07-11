@@ -51,27 +51,13 @@ Type,
 X
 } from 'lucide-react'
 import Image from 'next/image'
-import React,{ useCallback,useEffect,useState } from 'react'
+import React, { useState } from 'react'
+
+import { QueryError } from '@/components/admin/QueryError'
+import { noticeService, type NoticeRecord } from '@/services/api/notice.service'
+import { useNotices } from '@/hooks/admin/use-notices'
 
 // ─── Types ──────────────────────────────────────────────────────
-
-interface NoticeRecord {
-  id: string
-  title: string
-  content: string | null
-  type: 'text' | 'pdf' | 'link'
-  pdfUrl: string | null
-  pdfTitle: string | null
-  linkUrl: string | null
-  linkLabel: string | null
-  thumbnail: string | null
-  classLevel: string | null
-  isPinned: boolean
-  isActive: boolean
-  order: number
-  createdAt: string
-  updatedAt: string
-}
 
 type NoticeType = 'text' | 'pdf' | 'link'
 
@@ -133,9 +119,6 @@ const emptyForm = {
 export default function AdminNoticePage() {
   const { toast } = useToast()
   const { classOptions: classLevelOptions, classLevelLabels } = useHierarchyMetadata()
-  const [loading, setLoading] = useState(true)
-  const [notices, setNotices] = useState<NoticeRecord[]>([])
-  const [total, setTotal] = useState(0)
   const [search, setSearch] = useState('')
   const [filterType, setFilterType] = useState<string>('all')
   const [filterClassLevel, setFilterClassLevel] = useState<string>('all')
@@ -154,35 +137,13 @@ export default function AdminNoticePage() {
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null)
   const [appliedSearch, setAppliedSearch] = useState('')
 
+  const { notices, total, isLoading, isError, error, refetch, invalidate } = useNotices({
+    search: appliedSearch || undefined,
+    type: filterType !== 'all' ? filterType : undefined,
+    classLevel: filterClassLevel !== 'all' ? filterClassLevel : undefined,
+  })
+
   // ─── Data Fetching ──────────────────────────────────────────
-
-  const fetchNotices = useCallback(async () => {
-    setLoading(true)
-    try {
-      const params = new URLSearchParams()
-      if (appliedSearch) params.set('search', appliedSearch)
-      if (filterType && filterType !== 'all') params.set('type', filterType)
-      if (filterClassLevel && filterClassLevel !== 'all') params.set('classLevel', filterClassLevel)
-      params.set('page', '1')
-      params.set('limit', '20')
-
-      const res = await fetch(`/api/admin/notices?${params}`)
-      if (res.ok) {
-        const json = await res.json()
-        const noticesData = json.data?.data ?? json.data ?? []
-        setNotices(noticesData)
-        setTotal(json.data?.pagination?.total ?? json.pagination?.total ?? noticesData.length)
-      }
-    } catch {
-      /* */
-    } finally {
-      setLoading(false)
-    }
-  }, [appliedSearch, filterType, filterClassLevel])
-
-  useEffect(() => {
-    fetchNotices()
-  }, [fetchNotices])
 
   // ─── Search with debounce ───────────────────────────────────
 
@@ -258,7 +219,7 @@ export default function AdminNoticePage() {
 
     setSaving(true)
     try {
-      const body: Record<string, unknown> = {
+      const body: NoticeInput = {
         title: form.title.trim(),
         type: form.type,
         thumbnail: form.thumbnail || undefined,
@@ -278,28 +239,16 @@ export default function AdminNoticePage() {
         body.linkLabel = form.linkLabel.trim() || undefined
       }
 
-      const res = editId
-        ? await fetch('/api/admin/notices', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: editId, ...body }),
-          })
-        : await fetch('/api/admin/notices', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body),
-          })
-
-      if (res.ok) {
-        toast({ title: editId ? 'নোটিশ আপডেট হয়েছে' : 'নোটিশ তৈরি হয়েছে' })
-        goBackToList()
-        fetchNotices()
+      if (editId) {
+        await noticeService.update(editId, body)
       } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
+        await noticeService.create(body)
       }
+      toast({ title: editId ? 'নোটিশ আপডেট হয়েছে' : 'নোটিশ তৈরি হয়েছে' })
+      goBackToList()
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', description: 'নেটওয়ার্ক সমস্যা', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     } finally {
       setSaving(false)
     }
@@ -308,48 +257,32 @@ export default function AdminNoticePage() {
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      const res = await fetch(`/api/admin/notices?id=${deleteId}`, { method: 'DELETE' })
-      if (res.ok) {
-        toast({ title: 'নোটিশ মুছে ফেলা হয়েছে' })
-        setDeleteId(null)
-        fetchNotices()
-      } else {
-        toast({ title: 'ত্রুটি', variant: 'destructive' })
-      }
+      await noticeService.remove(deleteId)
+      toast({ title: 'নোটিশ মুছে ফেলা হয়েছে' })
+      setDeleteId(null)
+      invalidate()
     } catch {
-      toast({ title: 'ত্রুটি', variant: 'destructive' })
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
   const toggleActive = async (notice: NoticeRecord) => {
     try {
-      const res = await fetch('/api/admin/notices', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: notice.id, isActive: !notice.isActive }),
-      })
-      if (res.ok) {
-        toast({ title: notice.isActive ? 'নোটিশ নিষ্ক্রিয় করা হয়েছে' : 'নোটিশ সক্রিয় করা হয়েছে' })
-        fetchNotices()
-      }
+      await noticeService.update(notice.id, { isActive: !notice.isActive })
+      toast({ title: notice.isActive ? 'নোটিশ নিষ্ক্রিয় করা হয়েছে' : 'নোটিশ সক্রিয় করা হয়েছে' })
+      invalidate()
     } catch {
-      /* */
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
   const togglePinned = async (notice: NoticeRecord) => {
     try {
-      const res = await fetch('/api/admin/notices', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: notice.id, isPinned: !notice.isPinned }),
-      })
-      if (res.ok) {
-        toast({ title: notice.isPinned ? 'পিন সরানো হয়েছে' : 'পিন করা হয়েছে' })
-        fetchNotices()
-      }
+      await noticeService.update(notice.id, { isPinned: !notice.isPinned })
+      toast({ title: notice.isPinned ? 'পিন সরানো হয়েছে' : 'পিন করা হয়েছে' })
+      invalidate()
     } catch {
-      /* */
+      // Errors are surfaced globally by ApiErrorHandler
     }
   }
 
@@ -370,7 +303,7 @@ export default function AdminNoticePage() {
 
   // ─── Loading Skeleton ───────────────────────────────────────
 
-  if (loading && viewMode === 'list' && notices.length === 0) {
+  if (isLoading && viewMode === 'list' && notices.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -387,6 +320,10 @@ export default function AdminNoticePage() {
         ))}
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   // ─── Render ─────────────────────────────────────────────────
