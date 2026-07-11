@@ -146,14 +146,6 @@ export default function MCQExamPackageDetailPage() {
     fetchOverview()
   }, [fetchOverview])
 
-  const autoStartRef = useRef(false)
-  useEffect(() => {
-    if (!pkgDetail || !params.startSetId || autoStartRef.current) return
-    autoStartRef.current = true
-    const timer = setTimeout(() => handleStartExam(params.startSetId!), 500)
-    return () => clearTimeout(timer)
-  }, [pkgDetail, params.startSetId])
-
   // ─── Fetch Weakness Analysis ────────────────────────────────────────────
 
   const fetchWeakness = useCallback(async () => {
@@ -231,7 +223,7 @@ export default function MCQExamPackageDetailPage() {
 
   // ─── Start Exam ─────────────────────────────────────────────────────────
 
-  const handleStartExam = async (setId: string) => {
+  const handleStartExam = useCallback(async (setId: string) => {
     if (!isAuthenticated) {
       toast({
         title: 'লগইন করুন',
@@ -304,7 +296,15 @@ export default function MCQExamPackageDetailPage() {
     } finally {
       setExamLoading(false)
     }
-  }
+  }, [isAuthenticated, toast, navigate])
+
+  const autoStartRef = useRef(false)
+  useEffect(() => {
+    if (!pkgDetail || !params.startSetId || autoStartRef.current) return
+    autoStartRef.current = true
+    const timer = setTimeout(() => handleStartExam(params.startSetId!), 500)
+    return () => clearTimeout(timer)
+  }, [pkgDetail, params.startSetId, handleStartExam])
 
   // ─── View Result ────────────────────────────────────────────────────────
 
@@ -472,24 +472,24 @@ export default function MCQExamPackageDetailPage() {
 
   // ─── Exam UI Handlers ──────────────────────────────────────────────────
 
-  const handleSelectOption = (questionId: string, optionKey: string) => {
+  const handleSelectOption = useCallback((questionId: string, optionKey: string) => {
     setAnswers((prev) => ({ ...prev, [questionId]: optionKey }))
     if (currentIndex < examQuestions.length - 1) {
       setCurrentIndex(currentIndex + 1)
     }
-  }
+  }, [currentIndex, examQuestions.length])
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < examQuestions.length - 1) {
       setCurrentIndex(currentIndex + 1)
     }
-  }
+  }, [currentIndex, examQuestions.length])
 
-  const handlePrev = () => {
+  const handlePrev = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(currentIndex - 1)
     }
-  }
+  }, [currentIndex])
 
   const toggleMarkForReview = (mcqId: string) => {
     setMarkedForReview((prev) => ({ ...prev, [mcqId]: !prev[mcqId] }))

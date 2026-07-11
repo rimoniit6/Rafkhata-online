@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { DollarSign, TrendingUp, ShoppingCart, Users, CreditCard, ArrowUpRight, Banknote, PiggyBank } from 'lucide-react'
+import { DollarSign, TrendingUp, ShoppingCart, Users } from 'lucide-react'
 import { useRevenueAnalytics, useAiInsights } from '@/hooks/use-analytics'
 import { Card, CardContent } from '@/components/ui/card'
 import KpiCard from '@/components/analytics/KpiCard'

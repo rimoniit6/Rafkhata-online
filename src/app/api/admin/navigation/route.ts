@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiError, validateBody } from '@/lib/api-utils'
+import { apiError, validateBody, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { requireAdmin } from '@/lib/auth'
 import { NextResponse } from 'next/server'
@@ -37,6 +37,8 @@ export async function GET(request: Request) {
 // POST /api/admin/navigation — create a new navigation item
 export async function POST(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return apiError('অনুমতি নেই', 403)
@@ -69,6 +71,8 @@ export async function POST(request: Request) {
 // PUT /api/admin/navigation — update a navigation item by id
 export async function PUT(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return apiError('অনুমতি নেই', 403)
@@ -95,6 +99,8 @@ export async function PUT(request: Request) {
 // DELETE /api/admin/navigation — soft delete by setting isActive = false
 export async function DELETE(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const auth = await requireAdmin(request)
     if (!auth) {
       return apiError('অনুমতি নেই', 403)

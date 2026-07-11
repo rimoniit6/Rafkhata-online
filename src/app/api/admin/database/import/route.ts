@@ -66,6 +66,11 @@ export async function POST(request: NextRequest) {
       return apiError('সুপার অ্যাডমিন অনুমতি প্রয়োজন।', 403, 'FORBIDDEN')
     }
 
+    const confirmHeader = request.headers.get('x-confirm-import')
+    if (confirmHeader !== 'true') {
+      return apiError('ইমপোর্ট নিশ্চিত করতে x-confirm-import: true হেডার প্রয়োজন।', 400, 'CONFIRMATION_REQUIRED')
+    }
+
     const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error
 

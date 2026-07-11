@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 import { toDecimal } from '@/lib/decimal'
@@ -339,6 +339,8 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { action } = body
 

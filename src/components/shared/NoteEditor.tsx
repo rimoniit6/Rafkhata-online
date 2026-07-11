@@ -23,6 +23,7 @@ export default function NoteEditor({ contentId, contentType }: NoteEditorProps) 
   const [saved, setSaved] = useState(false)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const savePromiseRef = useRef<Promise<void> | undefined>(undefined)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const csrfRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -53,6 +54,10 @@ export default function NoteEditor({ contentId, contentType }: NoteEditorProps) 
       finally { setLoading(false) }
     }
     init()
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+    }
   }, [contentId, contentType, user?.id])
 
   const saveNote = useCallback(async () => {
@@ -81,7 +86,8 @@ export default function NoteEditor({ contentId, contentType }: NoteEditorProps) 
         const json = await res.json()
         setNoteId(json.data?.id || null)
         setSaved(true)
-        setTimeout(() => setSaved(false), 2000)
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+        savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
       }
     } catch { /* ignore */ }
     finally { setSaving(false) }

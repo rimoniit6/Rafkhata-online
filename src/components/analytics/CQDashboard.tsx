@@ -1,12 +1,11 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { FileText, BarChart3, CheckCircle2, XCircle, Clock, Users } from 'lucide-react'
+import { FileText, BarChart3, Clock } from 'lucide-react'
 import { useCqAnalytics, useAiInsights } from '@/hooks/use-analytics'
 import KpiCard from '@/components/analytics/KpiCard'
 import ChartCard from '@/components/analytics/ChartCard'
 import DonutChart from '@/components/analytics/charts/DonutChart'
-import BarChart from '@/components/analytics/charts/BarChart'
 import AiInsight from '@/components/analytics/AiInsight'
 import AnalyticsEmptyState from '@/components/analytics/AnalyticsEmptyState'
 import AnalyticsErrorState from '@/components/analytics/AnalyticsErrorState'

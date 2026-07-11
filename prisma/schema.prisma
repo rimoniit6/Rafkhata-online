@@ -467,6 +467,8 @@ model ExamQuestion {
   exam Exam @relation(fields: [examId], references: [id], onDelete: Cascade)
 
   @@unique([examId, questionType, questionId])
+  @@index([examId])
+  @@index([questionId])
 }
 
 model ExamResult {
@@ -884,6 +886,8 @@ model BundleItem {
   bundle ContentBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
 
   @@unique([bundleId, contentType, contentId])
+  @@index([bundleId])
+  @@index([contentType, contentId])
 }
 
 // ============ PACKAGE SYSTEM (TIME-BASED SUBSCRIPTION) ============

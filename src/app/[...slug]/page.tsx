@@ -6,7 +6,7 @@ import { useRouterStore, useRouteParams, useCurrentRoute, RoutePath, isAdminRout
 import { usePageMeta } from '@/hooks/use-page-meta'
 import AppShell from '@/components/layout/AppShell'
 import { parseUrl } from '@/lib/urls'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams, notFound } from 'next/navigation'
 
 const HomePage = dynamic(() => import('@/components/home/HomePage'))
 const SocialLoginPage = dynamic(() => import('@/components/auth/SocialLoginPage'))
@@ -106,7 +106,9 @@ function RouteRenderer() {
     'exam-result': <ExamResultPage />,
   }
 
-  return routeMap[currentRoute] || <HomePage />
+  const page = routeMap[currentRoute]
+  if (!page) notFound()
+  return page
 }
 
 export default function CatchAll() {

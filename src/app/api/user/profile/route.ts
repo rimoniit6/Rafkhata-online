@@ -2,6 +2,16 @@ import { db } from '@/lib/db'
 import { apiResponse, withAuth, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
+import { z } from 'zod'
+
+const profileSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  phone: z.string().regex(/^(01[3-9]\d{8})$/, 'বৈধ ফোন নম্বর দিন').optional(),
+  institute: z.string().max(200).optional(),
+  classLevel: z.string().max(50).optional(),
+  board: z.string().max(100).optional(),
+  avatar: z.string().url().max(500).optional(),
+})
 
 export async function GET(request: Request) {
   const auth = await withAuth(request)
@@ -40,7 +50,15 @@ export async function PUT(request: Request) {
 
   try {
     const body = await request.json()
-    const { name, phone, institute, classLevel, board, avatar } = body
+    const parsed = profileSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: parsed.error.issues[0]?.message || 'ভুল ডাটা' },
+        { status: 400 }
+      )
+    }
+
+    const { name, phone, institute, classLevel, board, avatar } = parsed.data
     const userId = auth.user.id
 
     const updateData: Record<string, unknown> = {}

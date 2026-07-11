@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiError } from '@/lib/api-utils'
+import { apiError, withAdmin } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import * as XLSX from 'xlsx'
 import { safeParseExcelFromFile, ExcelParseError } from '@/lib/excel-parse'
@@ -43,6 +43,8 @@ const COLUMN_MAP: Record<string, string> = {
 
 export async function POST(request: Request) {
   try {
+    const auth = await withAdmin(request)
+    if (auth instanceof NextResponse) return auth
     const formData = await request.formData()
     const file = formData.get('file') as File
     const classLevel = formData.get('classLevel') as string
@@ -195,8 +197,10 @@ export async function POST(request: Request) {
 }
 
 // GET: Download demo Excel template
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await withAdmin(request)
+    if (auth instanceof NextResponse) return auth
     const headers = [
       'প্রশ্ন',
       'অপশন ক',

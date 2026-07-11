@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Megaphone, X, ExternalLink, ChevronRight, Bell } from 'lucide-react'
 import { useRouterStore } from '@/store/router'
 import type { RoutePath } from '@/store/router'
@@ -14,7 +14,14 @@ export default function SpecialNoticePopup() {
   const { data: banners = [], isLoading: loading } = useBanners()
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isOpen, setIsOpen] = useState(false)
+  const reopenTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
   const navigate = useRouterStore((s) => s.navigate)
+
+  useEffect(() => {
+    return () => {
+      if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     if (loading || banners.length === 0) return
@@ -56,7 +63,8 @@ export default function SpecialNoticePopup() {
       setCurrentIndex(nextIdx >= 0 ? nextIdx : 0)
       // Brief close and reopen animation for next notice
       setIsOpen(false)
-      setTimeout(() => setIsOpen(true), 300)
+      if (reopenTimerRef.current) clearTimeout(reopenTimerRef.current)
+      reopenTimerRef.current = setTimeout(() => setIsOpen(true), 300)
     } else {
       setIsOpen(false)
     }

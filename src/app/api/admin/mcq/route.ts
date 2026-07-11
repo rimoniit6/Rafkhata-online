@@ -1,4 +1,4 @@
-import { apiError,apiResponse,paginatedApiResponse,parseIdsParam,validateBody,withAdmin } from '@/lib/api-utils'
+import { apiError,apiResponse,paginatedApiResponse,parseIdsParam,validateBody,withAdmin,withCsrf } from '@/lib/api-utils'
 import { AuditActions,auditFromRequest,EntityTypes } from '@/lib/audit'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { db } from '@/lib/db'
@@ -100,6 +100,8 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const validated = validateBody(createMcqSchema, body)
     if ('error' in validated) return validated.error
@@ -147,6 +149,8 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { id, ...updateData } = body
 
@@ -197,6 +201,8 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(request.url)
 
     const ids = parseIdsParam(searchParams)

@@ -1,4 +1,4 @@
-import { apiError,apiResponse,validateBody,withSuperAdmin } from '@/lib/api-utils'
+import { apiError,apiResponse,validateBody,withSuperAdmin,withCsrf } from '@/lib/api-utils'
 import { db } from '@/lib/db'
 import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
@@ -40,6 +40,8 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const validation = validateBody(createContentTypeSchema, body)
     if ('error' in validation) return validation.error
@@ -65,6 +67,8 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { id, ...updates } = body
 
@@ -88,6 +92,8 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
 

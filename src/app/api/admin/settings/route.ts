@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { apiResponse, apiError, withAdmin, validateBody } from '@/lib/api-utils'
+import { apiResponse, apiError, withAdmin, validateBody, withCsrf } from '@/lib/api-utils'
 import { handleApiError } from '@/lib/errors'
 import { invalidateContentCache } from '@/lib/cache-invalidate'
 import { NextResponse } from 'next/server'
@@ -38,6 +38,8 @@ export async function POST(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const validation = validateBody(createSettingSchema, body)
     if ('error' in validation) return validation.error
@@ -64,6 +66,8 @@ export async function PUT(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const validation = validateBody(createSettingSchema, body)
     if ('error' in validation) return validation.error
@@ -95,6 +99,8 @@ export async function PATCH(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const { settings } = body
 

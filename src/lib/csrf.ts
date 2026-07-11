@@ -85,5 +85,6 @@ export async function csrfMiddleware(request: Request): Promise<{ valid: boolean
 }
 
 export function createCsrfTokenInput(token: string): string {
-  return `<input type="hidden" name="_csrf" value="${token}" />`
+  const escaped = token.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  return `<input type="hidden" name="_csrf" value="${escaped}" />`
 }

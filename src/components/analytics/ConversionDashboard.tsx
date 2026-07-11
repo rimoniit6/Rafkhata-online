@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { Users, UserCheck, ShoppingCart, GraduationCap, LogIn, BookOpen, FileQuestion, Award } from 'lucide-react'
 import { useConversionFunnel, useAiInsights } from '@/hooks/use-analytics'
 import { Card, CardContent } from '@/components/ui/card'

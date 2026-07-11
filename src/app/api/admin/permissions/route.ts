@@ -1,4 +1,4 @@
-import { applyRateLimit,validateBody } from '@/lib/api-utils'
+import { applyRateLimit,validateBody,withCsrf } from '@/lib/api-utils'
 import { invalidatePermissionCache,requirePermission } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { handleApiError } from '@/lib/errors'
@@ -41,6 +41,8 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     await applyRateLimit(apiLimiter, request)
     await requirePermission(request, 'system.rbac')
 

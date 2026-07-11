@@ -1,4 +1,4 @@
-import { apiError,apiResponse,applyRateLimit,parsePaginationParams,validateBody,withAdmin } from '@/lib/api-utils'
+import { apiError,apiResponse,applyRateLimit,parsePaginationParams,validateBody,withAdmin,withCsrf } from '@/lib/api-utils'
 import { AuditActions,createAuditLog,EntityTypes,getClientIP } from '@/lib/audit'
 import { db } from '@/lib/db'
 import { handleApiError,safeTransaction } from '@/lib/errors'
@@ -159,7 +159,8 @@ export async function PATCH(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
-
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
 
     const rateCheck = await applyRateLimit(apiLimiter, request)
     if ('error' in rateCheck) return rateCheck.error

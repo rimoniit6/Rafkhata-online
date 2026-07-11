@@ -1,8 +1,7 @@
 import { db } from '@/lib/db'
-import { apiError, validateBody } from '@/lib/api-utils'
+import { apiError, validateBody, withAdmin } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { verifyAuth } from '@/lib/auth'
 
 const updateFeedbackSchema = z.object({
   id: z.string().min(1, 'id আবশ্যক'),
@@ -11,10 +10,8 @@ const updateFeedbackSchema = z.object({
 
 export async function GET(request: Request) {
   try {
-    const auth = await verifyAuth(request)
-    if (!auth || !auth.isAdmin) {
-      return apiError('অননুমোদিত', 403)
-    }
+    const auth = await withAdmin(request)
+    if (auth instanceof NextResponse) return auth
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get('status')
@@ -65,10 +62,8 @@ export async function GET(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const auth = await verifyAuth(request)
-    if (!auth || !auth.isAdmin) {
-      return apiError('অননুমোদিত', 403)
-    }
+    const auth = await withAdmin(request)
+    if (auth instanceof NextResponse) return auth
 
     const body = await request.json()
     const validation = validateBody(updateFeedbackSchema, body)

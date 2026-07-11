@@ -1,4 +1,4 @@
-import { apiError,apiResponse,paginatedApiResponse,parseIdsParam,parsePaginationParams,validateBody,withAdmin } from '@/lib/api-utils'
+import { apiError,apiResponse,paginatedApiResponse,parseIdsParam,parsePaginationParams,validateBody,withAdmin,withCsrf } from '@/lib/api-utils'
 import { AuditActions,EntityTypes,auditFromRequest } from '@/lib/audit'
 import { db } from '@/lib/db'
 import { handleApiError } from '@/lib/errors'
@@ -65,6 +65,8 @@ export async function PATCH(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const body = await request.json()
     const validation = validateBody(adminUpdateUserSchema, body)
     if ('error' in validation) return validation.error
@@ -152,6 +154,8 @@ export async function DELETE(request: Request) {
   if (auth instanceof NextResponse) return auth
 
   try {
+    const csrfCheck = await withCsrf(request)
+    if ('error' in csrfCheck) return csrfCheck.error
     const { searchParams } = new URL(request.url)
     const ids = parseIdsParam(searchParams)
     const id = searchParams.get('id')
@@ -198,7 +202,7 @@ export async function DELETE(request: Request) {
         const serviceSupabase = await createServiceClient()
         for (const u of usersToDelete) {
           if (u.supabaseUserId) {
-            await serviceSupabase.auth.admin.deleteUser(u.supabaseUserId).catch(() => {})
+            await serviceSupabase.auth.admin.deleteUser(u.supabaseUserId)
           }
         }
       } catch { /* best-effort cleanup */ }

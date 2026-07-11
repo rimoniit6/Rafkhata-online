@@ -101,6 +101,13 @@ export default function CreatorExamHistoryPage() {
     } catch { return d }
   }
 
+  const stats = useMemo(() => {
+    if (exams.length === 0) return null
+    const totalAttempts = exams.reduce((s, e) => s + e.attempts, 0)
+    const avgScore = exams.reduce((s, e) => s + e.averageScore, 0) / exams.length
+    return { totalExams: exams.length, totalAttempts, avgScore: Math.round(avgScore) }
+  }, [exams])
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background">
@@ -121,13 +128,6 @@ export default function CreatorExamHistoryPage() {
       </div>
     )
   }
-
-  const stats = useMemo(() => {
-    if (exams.length === 0) return null
-    const totalAttempts = exams.reduce((s, e) => s + e.attempts, 0)
-    const avgScore = exams.reduce((s, e) => s + e.averageScore, 0) / exams.length
-    return { totalExams: exams.length, totalAttempts, avgScore: Math.round(avgScore) }
-  }, [exams])
 
   return (
     <div className="min-h-screen bg-background">

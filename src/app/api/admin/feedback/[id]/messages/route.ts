@@ -1,17 +1,14 @@
 import { db } from '@/lib/db'
-import { apiError } from '@/lib/api-utils'
+import { apiError, withAdmin } from '@/lib/api-utils'
 import { NextResponse } from 'next/server'
-import { verifyAuth } from '@/lib/auth'
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await verifyAuth(request)
-    if (!auth || !auth.isAdmin) {
-      return apiError('অননুমোদিত', 403)
-    }
+    const auth = await withAdmin(request)
+    if (auth instanceof NextResponse) return auth
 
     const { id } = await params
     const feedback = await db.userFeedback.findUnique({
@@ -45,10 +42,8 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await verifyAuth(request)
-    if (!auth || !auth.isAdmin) {
-      return apiError('অননুমোদিত', 403)
-    }
+    const auth = await withAdmin(request)
+    if (auth instanceof NextResponse) return auth
 
     const { id } = await params
     const feedback = await db.userFeedback.findUnique({ where: { id } })

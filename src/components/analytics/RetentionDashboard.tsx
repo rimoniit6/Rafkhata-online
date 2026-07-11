@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, Fragment } from 'react'
-import { Users, UserMinus, AlertTriangle, Percent, Clock, CalendarDays, TrendingUp, TrendingDown } from 'lucide-react'
+import { Users, UserMinus, AlertTriangle, Percent, Clock, TrendingUp } from 'lucide-react'
 import { useRetentionAnalytics, useAiInsights } from '@/hooks/use-analytics'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'

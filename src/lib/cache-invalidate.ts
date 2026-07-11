@@ -26,9 +26,11 @@ const VALID_CONTENT_TYPES = new Set<string>([
  */
 export async function invalidateContentCache(contentType: CacheableContent): Promise<void> {
   if (!VALID_CONTENT_TYPES.has(contentType)) return
-  redis.incr(`${CONTENT_VERSION_PREFIX}${contentType}`).catch(() => {
+  try {
+    await redis.incr(`${CONTENT_VERSION_PREFIX}${contentType}`)
+  } catch {
     // Redis unavailable — cache invalidation is best-effort
-  })
+  }
 }
 
 /**
