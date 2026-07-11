@@ -13,10 +13,13 @@ DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { QueryError } from '@/components/admin/QueryError'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Tabs,TabsContent,TabsList,TabsTrigger } from '@/components/ui/tabs'
 import { useToast } from '@/hooks/use-toast'
+import { bannerService, type BannerRecord } from '@/services/api/banner.service'
+import { useBanners } from '@/hooks/admin/use-banners'
 import { motion } from 'framer-motion'
 import {
 AlertTriangle,
@@ -32,20 +35,7 @@ Megaphone,
 Plus,
 Trash2
 } from 'lucide-react'
-import { useCallback,useEffect,useState } from 'react'
-
-interface BannerRecord {
-  id: string
-  title: string
-  subtitle: string | null
-  image: string | null
-  link: string | null
-  buttonText: string | null
-  isActive: boolean
-  order: number
-  startDate: string | null
-  endDate: string | null
-}
+import { useState } from 'react'
 
 const emptyForm = {
   title: '',
@@ -60,28 +50,13 @@ const emptyForm = {
 
 export default function AdminBannersPage() {
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
-  const [banners, setBanners] = useState<BannerRecord[]>([])
+  const { banners, isLoading, isError, error, refetch, invalidate } = useBanners()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [form, setForm] = useState(emptyForm)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [previewMode, setPreviewMode] = useState(false)
-
-  const fetchBanners = useCallback(async () => {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/admin/banners')
-      if (res.ok) {
-        const json = await res.json()
-        setBanners(Array.isArray(json.data) ? json.data : [])
-      }
-    } catch { /* */ }
-    finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { fetchBanners() }, [fetchBanners])
 
   const openCreate = () => {
     setEditId(null)
@@ -123,43 +98,39 @@ export default function AdminBannersPage() {
         endDate: form.endDate || undefined,
       }
 
-      const res = editId
-        ? await fetch('/api/admin/banners', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editId, ...body }) })
-        : await fetch('/api/admin/banners', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
-
-      if (res.ok) {
-        toast({ title: editId ? 'নোটিশ আপডেট হয়েছে' : 'নোটিশ তৈরি হয়েছে' })
-        setDialogOpen(false)
-        fetchBanners()
+      if (editId) {
+        await bannerService.update(editId, body)
       } else {
-        const json = await res.json()
-        toast({ title: 'ত্রুটি', description: json.error, variant: 'destructive' })
+        await bannerService.create(body)
       }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    finally { setSaving(false) }
+      toast({ title: editId ? 'নোটিশ আপডেট হয়েছে' : 'নোটিশ তৈরি হয়েছে' })
+      setDialogOpen(false)
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    } finally { setSaving(false) }
   }
 
   const handleDelete = async () => {
     if (!deleteId) return
     try {
-      const res = await fetch(`/api/admin/banners?id=${deleteId}`, { method: 'DELETE' })
-      if (res.ok) { toast({ title: 'নোটিশ মুছে ফেলা হয়েছে' }); setDeleteId(null); fetchBanners() }
-      else { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
-    } catch { toast({ title: 'ত্রুটি', variant: 'destructive' }) }
+      await bannerService.remove(deleteId)
+      toast({ title: 'নোটিশ মুছে ফেলা হয়েছে' })
+      setDeleteId(null)
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    }
   }
 
   const toggleActive = async (banner: BannerRecord) => {
     try {
-      const res = await fetch('/api/admin/banners', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: banner.id, isActive: !banner.isActive }),
-      })
-      if (res.ok) {
-        toast({ title: banner.isActive ? 'নোটিশ নিষ্ক্রিয় করা হয়েছে' : 'নোটিশ সক্রিয় করা হয়েছে' })
-        fetchBanners()
-      }
-    } catch { /* */ }
+      await bannerService.update(banner.id, { isActive: !banner.isActive })
+      toast({ title: banner.isActive ? 'নোটিশ নিষ্ক্রিয় করা হয়েছে' : 'নোটিশ সক্রিয় করা হয়েছে' })
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    }
   }
 
   const moveBanner = async (banner: BannerRecord, direction: 'up' | 'down') => {
@@ -173,31 +144,29 @@ export default function AdminBannersPage() {
     try {
       // Swap orders
       await Promise.all([
-        fetch('/api/admin/banners', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: banner.id, order: swapWith.order }),
-        }),
-        fetch('/api/admin/banners', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: swapWith.id, order: banner.order }),
-        }),
+        bannerService.update(banner.id, { order: swapWith.order }),
+        bannerService.update(swapWith.id, { order: banner.order }),
       ])
-      fetchBanners()
-    } catch { /* */ }
+      invalidate()
+    } catch {
+      // Errors are surfaced globally by ApiErrorHandler
+    }
   }
 
   const activeBanners = banners.filter(b => b.isActive)
   const inactiveBanners = banners.filter(b => !b.isActive)
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="space-y-4">
         <Skeleton className="h-10 w-64" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><Skeleton className="h-32" /><Skeleton className="h-32" /></div>
       </div>
     )
+  }
+
+  if (isError) {
+    return <QueryError error={error} onRetry={() => refetch()} />
   }
 
   return (

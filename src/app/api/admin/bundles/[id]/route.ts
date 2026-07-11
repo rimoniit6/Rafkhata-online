@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { apiError, withAdmin, withCsrf } from '@/lib/api-utils'
+import { handleApiError } from '@/lib/errors'
 import { NextResponse } from 'next/server'
 
 // GET /api/admin/bundles/[id] — Get bundle by ID with all items
@@ -27,8 +28,7 @@ export async function GET(
 
     return NextResponse.json({ success: true, data: bundle })
   } catch (error) {
-    console.error('Admin Get Bundle error:', error)
-    return apiError('বান্ডলের তথ্য আনতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Get Bundle')
   }
 }
 
@@ -108,8 +108,7 @@ export async function PUT(
 
     return NextResponse.json({ success: true, data: updated })
   } catch (error) {
-    console.error('Admin Update Bundle error:', error)
-    return apiError('বান্ডল আপডেট করতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Update Bundle')
   }
 }
 
@@ -139,7 +138,6 @@ export async function DELETE(
       message: 'বান্ডল সফলভাবে মুছে ফেলা হয়েছে',
     })
   } catch (error) {
-    console.error('Admin Delete Bundle error:', error)
-    return apiError('বান্ডল মুছে ফেলতে সমস্যা হয়েছে', 500)
+    return handleApiError(error, 'Admin Delete Bundle')
   }
 }
