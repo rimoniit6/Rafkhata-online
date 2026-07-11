@@ -17,6 +17,7 @@ import ApiErrorHandler from "@/components/shared/ApiErrorHandler";
 import GlobalStructuredData from "@/components/shared/JsonLd";
 import RouteSync from "@/components/shared/RouteSync";
 import AppNavigationBridge from "@/components/shared/AppNavigationBridge";
+import { RouteLoadingBar } from "@/components/loading/RouteLoadingBar";
 import { db } from '@/lib/db'
 import { fetchSiteConfig } from '@/lib/fetch-site-config'
 import { queryKeys } from '@/lib/query-keys'
@@ -154,6 +155,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
+        <RouteLoadingBar />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

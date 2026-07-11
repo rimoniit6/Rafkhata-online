@@ -86,7 +86,7 @@ export default function AdminSuggestionPage() {
       if (res.ok) {
         const json = await res.json()
         const suggestionsData = json.data?.suggestions ?? json.data ?? []
-        setSuggestions(suggestionsData)
+        setSuggestions(suggestionsData.filter((s: SuggestionRecord) => s.id))
         setTotal(json.data?.pagination?.total ?? json.pagination?.total ?? 0)
       }
     } catch { /* */ }

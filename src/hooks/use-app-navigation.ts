@@ -27,12 +27,15 @@ export function useAppNavigation() {
     },
   })
 
-  // On unmount, replace with a no-op instead of null so the store never has to
-  // null-check _onNavigate.  If the bridge remounts the real callback overwrites
-  // this immediately.
+  // On unmount, fall back to hard navigation so sidebar clicks never silently die.
+  // The real callback overwrites this when the bridge remounts.
   useEffect(() => {
     return () => {
-      useRouterStore.setState({ _onNavigate: () => {} })
+      useRouterStore.setState({
+        _onNavigate: (route: RoutePath, params: RouteParams) => {
+          window.location.href = routeToUrl(route, params)
+        },
+      })
     }
   }, [])
 

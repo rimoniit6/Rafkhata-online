@@ -402,7 +402,7 @@ export default function AdminNoticePage() {
             {/* Notice Cards */}
             <div className="space-y-3">
               {notices.map((notice, idx) => {
-                const config = typeConfig[notice.type]
+                const config = typeConfig[notice.type] || typeConfig.text
                 const TypeIcon = config.icon
                 return (
                   <motion.div
@@ -874,13 +874,13 @@ export default function AdminNoticePage() {
                     <div
                       className={cn(
                         'rounded-lg border-l-4 p-3 space-y-2',
-                        typeConfig[form.type].borderColor,
-                        typeConfig[form.type].bgColor,
+                        (typeConfig[form.type] || typeConfig.text).borderColor,
+                        (typeConfig[form.type] || typeConfig.text).bgColor,
                       )}
                     >
                       <div className="flex items-center gap-2">
-                        {React.createElement(typeConfig[form.type].icon, {
-                          className: cn('h-4 w-4', typeConfig[form.type].color),
+                        {React.createElement((typeConfig[form.type] || typeConfig.text).icon, {
+                          className: cn('h-4 w-4', (typeConfig[form.type] || typeConfig.text).color),
                         })}
                         <span className="font-semibold text-sm line-clamp-1">
                           {form.title || '(শিরোনাম)'}

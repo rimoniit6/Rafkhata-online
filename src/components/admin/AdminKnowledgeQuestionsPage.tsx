@@ -158,9 +158,11 @@ export default function AdminKnowledgeQuestionsPage() {
   })
 
   useEffect(() => {
-    setQuestions(fetchedQuestions)
-    setTotal(fetchedTotal)
-  }, [fetchedQuestions, fetchedTotal])
+    if (!loading) {
+      setQuestions(fetchedQuestions)
+      setTotal(fetchedTotal)
+    }
+  }, [fetchedQuestions, fetchedTotal, loading])
 
   const openCreate = () => {
     const chapterId = filterChapter || ''

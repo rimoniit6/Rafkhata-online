@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { useShallow } from 'zustand/react/shallow'
 import { routeToUrl } from '@/lib/urls'
+import { startNavigation } from '@/store/navigation-loader'
 
 const MAX_HISTORY = 50
 let _scrollTimeout: ReturnType<typeof setTimeout> | null = null
@@ -214,6 +215,7 @@ export const useRouterStore = create<RouterState>()((set, get) => ({
     set({ currentRoute: route, params })
   },
   navigate: (route, params = {}) => {
+    startNavigation()
     const { currentRoute, params: currentParams, history, _onNavigate } = get()
     set({
       currentRoute: route,

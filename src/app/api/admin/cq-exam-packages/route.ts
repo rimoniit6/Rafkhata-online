@@ -301,7 +301,7 @@ export async function POST(request: Request) {
             thumbnail: thumbnail || null,
             isPremium: isPremium ?? true,
             isActive: isActive ?? true,
-            order: order ?? 0, status: status || 'draft',
+            order: order ?? 0, status: status || 'DRAFT',
           },
         })
         return apiResponse({ package: pkg }, 201)
@@ -328,7 +328,7 @@ export async function POST(request: Request) {
             passMarks: passMarks ?? 0,
             showCorrectAnswers: showCorrectAnswers ?? false,
             enablePartialGrading: enablePartialGrading ?? true,
-            order: order ?? 0, status: status || 'draft',
+            order: order ?? 0, status: status || 'DRAFT',
           },
         })
         await recalculatePackageTotalSets(packageId)

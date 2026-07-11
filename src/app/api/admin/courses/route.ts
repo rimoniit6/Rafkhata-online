@@ -355,7 +355,7 @@ export async function POST(request: Request) {
         const course = await db.course.create({
           data: {
             title, slug, description, thumbnail, isPremium: isPremium || false,
-            price: price || 0, status: status || 'draft',
+            price: price || 0, status: (status && typeof status === 'string' ? status.toUpperCase() : 'DRAFT'),
             classId, subjectId,
           },
         })
@@ -377,6 +377,9 @@ export async function POST(request: Request) {
           'duration', 'language', 'difficulty',
         ]
         for (const f of fields) { if (data[f] !== undefined) updateData[f] = data[f] }
+        if (updateData.status && typeof updateData.status === 'string') {
+          updateData.status = updateData.status.toUpperCase()
+        }
 
         if (data.slug && data.slug !== existing.slug) {
           const slugExists = await db.course.findUnique({ where: { slug: data.slug } })

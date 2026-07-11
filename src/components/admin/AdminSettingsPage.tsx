@@ -101,6 +101,7 @@ export default function AdminSettingsPage() {
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
+    if (isLoading) return
     const map = settings?.map
     if (!map) return
     if (map.siteName) setSiteName(map.siteName)
@@ -157,7 +158,7 @@ export default function AdminSettingsPage() {
       if (key.startsWith('msg_')) msgMap[key] = map[key]
     }
     setMessages(msgMap)
-  }, [settings])
+  }, [settings, isLoading])
 
   const handleSave = async () => {
     setSaving(true)

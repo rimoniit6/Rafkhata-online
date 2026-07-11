@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useCallback, useMemo, Suspense, lazy } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, Suspense, lazy } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard,
@@ -447,6 +447,20 @@ function AdminContent() {
   const adminRoute = parsed?.route && isAdminRoute(parsed.route)
     ? parsed.route
     : 'admin-dashboard'
+
+  // Safety guard: if the URL is /admin/... but parseUrl failed, do a hard
+  // redirect instead of silently falling back to the dashboard.
+  // This catches cases where the Zustand _onNavigate bridge dropped a
+  // sidebar click, leaving the URL/route out of sync.
+  const needsHardRedirect = !parsed && pathname.startsWith('/admin/')
+  useEffect(() => {
+    if (needsHardRedirect && typeof window !== 'undefined') {
+      window.location.href = pathname
+    }
+  }, [needsHardRedirect, pathname])
+  if (needsHardRedirect) {
+    return <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" /></div>
+  }
 
   const Page = AdminPages[adminRoute as keyof typeof AdminPages] || AdminPages['admin-dashboard']
 

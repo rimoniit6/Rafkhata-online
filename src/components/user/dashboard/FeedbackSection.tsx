@@ -9,7 +9,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { fetchCsrfToken } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
-import { useAuthUser } from '@/store/auth'
 import { AnimatePresence,motion } from 'framer-motion'
 import {
 ArrowLeft,
@@ -62,7 +61,6 @@ const statusConfig: Record<string, { label: string; color: string; icon: React.E
 }
 
 export default function FeedbackSection() {
-  const _user = useAuthUser()
   const { toast } = useToast()
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>([])
   const [loading, setLoading] = useState(true)
