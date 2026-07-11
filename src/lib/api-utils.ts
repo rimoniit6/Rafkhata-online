@@ -2,7 +2,7 @@ import type { Role } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { ZodError,ZodSchema } from 'zod'
 import { requireAdmin,requireAuth,requireRole,requireSuperAdmin,type AuthResult } from './auth'
-import { csrfMiddleware } from './csrf'
+import { verifyCsrfFromRequest } from './csrf'
 import { apiLimiter,getClientIdentifier,RateLimiter,rateLimitHeaders,type RateLimitResult } from './rate-limit'
 
 export interface PaginationInput {
@@ -166,8 +166,8 @@ export async function withCsrf(request: Request): Promise<{ valid: true } | { er
   if (request.method === 'GET' || request.method === 'HEAD') {
     return { valid: true as const }
   }
-  const result = await csrfMiddleware(request)
-  if (!result.valid) {
+  const valid = await verifyCsrfFromRequest(request)
+  if (!valid) {
     return { error: apiError('CSRF টোকেন বৈধ নয়। পেজ রিফ্রেশ করে আবার চেষ্টা করুন।', 403, 'CSRF_INVALID') }
   }
   return { valid: true as const }

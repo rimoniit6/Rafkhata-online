@@ -8,10 +8,10 @@ const withBundleAnalyzer = bundleAnalyzer({
 
 const CSP_DIRECTIVES = [
   `default-src 'self'`,
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co https://*.uploadthing.com https://utfs.io https://*.sentry.io https://checkout.stripe.com https://js.stripe.com`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://*.supabase.co https://*.uploadthing.com https://utfs.io https://*.sentry.io https://checkout.stripe.com https://js.stripe.com`,
   `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.supabase.co`,
   `img-src 'self' data: blob: https:`,
-  `font-src 'self' https://fonts.gstatic.com data:`,
+  `font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net data:`,
   `connect-src 'self' https://*.supabase.co https://*.uploadthing.com https://utfs.io https://*.sentry.io https://*.upstash.io wss://*.supabase.co`,
   `frame-src 'self' https://*.supabase.co https://checkout.stripe.com`,
   `object-src 'none'`,

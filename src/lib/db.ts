@@ -8,6 +8,7 @@ type ExtendedPrismaClient = ReturnType<typeof createPrismaClient>
 
 const globalForPrisma = globalThis as unknown as {
   prisma: ExtendedPrismaClient | undefined
+  prismaExitListenerRegistered: boolean | undefined
 }
 
 const HTML_FIELDS: Record<string, string[]> = {
@@ -72,7 +73,9 @@ export const db = globalForPrisma.prisma ?? createPrismaClient()
 
 if (!isProduction) globalForPrisma.prisma = db
 
-if (typeof process !== 'undefined') {
+// Guard against registering a new listener on every hot reload in dev
+if (typeof process !== 'undefined' && !globalForPrisma.prismaExitListenerRegistered) {
+  globalForPrisma.prismaExitListenerRegistered = true
   process.on('beforeExit', async () => {
     await db.$disconnect()
   })

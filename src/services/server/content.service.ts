@@ -260,3 +260,63 @@ export async function resolveContentTitle(
     return null
   }
 }
+
+/**
+ * Resolves the authoritative server-side price for a piece of content.
+ * Returns null if the content type is unknown or the content doesn't exist.
+ */
+export async function resolveContentPrice(
+  contentType: string,
+  contentId: string
+): Promise<number | null> {
+  try {
+    switch (contentType) {
+      case 'mcq':
+      case 'board-mcq': {
+        const mcq = await db.mCQ.findUnique({ where: { id: contentId }, select: { price: true } })
+        return mcq ? Number(mcq.price) : null
+      }
+      case 'cq':
+      case 'board-cq': {
+        const cq = await db.cQ.findUnique({ where: { id: contentId }, select: { price: true } })
+        return cq ? Number(cq.price) : null
+      }
+      case 'lecture': {
+        const lecture = await db.lecture.findUnique({ where: { id: contentId }, select: { price: true } })
+        return lecture ? Number(lecture.price) : null
+      }
+      case 'suggestion': {
+        const suggestion = await db.suggestion.findUnique({ where: { id: contentId }, select: { price: true } })
+        return suggestion ? Number(suggestion.price) : null
+      }
+      case 'exam': {
+        const exam = await db.exam.findUnique({ where: { id: contentId }, select: { price: true } })
+        return exam ? Number(exam.price) : null
+      }
+      case 'bundle': {
+        const bundle = await db.contentBundle.findUnique({ where: { id: contentId }, select: { price: true } })
+        return bundle ? Number(bundle.price) : null
+      }
+      case 'package': {
+        const pkg = await db.contentPackage.findUnique({ where: { id: contentId }, select: { price: true } })
+        return pkg ? Number(pkg.price) : null
+      }
+      case 'mcq-exam-package': {
+        const mcqPkg = await db.mCQExamPackage.findUnique({ where: { id: contentId }, select: { price: true } })
+        return mcqPkg ? Number(mcqPkg.price) : null
+      }
+      case 'cq-exam-package': {
+        const cqPkg = await db.cQExamPackage.findUnique({ where: { id: contentId }, select: { price: true } })
+        return cqPkg ? Number(cqPkg.price) : null
+      }
+      case 'course': {
+        const course = await db.course.findUnique({ where: { id: contentId }, select: { price: true } })
+        return course ? Number(course.price) : null
+      }
+      default:
+        return null
+    }
+  } catch {
+    return null
+  }
+}

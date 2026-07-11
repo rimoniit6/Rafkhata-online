@@ -53,7 +53,7 @@ vi.mock('@/lib/auth', () => ({
   }),
 }))
 
-const { generateCsrfToken, validateCsrfToken, csrfMiddleware } = await import('@/lib/csrf')
+const { generateCsrfToken } = await import('@/lib/csrf')
 const { withAuth, withRole: _withRole, withAdmin: _withAdmin, withSuperAdmin: _withSuperAdmin, withCsrf, apiResponse, apiError, validateBody, parsePaginationParams } = await import('@/lib/api-utils')
 
 describe('CSRF', () => {
@@ -71,39 +71,41 @@ describe('CSRF', () => {
     expect(mockSign).toHaveBeenCalled()
   })
 
-  it('validateCsrfToken verifies a token', async () => {
+  it('verifyCsrfFromRequest validates matching header and cookie token', async () => {
     mockVerify.mockImplementationOnce(async () => ({}))
-    const result = await validateCsrfToken('valid-token')
-    expect(result).toBe(true)
-  })
-
-  it('validateCsrfToken returns false for invalid token', async () => {
-    mockVerify.mockRejectedValueOnce(new Error('invalid'))
-    const result = await validateCsrfToken('invalid-token')
-    expect(result).toBe(false)
-  })
-
-  it('csrfMiddleware returns valid:false when no cookie and sets new token', async () => {
-    const request = new Request('http://localhost/api/test', { method: 'GET' })
-
-    mockSign.mockImplementationOnce(async () => 'new-token')
-
-    const result = await csrfMiddleware(request)
-    expect(result.valid).toBe(false)
-    expect(result.token).toBe('new-token')
-  })
-
-  it('verifyCsrfFromRequest validates header token', async () => {
-    mockVerify.mockImplementationOnce(async () => ({}))
-    cookieState.value = 'valid-cookie-token'
+    cookieState.value = 'matching-token'
 
     const request = new Request('http://localhost/api/test', {
       method: 'POST',
-      headers: { 'x-csrf-token': 'valid-header-token' },
+      headers: { 'x-csrf-token': 'matching-token' },
     })
 
     const result = await verifyCsrfFromRequest(request)
     expect(result).toBe(true)
+  })
+
+  it('verifyCsrfFromRequest rejects header token that does not match cookie', async () => {
+    cookieState.value = 'cookie-token-value'
+
+    const request = new Request('http://localhost/api/test', {
+      method: 'POST',
+      headers: { 'x-csrf-token': 'different-token' },
+    })
+
+    const result = await verifyCsrfFromRequest(request)
+    expect(result).toBe(false)
+  })
+
+  it('verifyCsrfFromRequest rejects when cookie is missing', async () => {
+    cookieState.value = null
+
+    const request = new Request('http://localhost/api/test', {
+      method: 'POST',
+      headers: { 'x-csrf-token': 'some-token' },
+    })
+
+    const result = await verifyCsrfFromRequest(request)
+    expect(result).toBe(false)
   })
 
   it('verifyCsrfFromRequest returns false when no token provided', async () => {

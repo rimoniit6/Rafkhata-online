@@ -6,7 +6,7 @@ import { handleApiError } from '@/lib/errors'
 import { apiLimiter } from '@/lib/rate-limit'
 import { createPaymentSchema, paginationSchema } from '@/lib/validations'
 import { getContentTypeLabels, getValidContentTypes } from '@/lib/content-type-labels'
-import { resolveContentTitle } from '@/services/server/content.service'
+import { resolveContentTitle, resolveContentPrice } from '@/services/server/content.service'
 
 export async function GET(request: Request) {
   try {
@@ -117,6 +117,22 @@ export async function POST(request: Request) {
     const VALID_CONTENT_TYPES = await getValidContentTypes()
     if (contentType && !VALID_CONTENT_TYPES.includes(contentType)) {
       return apiError('অবৈধ কন্টেন্ট টাইপ। সমর্থিত: ' + VALID_CONTENT_TYPES.join(', '), 400)
+    }
+
+    // ===== Server-side price validation =====
+    // NEVER trust the client-submitted amount — resolve the real price from the DB
+    if (contentType && contentId) {
+      const expectedPrice = await resolveContentPrice(contentType, contentId)
+      if (expectedPrice === null) {
+        return apiError('কন্টেন্ট খুঁজে পাওয়া যায়নি বা দাম নির্ধারণ করা যায়নি', 404, 'CONTENT_NOT_FOUND')
+      }
+      if (Number(amount) !== expectedPrice) {
+        return apiError(
+          `পেমেন্টের পরিমাণ সঠিক নয়। এই কন্টেন্টের দাম ${expectedPrice} টাকা।`,
+          400,
+          'AMOUNT_MISMATCH'
+        )
+      }
     }
 
     // For per-content payments, check if there's already an approved payment
